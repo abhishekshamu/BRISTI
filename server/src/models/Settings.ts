@@ -4,6 +4,36 @@ import { ISiteSettings } from 'shared/types';
 
 export interface ISettingsDoc extends Omit<ISiteSettings, '_id'>, Document {}
 
+const NavbarItemSchema: Schema = new Schema({
+  label: String,
+  url: String,
+  sortOrder: Number,
+  isActive: { type: Boolean, default: true },
+});
+
+const FooterLinkSchema: Schema = new Schema({
+  label: String,
+  url: String,
+});
+
+// Note: the section `type` field must be declared as `{ type: { type: String } }`
+// so Mongoose does not misinterpret the object as a type definition.
+const FooterSectionSchema: Schema = new Schema({
+  type: { type: String },
+  title: String,
+  content: String,
+  links: [FooterLinkSchema],
+  sortOrder: Number,
+  isActive: { type: Boolean, default: true },
+});
+
+const HomepageSectionSchema: Schema = new Schema({
+  type: { type: String },
+  props: { type: Schema.Types.Mixed },
+  sortOrder: Number,
+  isActive: { type: Boolean, default: true },
+});
+
 const SettingsSchema: Schema = new Schema({
   brandName: {
     type: String,
@@ -247,32 +277,12 @@ const SettingsSchema: Schema = new Schema({
     },
   },
   navbar: {
-    items: [{
-      label: String,
-      url: String,
-      sortOrder: Number,
-      isActive: { type: Boolean, default: true },
-    }],
+    items: [NavbarItemSchema],
   },
   footer: {
-    sections: [{
-      type: String,
-      title: String,
-      content: String,
-      links: [{
-        label: String,
-        url: String,
-      }],
-      sortOrder: Number,
-      isActive: { type: Boolean, default: true },
-    }],
+    sections: [FooterSectionSchema],
   },
-  homepageSections: [{
-    type: Schema.Types.Mixed,
-    props: { type: Schema.Types.Mixed },
-    sortOrder: Number,
-    isActive: { type: Boolean, default: true },
-  }],
+  homepageSections: [HomepageSectionSchema],
 }, {
   timestamps: true,
 });

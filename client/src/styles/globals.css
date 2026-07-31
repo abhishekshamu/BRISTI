@@ -4,6 +4,8 @@
 
 @layer base {
   :root {
+    --font-heading: 'Cormorant Garamond', serif;
+    --font-body: 'Inter', sans-serif;
     --background: 0 0% 100%;
     --foreground: 0 0% 7%;
     --card: 0 0% 100%;
@@ -61,7 +63,12 @@
 
   body {
     @apply bg-background text-foreground font-sans;
+    font-family: var(--font-body);
     font-feature-settings: 'ss01', 'ss02', 'cv01';
+  }
+
+  .font-display {
+    font-family: var(--font-heading);
   }
 
   ::selection {
@@ -92,7 +99,7 @@
   }
 
   .font-display {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: var(--font-heading, 'Cormorant Garamond', serif);
   }
 
   .text-gradient-gold {

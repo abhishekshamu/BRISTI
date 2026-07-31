@@ -8,6 +8,7 @@ import { useUIStore } from '@/store/useUIStore';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
 import { useAuth } from '@/context/AuthContext';
+import { useSiteSettings } from '@/context/SettingsContext';
 import { useScrolled } from '@/hooks/useScrollPosition';
 import { useIsDesktop } from '@/hooks/useMediaQuery';
 import { AnnouncementMarquee } from '@/components/shared/AnnouncementMarquee';
@@ -15,7 +16,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { getInitials, cn } from '@/lib/utils';
 
-const NAV_LINKS = [
+const FALLBACK_NAV_LINKS = [
   { label: 'Shop', to: '/shop' },
   { label: 'Collections', to: '/collections' },
   { label: 'New Arrivals', to: '/new-arrivals' },
@@ -27,6 +28,7 @@ const NAV_LINKS = [
 
 export function Navbar() {
   const { isAuthenticated, user, logout } = useAuth();
+  const { settings } = useSiteSettings();
   const { count } = useCart();
   const { productIds } = useWishlist();
   const { openSearch, openMobileNav, openCartDrawer } = useUIStore();
@@ -35,6 +37,17 @@ export function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const brandName = settings?.brandName || 'BRISTI';
+  const tagline = settings?.slogan || 'Luxury redefined';
+  const showLogoImage = !!settings?.logo && settings.logo !== '/logo.png' && settings.logo !== '/favicon.svg';
+
+  const navLinks = settings?.navbar?.items?.length
+    ? settings.navbar.items
+        .filter((item) => item.isActive !== false)
+        .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+        .map((item) => ({ label: item.label, to: item.url }))
+    : FALLBACK_NAV_LINKS;
 
   const { data: categories } = useQuery({
     queryKey: ['categories', 'tree'],
@@ -81,13 +94,17 @@ export function Navbar() {
               <Menu className="h-5 w-5" />
             </button>
             <Link to="/" className="flex flex-col leading-none">
-              <span className="font-display text-2xl font-semibold tracking-[0.3em] text-foreground">BRISTI</span>
-              <span className="mt-1 hidden text-[9px] uppercase tracking-lux text-muted-foreground sm:block">Luxury redefined</span>
+              {showLogoImage ? (
+                <img src={settings?.logo} alt={brandName} className="h-8 w-auto object-contain" />
+              ) : (
+                <span className="font-display text-2xl font-semibold tracking-[0.3em] text-foreground">{brandName}</span>
+              )}
+              <span className="mt-1 hidden text-[9px] uppercase tracking-lux text-muted-foreground sm:block">{tagline}</span>
             </Link>
           </div>
 
           <nav className="hidden items-center gap-8 lg:flex" aria-label="Primary">
-            {NAV_LINKS.slice(0, 2).map((link) => (
+            {navLinks.slice(0, 2).map((link) => (
               <Link key={link.to} to={link.to} className="text-[11px] font-medium uppercase tracking-lux-sm text-foreground transition-colors hover:text-accent">
                 {link.label}
               </Link>
@@ -121,14 +138,28 @@ export function Navbar() {
                       <div>
                         <p className="mb-4 text-[10px] font-medium uppercase tracking-lux-sm text-muted-foreground">Collections</p>
                         <ul className="space-y-3">
-                          <li><Link to="/new-arrivals" className="text-sm text-foreground transition-colors hover:text-accent">New Arrivals</Link></li>
-                          <li><Link to="/sale" className="text-sm text-foreground transition-colors hover:text-accent">Sale</Link></li>
-                          <li><Link to="/collections" className="text-sm text-foreground transition-colors hover:text-accent">All Collections</Link></li>
+                          {navLinks.filter((l) => ['/collections', '/new-arrivals', '/sale'].includes(l.to)).map((link) => (
+                            <li key={link.to}>
+                              <Link to={link.to} className="text-sm text-foreground transition-colors hover:text-accent">{link.label}</Link>
+                            </li>
+                          ))}
+                          {!navLinks.some((l) => l.to === '/collections') && (
+                            <li><Link to="/collections" className="text-sm text-foreground transition-colors hover:text-accent">All Collections</Link></li>
+                          )}
                         </ul>
                         <p className="mb-4 mt-8 text-[10px] font-medium uppercase tracking-lux-sm text-muted-foreground">Explore</p>
                         <ul className="space-y-3">
-                          <li><Link to="/journal" className="text-sm text-foreground transition-colors hover:text-accent">The Journal</Link></li>
-                          <li><Link to="/about" className="text-sm text-foreground transition-colors hover:text-accent">Our Maison</Link></li>
+                          {navLinks.filter((l) => ['/journal', '/about', '/contact'].includes(l.to)).map((link) => (
+                            <li key={link.to}>
+                              <Link to={link.to} className="text-sm text-foreground transition-colors hover:text-accent">{link.label}</Link>
+                            </li>
+                          ))}
+                          {!navLinks.some((l) => l.to === '/journal') && (
+                            <li><Link to="/journal" className="text-sm text-foreground transition-colors hover:text-accent">The Journal</Link></li>
+                          )}
+                          {!navLinks.some((l) => l.to === '/about') && (
+                            <li><Link to="/about" className="text-sm text-foreground transition-colors hover:text-accent">Our Maison</Link></li>
+                          )}
                         </ul>
                       </div>
                       <div className="flex flex-col justify-between gap-4 bg-secondary p-6">
@@ -142,7 +173,7 @@ export function Navbar() {
                 )}
               </AnimatePresence>
             </div>
-            {NAV_LINKS.slice(2).map((link) => (
+            {navLinks.slice(2).map((link) => (
               <Link key={link.to} to={link.to} className="text-[11px] font-medium uppercase tracking-lux-sm text-foreground transition-colors hover:text-accent">
                 {link.label}
               </Link>
