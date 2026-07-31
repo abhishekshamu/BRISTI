@@ -179,6 +179,16 @@ export class OrderService {
         couponDiscount,
       } as any, session);
 
+      // Attach the order reference to inventory history entries created during the decrement
+      for (const itemData of data.items) {
+        await this.inventoryRepo.setHistoryOrderId(
+          itemData.productId,
+          itemData.variantId,
+          order._id.toString(),
+          session
+        );
+      }
+
       // Clear cart
       await this.cartRepo.clearByUserId(user._id.toString(), session);
 

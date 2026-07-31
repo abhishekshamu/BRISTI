@@ -72,6 +72,14 @@ export class InventoryItemRepository extends BaseRepository<IInventoryItem> {
     }, session);
   }
 
+  async setHistoryOrderId(productId: string, variantId: string | undefined, orderId: string, session?: any): Promise<void> {
+    await this.updateMany(
+      { productId, variantId: variantId ?? null, 'history.orderId': null },
+      { $set: { 'history.$[].orderId': orderId } },
+      session
+    );
+  }
+
   async restoreOrderItem(productId: string, variantId: string | undefined, quantity: number, orderId: string, reason: string, session?: any): Promise<IInventoryItem | null> {
     const item = await this.findOne({ productId, variantId: variantId ?? null });
     if (!item) return null;

@@ -12,21 +12,36 @@ export class CartService {
   ) {}
 
   async getCart(userId?: string, sessionId?: string): Promise<ICart> {
+    let cart;
     if (userId) {
-      return this.cartRepo.getCartByUserId(userId);
+      cart = await this.cartRepo.getCartByUserId(userId);
+    } else if (sessionId) {
+      cart = await this.cartRepo.getCartBySessionId(sessionId);
+    } else {
+      return this.cartRepo.create({ items: [], totalItems: 0, subtotal: 0, tax: 0, shipping: 0, discount: 0, total: 0, couponCode: undefined, couponDiscount: 0 });
     }
-    if (sessionId) {
-      return this.cartRepo.getCartBySessionId(sessionId);
-    }
-    return this.cartRepo.create({ items: [], totalItems: 0, subtotal: 0, tax: 0, shipping: 0, discount: 0, total: 0, couponCode: undefined, couponDiscount: 0 });
+    return this.healCart(cart);
   }
 
   async getCartByUserId(userId: string): Promise<ICart> {
-    return this.cartRepo.getCartByUserId(userId);
+    return this.healCart(await this.cartRepo.getCartByUserId(userId));
   }
 
   async getCartBySessionId(sessionId: string): Promise<ICart> {
-    return this.cartRepo.getCartBySessionId(sessionId);
+    return this.healCart(await this.cartRepo.getCartBySessionId(sessionId));
+  }
+
+  // Recompute totals from items so stale/legacy carts always report correct math
+  private async healCart(cart: any): Promise<ICart> {
+    if (!cart || (!(cart.items ?? []).length && !cart.couponCode)) {
+      return cart;
+    }
+    const before = cart.subtotal;
+    await this.recalculateCart(cart);
+    if (cart.subtotal !== before) {
+      cart = (await this.cartRepo.updateById((cart as any)._id.toString(), cart)) || cart;
+    }
+    return cart;
   }
 
   async addToCart(data: {
