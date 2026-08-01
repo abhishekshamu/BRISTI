@@ -21,6 +21,9 @@ interface SlideForm {
   videoMobile: string;
   eyebrow: string;
   heading: string;
+  headingColor: string;
+  showEyebrow: boolean;
+  showCta: boolean;
   ctaText: string;
   ctaLinkType: HeroLinkType;
   ctaLink: string;
@@ -45,8 +48,6 @@ interface SetForm {
   isActive: boolean;
   priority: number;
   animationSpeed: number;
-  overlay: boolean;
-  overlayOpacity: number;
   gradient: boolean;
   panels: PanelForm[];
 }
@@ -62,6 +63,9 @@ const emptySlide = (): SlideForm => ({
   videoMobile: '',
   eyebrow: '',
   heading: '',
+  headingColor: '#FFFFFF',
+  showEyebrow: false,
+  showCta: false,
   ctaText: '',
   ctaLinkType: 'custom',
   ctaLink: '',
@@ -86,9 +90,7 @@ const emptySet = (): SetForm => ({
   isActive: true,
   priority: 0,
   animationSpeed: 0.7,
-  overlay: true,
-  overlayOpacity: 45,
-  gradient: true,
+  gradient: false,
   panels: [emptyPanel()],
 });
 
@@ -121,6 +123,9 @@ function normalizeBlockToForm(block: HeroBlock): SetForm {
           videoMobile: s.videoMobile ?? '',
           eyebrow: s.eyebrow ?? '',
           heading: s.heading ?? '',
+          headingColor: s.headingColor ?? '#FFFFFF',
+          showEyebrow: s.showEyebrow ?? false,
+          showCta: s.showCta ?? false,
           ctaText: s.ctaText ?? '',
           ctaLinkType: s.ctaLinkType ?? 'custom',
           ctaLink: s.ctaLink ?? '',
@@ -146,6 +151,9 @@ function normalizeBlockToForm(block: HeroBlock): SetForm {
               videoMobile: block.videoMobile ?? '',
               eyebrow: block.badge ?? '',
               heading: block.title ?? '',
+              headingColor: '#FFFFFF',
+              showEyebrow: false,
+              showCta: false,
               ctaText: block.primaryButton?.label ?? '',
               ctaLinkType: block.primaryButton?.linkType ?? 'custom',
               ctaLink: block.primaryButton?.link ?? '',
@@ -164,9 +172,7 @@ function normalizeBlockToForm(block: HeroBlock): SetForm {
     isActive: block.isActive ?? true,
     priority: block.priority ?? 0,
     animationSpeed: block.animationSpeed ?? 0.7,
-    overlay: block.overlay ?? true,
-    overlayOpacity: block.overlayOpacity ?? 45,
-    gradient: block.gradient ?? true,
+    gradient: block.gradient ?? false,
     panels,
   };
 }
@@ -217,6 +223,53 @@ function ImageUploadField({ value, onChange, label, placeholder }: { value: stri
       {value ? (
         <img src={value} alt="" className="mt-2 h-24 w-40 object-cover rounded-md border border-slate-200 dark:border-slate-700" />
       ) : null}
+    </div>
+  );
+}
+
+function VideoUrlField({ value, onChange, label }: { value: string; onChange: (url: string) => void; label: React.ReactNode }) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      setUploading(true);
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', 'hero');
+      const response = await api.post('/media', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const url = response.data?.data?.url;
+      if (!url) throw new Error('Upload response missing URL');
+      onChange(url);
+      toast.success('Video uploaded');
+    } catch {
+      toast.error('Video upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div>
+      <label className="admin-label">{label}</label>
+      <div className="flex gap-2 mt-1">
+        <input value={value} onChange={(e) => onChange(e.target.value)} className="admin-input" placeholder="https://…mp4" />
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          disabled={uploading}
+          className="admin-btn-secondary shrink-0 px-3 py-2 flex items-center text-xs"
+        >
+          {uploading ? <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin" /> : <Upload className="w-3.5 h-3.5 mr-1.5" />}
+          {uploading ? 'Uploading…' : 'Upload'}
+        </button>
+        <input ref={fileRef} type="file" accept="video/mp4,video/webm" className="hidden" onChange={handleFile} />
+      </div>
     </div>
   );
 }
@@ -360,8 +413,6 @@ export default function HeroEdit() {
       setSaving(true);
       const payload = {
         name: form.name.trim(),
-        overlay: form.overlay,
-        overlayOpacity: Number(form.overlayOpacity),
         gradient: form.gradient,
         animationSpeed: Number(form.animationSpeed),
         priority: Number(form.priority),
@@ -378,6 +429,9 @@ export default function HeroEdit() {
             videoMobile: s.videoMobile,
             eyebrow: s.eyebrow,
             heading: s.heading,
+            headingColor: s.headingColor,
+            showEyebrow: s.showEyebrow,
+            showCta: s.showCta,
             ctaText: s.ctaText,
             ctaLinkType: s.ctaLinkType,
             ctaLink: s.ctaLink,
@@ -453,21 +507,23 @@ export default function HeroEdit() {
           </div>
           <div className="relative h-64 bg-black">
             {previewSlide.slide.image ? <img src={previewSlide.slide.image} alt="" className="absolute inset-0 w-full h-full object-cover" /> : null}
-            {form.overlay ? (
-              <div className="absolute inset-0" style={{ backgroundColor: `rgba(0,0,0,${Math.min(0.85, Math.max(0, Number(form.overlayOpacity) / 100))})` }} />
-            ) : null}
             {form.gradient ? (
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/35 from-60% to-transparent" />
             ) : null}
-            <div className="absolute left-0 right-0 bottom-0 p-8">
-              {previewSlide.slide.eyebrow ? (
+            <div className="absolute left-[6%] bottom-[8%] max-w-[80%]">
+              {previewSlide.slide.showEyebrow && previewSlide.slide.eyebrow ? (
                 <span className="mb-3 flex items-center gap-3 text-[10px] uppercase tracking-lux text-amber-400">
                   <span className="h-px w-8 bg-amber-400" />
                   {previewSlide.slide.eyebrow}
                 </span>
               ) : null}
-              <h3 className="font-display text-3xl text-white max-w-[14ch]">{previewSlide.slide.heading || 'Untitled slide'}</h3>
-              {previewSlide.slide.ctaText ? (
+              <h3
+                className="font-sans font-black uppercase leading-[0.95] tracking-tight text-4xl"
+                style={{ color: previewSlide.slide.headingColor || '#FFFFFF' }}
+              >
+                {previewSlide.slide.heading || 'Untitled slide'}
+              </h3>
+              {previewSlide.slide.showCta && previewSlide.slide.ctaText ? (
                 <span className="mt-5 inline-flex bg-amber-500 px-4 py-2 text-xs uppercase tracking-wider text-white">
                   {previewSlide.slide.ctaText}
                 </span>
@@ -508,16 +564,8 @@ export default function HeroEdit() {
         </div>
         <div className="flex flex-wrap items-center gap-6 pt-2">
           <label className="flex items-center gap-2">
-            <input type="checkbox" checked={form.overlay} onChange={(e) => updateSet({ overlay: e.target.checked })} className="w-4 h-4" />
-            <span className="admin-label">Dark overlay</span>
-          </label>
-          <label className="flex items-center gap-2">
             <input type="checkbox" checked={form.gradient} onChange={(e) => updateSet({ gradient: e.target.checked })} className="w-4 h-4" />
-            <span className="admin-label">Bottom gradient (readability)</span>
-          </label>
-          <label className="flex items-center gap-3">
-            <span className="admin-label">Overlay opacity: {form.overlayOpacity}%</span>
-            <input type="range" min="0" max="85" value={form.overlayOpacity} onChange={(e) => updateSet({ overlayOpacity: Number(e.target.value) })} className="w-40 accent-amber-500" />
+            <span className="admin-label">Subtle bottom gradient (off by default)</span>
           </label>
         </div>
       </div>
@@ -605,21 +653,44 @@ export default function HeroEdit() {
                       onChange={(url) => updateSlide(panelIdx, slideIdx, { imageMobile: url })}
                       placeholder="https://… or upload"
                     />
-                    <div>
-                      <label className="admin-label">Desktop Video URL (optional, overrides image)</label>
-                      <input value={slide.video} onChange={(e) => updateSlide(panelIdx, slideIdx, { video: e.target.value })} className="admin-input mt-1" placeholder="https://…mp4" />
-                    </div>
-                    <div>
-                      <label className="admin-label">Mobile Video URL (optional)</label>
-                      <input value={slide.videoMobile} onChange={(e) => updateSlide(panelIdx, slideIdx, { videoMobile: e.target.value })} className="admin-input mt-1" placeholder="https://…mp4" />
-                    </div>
+                    <VideoUrlField
+                      label={<span className="inline-flex items-center gap-1.5"><Monitor className="w-3.5 h-3.5" /> Desktop Video (optional, overrides image)</span>}
+                      value={slide.video}
+                      onChange={(url) => updateSlide(panelIdx, slideIdx, { video: url })}
+                    />
+                    <VideoUrlField
+                      label={<span className="inline-flex items-center gap-1.5"><Smartphone className="w-3.5 h-3.5" /> Mobile Video (optional)</span>}
+                      value={slide.videoMobile}
+                      onChange={(url) => updateSlide(panelIdx, slideIdx, { videoMobile: url })}
+                    />
                     <div>
                       <label className="admin-label">Eyebrow text</label>
                       <input value={slide.eyebrow} onChange={(e) => updateSlide(panelIdx, slideIdx, { eyebrow: e.target.value })} className="admin-input mt-1" placeholder="e.g. The Autumn–Winter 2026 Collection" />
                     </div>
                     <div>
-                      <label className="admin-label">Heading</label>
-                      <input value={slide.heading} onChange={(e) => updateSlide(panelIdx, slideIdx, { heading: e.target.value })} className="admin-input mt-1" placeholder="e.g. Silhouettes in whispers of gold" />
+                      <label className="admin-label">Heading (short — max 3 words)</label>
+                      <input value={slide.heading} onChange={(e) => updateSlide(panelIdx, slideIdx, { heading: e.target.value })} className="admin-input mt-1" placeholder="e.g. The New Season" />
+                    </div>
+                    <div>
+                      <label className="admin-label">Heading color</label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <input type="color" value={slide.headingColor} onChange={(e) => updateSlide(panelIdx, slideIdx, { headingColor: e.target.value })} className="w-10 h-9 rounded border border-slate-300 dark:border-slate-600 cursor-pointer" />
+                        <input value={slide.headingColor} onChange={(e) => updateSlide(panelIdx, slideIdx, { headingColor: e.target.value })} className="admin-input flex-1 font-mono text-xs" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="admin-label">Show eyebrow</label>
+                      <label className="flex items-center gap-2 mt-2">
+                        <input type="checkbox" checked={slide.showEyebrow} onChange={(e) => updateSlide(panelIdx, slideIdx, { showEyebrow: e.target.checked })} className="w-4 h-4" />
+                        <span className="text-sm text-slate-600 dark:text-slate-400">Display eyebrow line (hidden by default)</span>
+                      </label>
+                    </div>
+                    <div>
+                      <label className="admin-label">Show CTA</label>
+                      <label className="flex items-center gap-2 mt-2">
+                        <input type="checkbox" checked={slide.showCta} onChange={(e) => updateSlide(panelIdx, slideIdx, { showCta: e.target.checked })} className="w-4 h-4" />
+                        <span className="text-sm text-slate-600 dark:text-slate-400">Display CTA button (hidden by default)</span>
+                      </label>
                     </div>
                     <div>
                       <label className="admin-label">CTA text</label>

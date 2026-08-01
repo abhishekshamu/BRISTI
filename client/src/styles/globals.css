@@ -491,12 +491,13 @@
 /* ===== Hero Engine (CMS multi-panel, snitch-style) ===== */
 .hero-engine {
   position: relative;
-  height: 92vh;
+  width: 100vw;
+  height: 90vh;
   overflow: hidden;
   background: var(--ink, #0a0a0a);
 }
 @media (max-width: 767px) {
-  .hero-engine { height: 80vh; }
+  .hero-engine { height: 70vh; }
 }
 
 /* Desktop/tablet: exactly 3 equal-width panels */
@@ -527,11 +528,18 @@
   background: var(--ink, #0a0a0a);
 }
 .hero-panel__slide--enter {
-  animation: hero-panel-fade-in 0.45s cubic-bezier(0.45, 0, 0.55, 1) both;
+  animation: hero-panel-fade-in 0.6s cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+.hero-panel__slide--exit {
+  animation: hero-panel-fade-out 0.6s cubic-bezier(0.65, 0, 0.35, 1) both;
 }
 @keyframes hero-panel-fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+@keyframes hero-panel-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
 .hero-panel__media {
@@ -562,24 +570,17 @@
   to { background-position-x: -200%; }
 }
 
-.hero-panel__overlay {
-  position: absolute;
-  inset: 0;
-  background: #000;
-}
 .hero-panel__gradient {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.78) 0%, rgba(0, 0, 0, 0.28) 42%, transparent 72%);
+  background: linear-gradient(to bottom, transparent 60%, rgba(0, 0, 0, 0.35) 100%);
 }
 
 .hero-panel__content {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  padding: clamp(1.25rem, 2vw, 2.25rem);
-  padding-bottom: clamp(2.25rem, 3.5vw, 3rem);
+  left: 6%;
+  bottom: 8%;
+  max-width: 80%;
   z-index: 2;
   pointer-events: none;
   overflow-wrap: break-word;
@@ -591,7 +592,8 @@
   align-items: center;
   gap: 0.6rem;
   max-width: 100%;
-  font-size: clamp(0.55rem, 0.55vw, 0.7rem);
+  margin-bottom: 0.75rem;
+  font-size: clamp(0.6rem, 0.7vw, 0.75rem);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.24em;
@@ -605,21 +607,18 @@
 }
 
 .hero-panel__title {
-  margin-top: 0.6rem;
   font-family: var(--font-body, 'Inter', sans-serif);
-  font-weight: 800;
+  font-weight: 900;
   text-transform: uppercase;
-  font-size: clamp(1.35rem, 1.55vw, 1.9rem);
-  line-height: 1.15;
-  letter-spacing: 0.015em;
+  font-size: clamp(2rem, 6vw, 4.5rem);
+  line-height: 0.95;
+  letter-spacing: -0.01em;
   max-width: 100%;
   overflow-wrap: break-word;
 }
-@media (max-width: 1023px) {
-  .hero-panel__title { font-size: clamp(1.1rem, 2.4vw, 1.6rem); }
-}
-@media (max-width: 767px) {
-  .hero-panel__title { font-size: clamp(2.2rem, 8vw, 3.2rem); line-height: 1.12; max-width: 100%; }
+
+.hero-panel__cta-wrap {
+  margin-top: 1.5rem;
 }
 
 .hero-panel__cta {
@@ -635,14 +634,15 @@
 .hero-panel__content--enter .hero-panel__title,
 .hero-panel__content--enter .hero-panel__cta,
 .hero-panel__content--enter > div {
-  animation: hero-content-enter 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: hero-content-enter 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
-.hero-panel__content--enter .hero-panel__title { animation-delay: 0.08s; }
+.hero-panel__content--enter .hero-panel__eyebrow,
+.hero-panel__content--enter .hero-panel__title { animation-delay: 0.15s; }
 .hero-panel__content--enter .hero-panel__cta,
-.hero-panel__content--enter > div { animation-delay: 0.16s; }
+.hero-panel__content--enter > div { animation-delay: 0.3s; }
 
 @keyframes hero-content-enter {
-  from { opacity: 0; transform: translateY(16px); }
+  from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
@@ -650,24 +650,25 @@
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 1.1rem;
+  bottom: 24px;
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 0.45rem;
+  gap: 6px;
   z-index: 3;
 }
 .hero-panel__dash {
-  width: 1.7rem;
-  height: 2px;
+  width: 20px;
+  height: 3px;
   border: 0;
   padding: 0;
-  background: rgba(255, 255, 255, 0.35);
-  transition: width 0.3s ease, background 0.3s ease, opacity 0.3s ease;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.4);
+  transition: width 0.3s ease, background 0.3s ease;
   cursor: pointer;
 }
-.hero-panel__dash:hover { background: rgba(255, 255, 255, 0.65); }
-.hero-panel__dash.is-active { width: 2.3rem; background: var(--accent); }
+.hero-panel__dash:hover { background: rgba(255, 255, 255, 0.7); }
+.hero-panel__dash.is-active { width: 32px; background: #FFFFFF; }
 
 /* Mobile (<768px): single full-width swipeable panel carousel */
 .hero-mobile {

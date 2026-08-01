@@ -20,6 +20,9 @@ const HeroSlideSchema = new Schema(
     videoMobile: { type: String, trim: true },
     eyebrow: { type: String, trim: true },
     heading: { type: String, trim: true },
+    headingColor: { type: String, trim: true, default: '#FFFFFF' },
+    showEyebrow: { type: Boolean, default: false },
+    showCta: { type: Boolean, default: false },
     ctaText: { type: String, trim: true },
     ctaLinkType: { type: String, enum: ['collection', 'category', 'product', 'custom'], default: 'custom' as HeroLinkType },
     ctaLink: { type: String, trim: true },
@@ -80,7 +83,7 @@ const HeroBlockSchema: Schema = new Schema(
     },
     overlay: {
       type: Boolean,
-      default: true,
+      default: false,
     },
     overlayOpacity: {
       type: Number,
@@ -90,7 +93,7 @@ const HeroBlockSchema: Schema = new Schema(
     },
     gradient: {
       type: Boolean,
-      default: true,
+      default: false,
     },
     animationSpeed: {
       type: Number,

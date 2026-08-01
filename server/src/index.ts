@@ -1,4 +1,6 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
+import path from 'path';
+import fs from 'fs';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -108,6 +110,11 @@ app.use('/api/audit', auditRoutes);
 app.use('/api/roles', roleRoutes);
 app.use('/api/search', searchRoutes);
 app.use(seoRoutes);
+
+// Local uploads (fallback when Cloudinary is not configured)
+const uploadsDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+app.use('/uploads', express.static(uploadsDir));
 
 // Health check endpoint
 app.get('/health', (req: Request, res: Response) => {

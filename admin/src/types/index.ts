@@ -92,6 +92,9 @@ export interface HeroSlide {
   videoMobile?: string;
   eyebrow?: string;
   heading?: string;
+  headingColor?: string;
+  showEyebrow: boolean;
+  showCta: boolean;
   ctaText?: string;
   ctaLinkType?: HeroLinkType;
   ctaLink?: string;

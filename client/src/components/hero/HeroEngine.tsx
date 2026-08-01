@@ -5,8 +5,8 @@ import { heroService } from '@/services/hero.service';
 import { HeroSection } from '@/components/home/HeroSection';
 import type { HeroBlock, HeroPanel, HeroSlide } from '@shared/types';
 
-const HOLD_MS = 4800;
-const SLIDE_MS = 450;
+const HOLD_MS = 4500;
+const SLIDE_MS = 600;
 const DEFAULT_SPEED = 0.7;
 const MAX_PANELS = 3;
 
@@ -80,12 +80,13 @@ function useSlideRotator(slides: HeroSlide[], paused: boolean, speed: number, in
 interface SlideLayerProps {
   slide: HeroSlide;
   visible: boolean;
+  exiting: boolean;
   isMobile: boolean;
   paused: boolean;
   altText: string;
 }
 
-function SlideLayer({ slide, visible, isMobile, paused, altText }: SlideLayerProps) {
+function SlideLayer({ slide, visible, exiting, isMobile, paused, altText }: SlideLayerProps) {
   const image = isMobile ? slide.imageMobile || slide.image : slide.image;
   const video = isMobile ? slide.videoMobile || slide.video : slide.video;
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -97,8 +98,16 @@ function SlideLayer({ slide, visible, isMobile, paused, altText }: SlideLayerPro
     else v.pause();
   }, [visible, paused]);
 
+  const className = [
+    'hero-panel__slide',
+    visible ? 'hero-panel__slide--enter' : '',
+    exiting ? 'hero-panel__slide--exit' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
-    <div className={`hero-panel__slide${visible ? ' hero-panel__slide--enter' : ''}`} aria-hidden={!visible}>
+    <div className={className} aria-hidden={!visible}>
       <div className="hero-panel__shimmer" aria-hidden="true" />
       {image ? (
         <img
@@ -132,46 +141,44 @@ interface PanelViewProps {
   paused: boolean;
   isMobile: boolean;
   speed: number;
-  overlay: boolean;
-  overlayOpacity: number;
   gradient: boolean;
   setName: string;
   phaseOffsetMs: number;
 }
 
-function PanelView({ panel, index, paused, isMobile, speed, overlay, overlayOpacity, gradient, setName, phaseOffsetMs }: PanelViewProps) {
+function PanelView({ panel, index, paused, isMobile, speed, gradient, setName, phaseOffsetMs }: PanelViewProps) {
   const slides = panel.slides;
   const { current, previous, jumpTo } = useSlideRotator(slides, paused, speed, index, phaseOffsetMs);
   const slide = slides[current] ?? slides[0];
   const href = slideHref(slide);
   const altText = slide.altText || slide.heading || panel.label || `${setName} panel ${index + 1}`;
   const slideKey = String(slide._id ?? current);
+  const headingColor = slide.headingColor || '#FFFFFF';
 
   return (
     <div className="hero-panel" role="group" aria-label={panel.label || `${setName} panel ${index + 1}`}>
       <div className="hero-panel__stage">
         {previous !== null && slides[previous] ? (
-          <SlideLayer slide={slides[previous]} visible={false} isMobile={isMobile} paused={paused} altText={altText} />
+          <SlideLayer slide={slides[previous]} visible={false} exiting isMobile={isMobile} paused={paused} altText={altText} />
         ) : null}
         {slide ? (
-          <SlideLayer key={slideKey} slide={slide} visible isMobile={isMobile} paused={paused} altText={altText} />
+          <SlideLayer key={slideKey} slide={slide} visible exiting={false} isMobile={isMobile} paused={paused} altText={altText} />
         ) : null}
       </div>
 
-      {overlay ? <div className="hero-panel__overlay" style={{ opacity: Math.min(0.85, Math.max(0, overlayOpacity / 100)) }} aria-hidden="true" /> : null}
       {gradient ? <div className="hero-panel__gradient" aria-hidden="true" /> : null}
 
       {slide ? (
         <div key={`content-${slideKey}`} className="hero-panel__content hero-panel__content--enter">
-          {slide.eyebrow ? (
+          {slide.showEyebrow && slide.eyebrow ? (
             <span className="hero-panel__eyebrow" style={{ color: 'var(--accent)' }}>
               <span className="hero-panel__eyebrow-rule" aria-hidden="true" />
               {slide.eyebrow}
             </span>
           ) : null}
-          {slide.heading ? <h2 className="hero-panel__title">{slide.heading}</h2> : null}
-          {href && slide.ctaText ? (
-            <div className="mt-7">
+          {slide.heading ? <h2 className="hero-panel__title" style={{ color: headingColor }}>{slide.heading}</h2> : null}
+          {slide.showCta && href && slide.ctaText ? (
+            <div className="hero-panel__cta-wrap">
               {href.startsWith('/') ? (
                 <Link to={href} className="btn-lux-gold hero-panel__cta" onClick={(e) => e.stopPropagation()}>
                   {slide.ctaText}
@@ -212,13 +219,11 @@ interface MobileCarouselProps {
   panels: HeroPanel[];
   paused: boolean;
   speed: number;
-  overlay: boolean;
-  overlayOpacity: number;
   gradient: boolean;
   setName: string;
 }
 
-function MobileCarousel({ panels, paused, speed, overlay, overlayOpacity, gradient, setName }: MobileCarouselProps) {
+function MobileCarousel({ panels, paused, speed, gradient, setName }: MobileCarouselProps) {
   const [panelIndex, setPanelIndex] = useState(0);
   const [dx, setDx] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -294,11 +299,9 @@ function MobileCarousel({ panels, paused, speed, overlay, overlayOpacity, gradie
               paused={paused}
               isMobile
               speed={speed}
-              overlay={overlay}
-              overlayOpacity={overlayOpacity}
               gradient={gradient}
               setName={setName}
-              phaseOffsetMs={(index * 700) % 5500}
+              phaseOffsetMs={index * 1500}
             />
           </div>
         ))}
@@ -363,9 +366,7 @@ export function HeroEngine() {
 
   const name = set?.name ?? 'Featured';
   const speed = set?.animationSpeed ?? DEFAULT_SPEED;
-  const overlay = set?.overlay ?? true;
-  const overlayOpacity = set?.overlayOpacity ?? 45;
-  const gradient = set?.gradient ?? true;
+  const gradient = set?.gradient ?? false;
 
   return (
     <section
@@ -376,15 +377,7 @@ export function HeroEngine() {
       onTouchEnd={() => applyPaused(false)}
     >
       {isMobile ? (
-        <MobileCarousel
-          panels={panels}
-          paused={paused}
-          speed={speed}
-          overlay={overlay}
-          overlayOpacity={overlayOpacity}
-          gradient={gradient}
-          setName={name}
-        />
+        <MobileCarousel panels={panels} paused={paused} speed={speed} gradient={gradient} setName={name} />
       ) : (
         <div className="hero-panels">
           {panels.map((panel, index) => (
@@ -395,11 +388,9 @@ export function HeroEngine() {
               paused={paused}
               isMobile={false}
               speed={speed}
-              overlay={overlay}
-              overlayOpacity={overlayOpacity}
               gradient={gradient}
               setName={name}
-              phaseOffsetMs={(index * 700) % 5500}
+              phaseOffsetMs={index * 1500}
             />
           ))}
         </div>
