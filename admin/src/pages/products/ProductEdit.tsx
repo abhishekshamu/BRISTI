@@ -28,6 +28,8 @@ interface ProductForm {
   seoDescription?: string;
   seoKeywords: string;
   images: string[];
+  options: Array<{ name: string; values: string[] }>;
+  variants: Array<{ id: string; name: string; options: Record<string, string>; priceAdjustment: number; sku: string; stock: number; image?: string }>;
 }
 
 export default function ProductEdit() {
@@ -49,6 +51,53 @@ export default function ProductEdit() {
   } = useForm<ProductForm>();
 
   const images = watch('images');
+  const variants = watch('variants') ?? [];
+  const productOptions = watch('options') ?? [];
+
+  const addOption = () => {
+    setValue('options', [...productOptions, { name: '', values: [] }]);
+  };
+
+  const updateOption = (index: number, field: 'name' | 'values', value: string) => {
+    const next = productOptions.map((option: any, i: number) =>
+      i === index
+        ? field === 'name'
+          ? { ...option, name: value }
+          : { ...option, values: value.split(',').map((v) => v.trim()).filter(Boolean) }
+        : option
+    );
+    setValue('options', next);
+  };
+
+  const removeOption = (index: number) => {
+    setValue('options', productOptions.filter((_: any, i: number) => i !== index));
+  };
+
+  const addVariant = () => {
+    const seed: any = {
+      id: `v-${Date.now()}`,
+      name: '',
+      options: {},
+      priceAdjustment: 0,
+      sku: '',
+      stock: 0,
+    };
+    for (const option of productOptions) {
+      if (option.name && option.values?.length) seed.options[option.name] = option.values[0];
+    }
+    setValue('variants', [...variants, seed]);
+  };
+
+  const updateVariant = (index: number, field: string, value: string | number) => {
+    const next = variants.map((variant: any, i: number) =>
+      i === index ? { ...variant, [field]: value } : variant
+    );
+    setValue('variants', next);
+  };
+
+  const removeVariant = (index: number) => {
+    setValue('variants', variants.filter((_: any, i: number) => i !== index));
+  };
 
   useEffect(() => {
     if (id) {
@@ -108,7 +157,7 @@ export default function ProductEdit() {
   const onSubmit = async (data: ProductForm) => {
     try {
       setSaving(true);
-      await api.put(`/products/${id}`, data);
+      await api.put(`/products/${id}`, { ...data, options: productOptions, variants });
       toast.success('Product updated successfully');
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to update product');
@@ -295,6 +344,113 @@ export default function ProductEdit() {
                     className="admin-input mt-1"
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* Variants & Options */}
+            <div className="admin-card p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Variants & Options</h3>
+                <button
+                  type="button"
+                  onClick={addOption}
+                  className="admin-btn-secondary py-1.5 px-3 text-sm"
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1 inline" /> Option
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {productOptions.map((option: any, index: number) => (
+                  <div key={index} className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        value={option.name}
+                        onChange={(e) => updateOption(index, 'name', e.target.value)}
+                        className="admin-input flex-1"
+                        placeholder="Option name (e.g. Size)"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeOption(index)}
+                        className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                      </button>
+                    </div>
+                    <input
+                      value={(option.values ?? []).join(', ')}
+                      onChange={(e) => updateOption(index, 'values', e.target.value)}
+                      className="admin-input"
+                      placeholder="Values, comma separated (e.g. S, M, L)"
+                    />
+                  </div>
+                ))}
+                {productOptions.length === 0 && (
+                  <p className="text-sm text-slate-500 dark:text-slate-400">No options defined — the product sells without variants.</p>
+                )}
+              </div>
+
+              <div className="mt-5 flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Variants ({variants.length})</h4>
+                <button
+                  type="button"
+                  onClick={addVariant}
+                  className="admin-btn-secondary py-1.5 px-3 text-sm"
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1 inline" /> Variant
+                </button>
+              </div>
+
+              <div className="mt-3 space-y-3">
+                {variants.map((variant: any, index: number) => (
+                  <div key={variant.id ?? index} className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        value={variant.name}
+                        onChange={(e) => updateVariant(index, 'name', e.target.value)}
+                        className="admin-input flex-1"
+                        placeholder="Variant name (e.g. S / Black)"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeVariant(index)}
+                        className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <input
+                        value={variant.sku}
+                        onChange={(e) => updateVariant(index, 'sku', e.target.value)}
+                        className="admin-input"
+                        placeholder="Variant SKU"
+                      />
+                      <input
+                        type="number"
+                        value={variant.stock}
+                        onChange={(e) => updateVariant(index, 'stock', parseInt(e.target.value) || 0)}
+                        className="admin-input"
+                        placeholder="Stock"
+                      />
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={variant.priceAdjustment}
+                        onChange={(e) => updateVariant(index, 'priceAdjustment', parseFloat(e.target.value) || 0)}
+                        className="admin-input"
+                        placeholder="Price adj."
+                      />
+                    </div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400">
+                      Options: {Object.entries(variant.options ?? {}).map(([k, v]) => `${k}: ${v}`).join(' · ') || '—'}
+                    </div>
+                  </div>
+                ))}
+                {variants.length === 0 && (
+                  <p className="text-sm text-slate-500 dark:text-slate-400">No variants — stock is tracked on the product itself.</p>
+                )}
               </div>
             </div>
           </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, AlertTriangle, Package } from 'lucide-react';
+import { Search, Filter, AlertTriangle, Package, SlidersHorizontal, X } from 'lucide-react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 
@@ -26,6 +26,10 @@ export default function Inventory() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'low' | 'out'>('all');
+  const [editing, setEditing] = useState<InventoryItem | null>(null);
+  const [qty, setQty] = useState<number>(0);
+  const [reason, setReason] = useState('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchInventory();
@@ -39,6 +43,27 @@ export default function Inventory() {
       toast.error('Failed to fetch inventory');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openAdjust = (item: InventoryItem) => {
+    setEditing(item);
+    setQty(item.quantity);
+    setReason('');
+  };
+
+  const saveAdjust = async () => {
+    if (!editing) return;
+    try {
+      setSaving(true);
+      await api.put(`/inventory/${editing._id}`, { quantity: qty, reason: reason.trim() || 'Manual adjustment' });
+      toast.success('Stock updated — history recorded and product stock synced');
+      setEditing(null);
+      fetchInventory();
+    } catch (error) {
+      toast.error('Failed to update stock');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -62,7 +87,7 @@ export default function Inventory() {
           <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Inventory</h2>
           <p className="text-slate-500 dark:text-slate-400">Track and manage your stock levels</p>
         </div>
-        <button className="admin-btn-secondary py-2.5 px-4 flex items-center">
+        <button onClick={() => toast('Export coming soon')} className="admin-btn-secondary py-2.5 px-4 flex items-center">
           <Filter className="w-4 h-4 mr-2" />
           Export
         </button>
@@ -152,6 +177,7 @@ export default function Inventory() {
                     <th className="text-left py-3 px-4 text-sm font-medium text-slate-500 dark:text-slate-400">Available</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-slate-500 dark:text-slate-400">Reorder Point</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-slate-500 dark:text-slate-400">Status</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-500 dark:text-slate-400">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -211,6 +237,15 @@ export default function Inventory() {
                             </span>
                           )}
                         </td>
+                        <td className="py-3 px-4">
+                          <button
+                            onClick={() => openAdjust(item)}
+                            className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md"
+                            title="Adjust stock"
+                          >
+                            <SlidersHorizontal className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                          </button>
+                        </td>
                       </tr>
                     );
                   })}
@@ -227,6 +262,54 @@ export default function Inventory() {
           </>
         )}
       </div>
+
+      {editing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setEditing(null)}>
+          <div className="w-full max-w-md admin-card p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Adjust Stock</h3>
+              <button onClick={() => setEditing(null)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md">
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-1">
+              <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{editing.product?.name || 'Product'}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 font-mono">{editing.sku}</p>
+              <p className="text-xs text-slate-400">Current quantity: {editing.quantity} · Reserved: {editing.reserved} · Reorder point: {editing.reorderPoint}</p>
+            </div>
+
+            <div className="mt-5 flex flex-col gap-2">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">New quantity</label>
+              <input
+                type="number"
+                min={0}
+                value={qty}
+                onChange={(e) => setQty(Math.max(0, parseInt(e.target.value) || 0))}
+                className="admin-input"
+              />
+            </div>
+
+            <div className="mt-4 flex flex-col gap-2">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Reason</label>
+              <input
+                type="text"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="e.g. Received restock, damaged units removed…"
+                className="admin-input"
+              />
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button onClick={() => setEditing(null)} className="admin-btn-secondary py-2 px-4">Cancel</button>
+              <button onClick={saveAdjust} disabled={saving} className="admin-btn-primary py-2 px-4">
+                {saving ? 'Saving...' : 'Save Adjustment'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

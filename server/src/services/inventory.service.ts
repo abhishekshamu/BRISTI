@@ -1,6 +1,7 @@
 import { InventoryItemRepository } from '../repositories/inventory-item.repository';
 import { ProductRepository } from '../repositories/product.repository';
 import { IInventoryItem } from 'shared/types';
+import { NotFoundException } from '../utils/exceptions';
 
 export class InventoryService {
   constructor(
@@ -41,6 +42,27 @@ export class InventoryService {
   }
 
   async updateInventory(id: string, data: Partial<IInventoryItem>) {
-    return this.inventoryRepo.updateById(id, data);
+    const current = await this.inventoryRepo.findById(id);
+    if (!current) {
+      throw new NotFoundException('Inventory item not found');
+    }
+
+    const newQuantity = data.quantity as number | undefined;
+    if (typeof newQuantity === 'number' && newQuantity !== current.quantity) {
+      await this.inventoryRepo.adjustStock(id, newQuantity, (data as any).reason || 'Admin adjustment');
+      const items = await this.inventoryRepo.findByProductId(String(current.productId));
+      const total = items.reduce((sum, item) => sum + (item.quantity ?? 0), 0);
+      await this.productRepo.findByIdAndUpdate(current.productId, { $set: { stock: total } });
+    }
+
+    const updateData: any = {};
+    if (typeof newQuantity === 'number' && newQuantity === current.quantity) {
+      updateData.quantity = newQuantity;
+    }
+    if (typeof data.reorderPoint === 'number') updateData.reorderPoint = data.reorderPoint;
+    if (typeof data.maxStockLevel === 'number') updateData.maxStockLevel = data.maxStockLevel;
+    updateData.lastUpdated = new Date();
+
+    return this.inventoryRepo.updateById(id, updateData);
   }
 }
