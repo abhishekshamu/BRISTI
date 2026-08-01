@@ -5,9 +5,13 @@ import { heroService } from '@/services/hero.service';
 import { HeroSection } from '@/components/home/HeroSection';
 import type { HeroBlock } from '@shared/types';
 
-const HOLD_MS = 4500;
+const HOLD_MS = 4800;
 const COPIES = 3;
-const DEFAULT_SPEED = 1;
+const DEFAULT_SPEED = 0.7;
+
+function easeInOutQuart(t: number): number {
+  return t < 0.5 ? 8 * t * t * t * t : 1 - Math.pow(-2 * t + 2, 4) / 2;
+}
 
 function getVisibleCount(): number {
   if (typeof window === 'undefined') return 5;
@@ -36,14 +40,14 @@ function blockHref(button: HeroBlock['primaryButton']): string | undefined {
 interface PanelProps {
   block: HeroBlock;
   copy: number;
+  visible: number;
   inVisibleWindow: boolean;
   inMediaWindow: boolean;
   isLeading: boolean;
 }
 
-function Panel({ block, copy, inVisibleWindow, inMediaWindow, isLeading }: PanelProps) {
+function Panel({ block, copy, visible, inVisibleWindow, inMediaWindow, isLeading }: PanelProps) {
   const primaryHref = blockHref(block.primaryButton);
-  const secondaryHref = blockHref(block.secondaryButton);
   const alignment = block.contentAlignment ?? 'left';
   const alignClass =
     alignment === 'center' ? 'items-center text-center' : alignment === 'right' ? 'items-end text-right' : 'items-start text-left';
@@ -51,16 +55,21 @@ function Panel({ block, copy, inVisibleWindow, inMediaWindow, isLeading }: Panel
   const accentColor = resolveColor(block.accentColor) ?? 'var(--accent)';
   const buttonColor = resolveColor(block.buttonColor);
   const kenburns = (block.animationStyle ?? 'kenburns') === 'kenburns' && inVisibleWindow;
+  const enter = inVisibleWindow && isLeading;
   const altText = block.altText || block.seoLabel || block.title;
+
+  const isMobile = visible === 1;
+  const image = isMobile ? block.imageMobile || block.image : block.image;
+  const video = isMobile ? block.videoMobile || block.video : block.video;
 
   const videoRef = useRef<HTMLVideoElement>(null);
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
+    const v = videoRef.current;
+    if (!v) return;
     if (isLeading) {
-      video.play().catch(() => undefined);
+      v.play().catch(() => undefined);
     } else {
-      video.pause();
+      v.pause();
     }
   }, [isLeading]);
 
@@ -68,10 +77,10 @@ function Panel({ block, copy, inVisibleWindow, inMediaWindow, isLeading }: Panel
     <div className="hero-engine__panel" role="group" aria-label={block.seoLabel || block.title}>
       <div className="hero-engine__shimmer" aria-hidden="true" />
 
-      {block.image && inMediaWindow ? (
+      {image && inMediaWindow ? (
         <img
-          key={`${String(block._id)}-${copy}`}
-          src={block.image}
+          key={`${String(block._id)}-${copy}-${isMobile ? 'm' : 'd'}`}
+          src={image}
           alt={altText}
           loading="lazy"
           decoding="async"
@@ -80,10 +89,10 @@ function Panel({ block, copy, inVisibleWindow, inMediaWindow, isLeading }: Panel
         />
       ) : null}
 
-      {block.video && inMediaWindow ? (
+      {video && inMediaWindow ? (
         <video
           ref={videoRef}
-          src={block.video}
+          src={video}
           muted
           loop
           playsInline
@@ -108,57 +117,34 @@ function Panel({ block, copy, inVisibleWindow, inMediaWindow, isLeading }: Panel
         />
       ) : null}
 
-      <div className={`hero-engine__content ${alignClass}`} style={{ color: textColor }}>
+      <div className={`hero-engine__content ${alignClass} ${enter ? 'hero-engine__content--enter' : ''}`} style={{ color: textColor }}>
         {block.badge ? (
           <span
-            className="mb-5 flex items-center gap-3 text-[11px] font-medium uppercase tracking-lux"
+            className="hero-engine__eyebrow mb-4 flex items-center gap-3 font-medium uppercase tracking-lux"
             style={{ color: accentColor }}
           >
-            <span className="h-px w-10" style={{ backgroundColor: accentColor }} />
+            <span className="h-px w-8" style={{ backgroundColor: accentColor }} />
             {block.badge}
           </span>
         ) : null}
 
-        {block.subtitle ? (
-          <p className="mb-3 text-xs font-medium uppercase tracking-[0.3em] opacity-80 sm:text-sm">{block.subtitle}</p>
-        ) : null}
+        <h2 className="hero-engine__panel-title font-display">{block.title}</h2>
 
-        <h1 className="font-display max-w-[16ch] text-[13vw] font-medium leading-[1.02] sm:text-5xl lg:text-6xl xl:text-7xl">
-          {block.title}
-        </h1>
-
-        {block.description ? (
-          <p className="mt-6 max-w-md text-sm leading-7 opacity-80 sm:text-base sm:leading-8">{block.description}</p>
-        ) : null}
-
-        {(primaryHref || secondaryHref) && (
-          <div className={`mt-10 flex flex-wrap items-center gap-4 ${alignment === 'center' ? 'justify-center' : ''}`}>
-            {primaryHref && block.primaryButton?.label ? (
-              <span style={buttonColor ? { ['--btn-gold-bg' as string]: buttonColor } : undefined}>
-                {primaryHref.startsWith('/') ? (
-                  <Link to={primaryHref} className="btn-lux-gold" onClick={(e) => e.stopPropagation()}>
-                    {block.primaryButton.label}
-                  </Link>
-                ) : (
-                  <a href={primaryHref} target="_blank" rel="noreferrer" className="btn-lux-gold" onClick={(e) => e.stopPropagation()}>
-                    {block.primaryButton.label}
-                  </a>
-                )}
-              </span>
-            ) : null}
-            {secondaryHref && block.secondaryButton?.label ? (
-              secondaryHref.startsWith('/') ? (
-                <Link to={secondaryHref} className="btn-lux-white" onClick={(e) => e.stopPropagation()}>
-                  {block.secondaryButton.label}
+        {primaryHref && block.primaryButton?.label ? (
+          <div className="mt-7">
+            <span style={buttonColor ? { ['--btn-gold-bg' as string]: buttonColor } : undefined}>
+              {primaryHref.startsWith('/') ? (
+                <Link to={primaryHref} className="btn-lux-gold hero-engine__cta" onClick={(e) => e.stopPropagation()}>
+                  {block.primaryButton.label}
                 </Link>
               ) : (
-                <a href={secondaryHref} target="_blank" rel="noreferrer" className="btn-lux-white" onClick={(e) => e.stopPropagation()}>
-                  {block.secondaryButton.label}
+                <a href={primaryHref} target="_blank" rel="noreferrer" className="btn-lux-gold hero-engine__cta" onClick={(e) => e.stopPropagation()}>
+                  {block.primaryButton.label}
                 </a>
-              )
-            ) : null}
+              )}
+            </span>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );
@@ -344,7 +330,7 @@ export function HeroEngine() {
       } else {
         const s = slideRef.current;
         const t = Math.min(1, (now - s.startT) / s.duration);
-        const eased = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        const eased = easeInOutQuart(t);
         trackEl.style.transform = `translate3d(${(s.startPx + (s.endPx - s.startPx) * eased).toFixed(2)}px, 0, 0)`;
         if (t >= 1) {
           let ns = s.toStep;
@@ -400,6 +386,7 @@ export function HeroEngine() {
                 key={`${String(block._id)}::${copy}`}
                 block={block}
                 copy={copy}
+                visible={visible}
                 inVisibleWindow={inVisibleWindow}
                 inMediaWindow={inMediaWindow}
                 isLeading={isLeading}

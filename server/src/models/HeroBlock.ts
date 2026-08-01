@@ -44,6 +44,14 @@ const HeroBlockSchema: Schema = new Schema(
       type: String,
       trim: true,
     },
+    imageMobile: {
+      type: String,
+      trim: true,
+    },
+    videoMobile: {
+      type: String,
+      trim: true,
+    },
     badge: {
       type: String,
       trim: true,

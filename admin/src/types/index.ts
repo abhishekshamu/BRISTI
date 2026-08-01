@@ -88,6 +88,8 @@ export interface HeroBlock {
   description?: string;
   image?: string;
   video?: string;
+  imageMobile?: string;
+  videoMobile?: string;
   badge?: string;
   primaryButton?: { label?: string; linkType?: 'collection' | 'category' | 'product' | 'custom'; link?: string };
   secondaryButton?: { label?: string; linkType?: 'collection' | 'category' | 'product' | 'custom'; link?: string };

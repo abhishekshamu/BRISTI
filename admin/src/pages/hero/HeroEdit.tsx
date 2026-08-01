@@ -12,6 +12,8 @@ interface HeroFormValues {
   description?: string;
   image?: string;
   video?: string;
+  imageMobile?: string;
+  videoMobile?: string;
   badge?: string;
   primaryLabel: string;
   primaryLinkType: 'collection' | 'category' | 'product' | 'custom';
@@ -74,6 +76,8 @@ export default function HeroEdit() {
       description: '',
       image: '',
       video: '',
+      imageMobile: '',
+      videoMobile: '',
       badge: '',
       primaryLabel: '',
       primaryLinkType: 'custom',
@@ -129,6 +133,8 @@ export default function HeroEdit() {
             description: b.description ?? '',
             image: b.image ?? '',
             video: b.video ?? '',
+            imageMobile: b.imageMobile ?? '',
+            videoMobile: b.videoMobile ?? '',
             badge: b.badge ?? '',
             primaryLabel: b.primaryButton?.label ?? '',
             primaryLinkType: b.primaryButton?.linkType ?? 'custom',
@@ -185,6 +191,8 @@ export default function HeroEdit() {
         description: data.description,
         image: data.image,
         video: data.video,
+        imageMobile: data.imageMobile,
+        videoMobile: data.videoMobile,
         badge: data.badge,
         primaryButton: {
           label: data.primaryLabel,
@@ -329,12 +337,20 @@ export default function HeroEdit() {
           <h3 className="font-semibold text-slate-800 dark:text-slate-200">Media</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="admin-label">Image URL</label>
+              <label className="admin-label">Desktop Image URL</label>
               <input {...register('image')} className="admin-input mt-1" placeholder="https://…" />
             </div>
             <div>
-              <label className="admin-label">Video URL (optional, overrides image)</label>
+              <label className="admin-label">Mobile Image URL (optional, overrides desktop)</label>
+              <input {...register('imageMobile')} className="admin-input mt-1" placeholder="https://…" />
+            </div>
+            <div>
+              <label className="admin-label">Desktop Video URL (optional, overrides image)</label>
               <input {...register('video')} className="admin-input mt-1" placeholder="https://…mp4" />
+            </div>
+            <div>
+              <label className="admin-label">Mobile Video URL (optional)</label>
+              <input {...register('videoMobile')} className="admin-input mt-1" placeholder="https://…mp4" />
             </div>
             <div>
               <label className="admin-label">Alt Text</label>

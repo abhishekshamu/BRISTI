@@ -247,6 +247,8 @@ export interface HeroBlock {
   description?: string;
   image?: string;
   video?: string;
+  imageMobile?: string;
+  videoMobile?: string;
   badge?: string;
   primaryButton?: HeroButton;
   secondaryButton?: HeroButton;

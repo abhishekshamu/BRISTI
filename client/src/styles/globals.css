@@ -561,3 +561,47 @@
   pointer-events: none;
 }
 .hero-engine__content a { pointer-events: auto; }
+
+/* ===== Hero Engine: editorial panel typography (reference rhythm) ===== */
+.hero-engine__eyebrow {
+  font-size: clamp(0.55rem, 0.55vw, 0.7rem);
+}
+@media (max-width: 639px) {
+  .hero-engine__eyebrow { font-size: 0.7rem; }
+}
+
+.hero-engine__panel-title {
+  font-size: clamp(1.5rem, 2vw, 2.2rem);
+  line-height: 1.05;
+  max-width: 14ch;
+}
+@media (max-width: 1023px) {
+  .hero-engine__panel-title { font-size: clamp(1.7rem, 3.2vw, 2.6rem); }
+}
+@media (max-width: 639px) {
+  .hero-engine__panel-title { font-size: clamp(2.4rem, 9vw, 3.6rem); max-width: 18ch; }
+}
+
+.hero-engine__cta {
+  padding: 0.7rem 1.5rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+}
+@media (max-width: 639px) {
+  .hero-engine__cta { padding: 0.95rem 2.2rem; font-size: 0.78rem; }
+}
+
+.hero-engine__content--enter .hero-engine__eyebrow,
+.hero-engine__content--enter .hero-engine__panel-title,
+.hero-engine__content--enter .hero-engine__cta,
+.hero-engine__content--enter > div {
+  animation: hero-content-enter 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.hero-engine__content--enter .hero-engine__panel-title { animation-delay: 0.06s; }
+.hero-engine__content--enter .hero-engine__cta,
+.hero-engine__content--enter > div { animation-delay: 0.14s; }
+
+@keyframes hero-content-enter {
+  from { opacity: 0; transform: translateY(26px); }
+  to { opacity: 1; transform: translateY(0); }
+}
