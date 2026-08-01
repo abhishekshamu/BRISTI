@@ -27,6 +27,11 @@ interface SlideForm {
   ctaText: string;
   ctaLinkType: HeroLinkType;
   ctaLink: string;
+  description: string;
+  secondaryButtonText: string;
+  secondaryButtonLink: string;
+  backgroundColor: string;
+  animationType: 'fade' | 'zoom' | 'slide';
   status: HeroStatus;
   isActive: boolean;
   scheduledStart: string;
@@ -69,6 +74,11 @@ const emptySlide = (): SlideForm => ({
   ctaText: '',
   ctaLinkType: 'custom',
   ctaLink: '',
+  description: '',
+  secondaryButtonText: '',
+  secondaryButtonLink: '',
+  backgroundColor: '',
+  animationType: 'zoom',
   status: 'draft',
   isActive: true,
   scheduledStart: '',
@@ -129,6 +139,11 @@ function normalizeBlockToForm(block: HeroBlock): SetForm {
           ctaText: s.ctaText ?? '',
           ctaLinkType: s.ctaLinkType ?? 'custom',
           ctaLink: s.ctaLink ?? '',
+          description: s.description ?? '',
+          secondaryButtonText: s.secondaryButtonText ?? '',
+          secondaryButtonLink: s.secondaryButtonLink ?? '',
+          backgroundColor: s.backgroundColor ?? '',
+          animationType: s.animationType ?? 'zoom',
           status: s.status ?? 'draft',
           isActive: s.isActive ?? true,
           scheduledStart: toLocalInput(s.scheduledStart ? String(s.scheduledStart) : undefined),
@@ -157,6 +172,11 @@ function normalizeBlockToForm(block: HeroBlock): SetForm {
               ctaText: block.primaryButton?.label ?? '',
               ctaLinkType: block.primaryButton?.linkType ?? 'custom',
               ctaLink: block.primaryButton?.link ?? '',
+              description: block.description ?? '',
+              secondaryButtonText: block.secondaryButton?.label ?? '',
+              secondaryButtonLink: block.secondaryButton?.link ?? '',
+              backgroundColor: '',
+              animationType: 'zoom' as SlideForm['animationType'],
               status: block.status ?? 'draft',
               isActive: block.isActive ?? true,
               scheduledStart: toLocalInput(block.scheduledStart ? String(block.scheduledStart) : undefined),
@@ -435,6 +455,11 @@ export default function HeroEdit() {
             ctaText: s.ctaText,
             ctaLinkType: s.ctaLinkType,
             ctaLink: s.ctaLink,
+            description: s.description,
+            secondaryButtonText: s.secondaryButtonText,
+            secondaryButtonLink: s.secondaryButtonLink,
+            backgroundColor: s.backgroundColor,
+            animationType: s.animationType,
             status: s.status,
             isActive: s.isActive,
             scheduledStart: toIso(s.scheduledStart),
@@ -721,6 +746,38 @@ export default function HeroEdit() {
                       ) : (
                         <input value={slide.ctaLink} onChange={(e) => updateSlide(panelIdx, slideIdx, { ctaLink: e.target.value })} className="admin-input mt-1" placeholder="https://… or /path" />
                       )}
+                    </div>
+                    <div>
+                      <label className="admin-label">Description (optional, under heading)</label>
+                      <textarea
+                        value={slide.description}
+                        onChange={(e) => updateSlide(panelIdx, slideIdx, { description: e.target.value })}
+                        className="admin-input mt-1 min-h-16 resize-y"
+                        placeholder="One short line of editorial copy"
+                      />
+                    </div>
+                    <div>
+                      <label className="admin-label">Secondary button text (optional)</label>
+                      <input value={slide.secondaryButtonText} onChange={(e) => updateSlide(panelIdx, slideIdx, { secondaryButtonText: e.target.value })} className="admin-input mt-1" placeholder="e.g. Book a private viewing" />
+                    </div>
+                    <div>
+                      <label className="admin-label">Secondary button link</label>
+                      <input value={slide.secondaryButtonLink} onChange={(e) => updateSlide(panelIdx, slideIdx, { secondaryButtonLink: e.target.value })} className="admin-input mt-1" placeholder="https://… or /path" />
+                    </div>
+                    <div>
+                      <label className="admin-label">Background color (behind media, optional)</label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <input type="color" value={slide.backgroundColor || '#0a0a0a'} onChange={(e) => updateSlide(panelIdx, slideIdx, { backgroundColor: e.target.value })} className="w-10 h-9 rounded border border-slate-300 dark:border-slate-600 cursor-pointer" />
+                        <input value={slide.backgroundColor} onChange={(e) => updateSlide(panelIdx, slideIdx, { backgroundColor: e.target.value })} className="admin-input flex-1 font-mono text-xs" placeholder="#0a0a0a (default)" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="admin-label">Animation type</label>
+                      <select value={slide.animationType} onChange={(e) => updateSlide(panelIdx, slideIdx, { animationType: e.target.value as SlideForm['animationType'] })} className="admin-input mt-1">
+                        <option value="zoom">Zoom (crossfade + subtle zoom)</option>
+                        <option value="fade">Fade (crossfade only)</option>
+                        <option value="slide">Slide (horizontal drift)</option>
+                      </select>
                     </div>
                     <div>
                       <label className="admin-label">Alt text</label>

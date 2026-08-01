@@ -226,6 +226,7 @@ export interface Collection {
 export type HeroLinkType = 'collection' | 'category' | 'product' | 'custom';
 export type HeroContentAlignment = 'left' | 'center' | 'right';
 export type HeroAnimationStyle = 'slide' | 'fade' | 'kenburns';
+export type HeroSlideAnimationType = 'fade' | 'zoom' | 'slide';
 export type HeroBlockStatus = 'draft' | 'published';
 
 export interface HeroButton {
@@ -254,6 +255,11 @@ export interface HeroSlide {
   ctaText?: string;
   ctaLinkType?: HeroLinkType;
   ctaLink?: string;
+  description?: string;
+  secondaryButtonText?: string;
+  secondaryButtonLink?: string;
+  backgroundColor?: string;
+  animationType?: HeroSlideAnimationType;
   status: HeroBlockStatus;
   isActive: boolean;
   scheduledStart?: Date;

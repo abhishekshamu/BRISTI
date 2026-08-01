@@ -98,6 +98,11 @@ export interface HeroSlide {
   ctaText?: string;
   ctaLinkType?: HeroLinkType;
   ctaLink?: string;
+  description?: string;
+  secondaryButtonText?: string;
+  secondaryButtonLink?: string;
+  backgroundColor?: string;
+  animationType?: 'fade' | 'zoom' | 'slide';
   status: HeroStatus;
   isActive: boolean;
   scheduledStart?: string;

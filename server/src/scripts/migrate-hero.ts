@@ -40,6 +40,26 @@ async function run() {
           slide.showCta = false;
           changed = true;
         }
+        if (slide.description === undefined) {
+          slide.description = '';
+          changed = true;
+        }
+        if (slide.secondaryButtonText === undefined) {
+          slide.secondaryButtonText = '';
+          changed = true;
+        }
+        if (slide.secondaryButtonLink === undefined) {
+          slide.secondaryButtonLink = '';
+          changed = true;
+        }
+        if (slide.backgroundColor === undefined) {
+          slide.backgroundColor = '';
+          changed = true;
+        }
+        if (slide.animationType === undefined) {
+          slide.animationType = 'zoom';
+          changed = true;
+        }
       }
     }
 
@@ -52,7 +72,6 @@ async function run() {
   }
 
   console.log(`Migrated ${updated} hero set(s) — overlays off, per-slide defaults applied (content untouched)`);
-
   await stopMemoryMongo();
   await mongoose.disconnect();
 }

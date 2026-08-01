@@ -90,6 +90,8 @@ function SlideLayer({ slide, visible, exiting, isMobile, paused, altText }: Slid
   const image = isMobile ? slide.imageMobile || slide.image : slide.image;
   const video = isMobile ? slide.videoMobile || slide.video : slide.video;
   const videoRef = useRef<HTMLVideoElement>(null);
+  const animationType = slide.animationType ?? 'zoom';
+  const zoom = animationType === 'zoom';
 
   useEffect(() => {
     const v = videoRef.current;
@@ -100,6 +102,7 @@ function SlideLayer({ slide, visible, exiting, isMobile, paused, altText }: Slid
 
   const className = [
     'hero-panel__slide',
+    `hero-panel__anim--${animationType}`,
     visible ? 'hero-panel__slide--enter' : '',
     exiting ? 'hero-panel__slide--exit' : '',
   ]
@@ -116,7 +119,7 @@ function SlideLayer({ slide, visible, exiting, isMobile, paused, altText }: Slid
           loading="lazy"
           decoding="async"
           draggable={false}
-          className={`hero-panel__media ${visible ? 'hero-panel__kenburns' : ''}`}
+          className={`hero-panel__media ${visible && zoom ? 'hero-panel__kenburns' : ''}`}
         />
       ) : null}
       {video ? (
@@ -127,7 +130,7 @@ function SlideLayer({ slide, visible, exiting, isMobile, paused, altText }: Slid
           loop
           playsInline
           preload="metadata"
-          className={`hero-panel__media ${visible ? 'hero-panel__kenburns' : ''}`}
+          className={`hero-panel__media ${visible && zoom ? 'hero-panel__kenburns' : ''}`}
           aria-hidden="true"
         />
       ) : null}
@@ -157,7 +160,7 @@ function PanelView({ panel, index, paused, isMobile, speed, gradient, setName, p
 
   return (
     <div className="hero-panel" role="group" aria-label={panel.label || `${setName} panel ${index + 1}`}>
-      <div className="hero-panel__stage">
+      <div className="hero-panel__stage" style={slide?.backgroundColor ? { backgroundColor: slide.backgroundColor } : undefined}>
         {previous !== null && slides[previous] ? (
           <SlideLayer slide={slides[previous]} visible={false} exiting isMobile={isMobile} paused={paused} altText={altText} />
         ) : null}
@@ -177,17 +180,31 @@ function PanelView({ panel, index, paused, isMobile, speed, gradient, setName, p
             </span>
           ) : null}
           {slide.heading ? <h2 className="hero-panel__title" style={{ color: headingColor }}>{slide.heading}</h2> : null}
-          {slide.showCta && href && slide.ctaText ? (
+          {slide.description ? <p className="hero-panel__description">{slide.description}</p> : null}
+          {slide.showCta && (slide.ctaText || slide.secondaryButtonText) ? (
             <div className="hero-panel__cta-wrap">
-              {href.startsWith('/') ? (
-                <Link to={href} className="btn-lux-gold hero-panel__cta" onClick={(e) => e.stopPropagation()}>
-                  {slide.ctaText}
-                </Link>
-              ) : (
-                <a href={href} target="_blank" rel="noreferrer" className="btn-lux-gold hero-panel__cta" onClick={(e) => e.stopPropagation()}>
-                  {slide.ctaText}
-                </a>
-              )}
+              {slide.showCta && slide.ctaText && href ? (
+                href.startsWith('/') ? (
+                  <Link to={href} className="btn-lux-gold hero-panel__cta" onClick={(e) => e.stopPropagation()}>
+                    {slide.ctaText}
+                  </Link>
+                ) : (
+                  <a href={href} target="_blank" rel="noreferrer" className="btn-lux-gold hero-panel__cta" onClick={(e) => e.stopPropagation()}>
+                    {slide.ctaText}
+                  </a>
+                )
+              ) : null}
+              {slide.secondaryButtonText && slide.secondaryButtonLink ? (
+                slide.secondaryButtonLink.startsWith('/') ? (
+                  <Link to={slide.secondaryButtonLink} className="hero-panel__cta hero-panel__cta--ghost" onClick={(e) => e.stopPropagation()}>
+                    {slide.secondaryButtonText}
+                  </Link>
+                ) : (
+                  <a href={slide.secondaryButtonLink} target="_blank" rel="noreferrer" className="hero-panel__cta hero-panel__cta--ghost" onClick={(e) => e.stopPropagation()}>
+                    {slide.secondaryButtonText}
+                  </a>
+                )
+              ) : null}
             </div>
           ) : null}
         </div>

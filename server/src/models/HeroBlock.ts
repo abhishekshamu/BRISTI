@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { HeroBlock, HeroBlockStatus, HeroLinkType } from 'shared/types';
+import { HeroBlock, HeroBlockStatus, HeroLinkType, HeroSlideAnimationType } from 'shared/types';
 
 export interface IHeroBlockDoc extends Omit<HeroBlock, '_id'>, Document {}
 
@@ -26,6 +26,15 @@ const HeroSlideSchema = new Schema(
     ctaText: { type: String, trim: true },
     ctaLinkType: { type: String, enum: ['collection', 'category', 'product', 'custom'], default: 'custom' as HeroLinkType },
     ctaLink: { type: String, trim: true },
+    description: { type: String, trim: true },
+    secondaryButtonText: { type: String, trim: true },
+    secondaryButtonLink: { type: String, trim: true },
+    backgroundColor: { type: String, trim: true },
+    animationType: {
+      type: String,
+      enum: ['fade', 'zoom', 'slide'],
+      default: 'zoom' as HeroSlideAnimationType,
+    },
     status: {
       type: String,
       enum: ['draft', 'published'],
