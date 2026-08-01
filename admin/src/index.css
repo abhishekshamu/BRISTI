@@ -84,6 +84,10 @@
     @apply admin-btn hover:bg-slate-100 dark:hover:bg-slate-800;
   }
   
+  .admin-btn-danger {
+    @apply admin-btn bg-red-600 text-white hover:bg-red-700;
+  }
+  
   .admin-label {
     @apply text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70;
   }

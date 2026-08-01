@@ -88,6 +88,23 @@ export default function OrderDetail() {
     }
   };
 
+  const cancelOrder = async () => {
+    if (!order) return;
+    if (!window.confirm(`Cancel order ${order.orderNumber}? Inventory will be restored automatically.`)) return;
+    try {
+      setUpdating(true);
+      await api.put(`/orders/${id}/cancel`, { reason: 'Cancelled by administrator' });
+      toast.success('Order cancelled — inventory restored');
+      fetchOrder();
+    } catch (error) {
+      toast.error('Failed to cancel order');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const canCancel = ['pending', 'processing'].includes(order?.status ?? '');
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'delivered':
@@ -165,6 +182,15 @@ export default function OrderDetail() {
           >
             {updating ? 'Updating...' : 'Update Status'}
           </button>
+          {canCancel && (
+            <button
+              onClick={cancelOrder}
+              disabled={updating}
+              className="admin-btn-danger py-2.5 px-4"
+            >
+              Cancel Order
+            </button>
+          )}
         </div>
       </div>
 
@@ -254,7 +280,7 @@ export default function OrderDetail() {
               </p>
               {order.userId && (
                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                  User ID: {order.userId}
+                  <Link to="/customers" className="text-blue-600 hover:underline">View customer</Link> · ID: {order.userId}
                 </p>
               )}
             </div>
