@@ -93,4 +93,10 @@ export const productService = {
       return [];
     }
   },
+
+  async getByIds(ids: string[]): Promise<Product[]> {
+    if (!ids.length) return [];
+    const response = await api.get('/products/by-ids', { params: { ids: ids.join(',') } });
+    return response.data.data as Product[];
+  },
 };

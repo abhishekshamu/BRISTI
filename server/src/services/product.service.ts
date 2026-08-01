@@ -250,6 +250,10 @@ export class ProductService {
     );
   }
 
+  async getByIds(ids: string[]): Promise<IProduct[]> {
+    return this.productRepo.findByIds(ids);
+  }
+
   async searchProducts(query: string, options: any = {}): Promise<IProduct[]> {
     return this.productRepo.search(query, options);
   }

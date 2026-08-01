@@ -1,8 +1,10 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Compass, Hand, Scissors, Gem } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { SectionHeading } from '@/components/shared/SectionHeading';
+import { pageService } from '@/services/page.service';
 import { usePageMeta } from '@/lib/seo';
 
 const VALUES = [
@@ -13,21 +15,35 @@ const VALUES = [
 ];
 
 export default function AboutPage() {
+  const { data: cmsPage } = useQuery({
+    queryKey: ['page', 'slug', 'about'],
+    queryFn: () => pageService.getBySlug('about'),
+    retry: false,
+    staleTime: 1000 * 60 * 30,
+  });
+
   usePageMeta({
-    title: 'About BRISTI — Luxury Redefined',
-    description: 'The story of BRISTI — a luxury clothing maison devoted to timeless elegance, masterful tailoring and quiet sophistication.',
+    title: cmsPage?.seo?.title ?? 'About BRISTI — Luxury Redefined',
+    description: cmsPage?.seo?.description ?? 'The story of BRISTI — a luxury clothing maison devoted to timeless elegance, masterful tailoring and quiet sophistication.',
   });
 
   return (
     <>
       <PageHeader
         eyebrow="The Maison"
-        title="About BRISTI"
-        description="We believe luxury should be felt, not shouted. BRISTI is a study in restraint — silhouettes, fabrics and finishes that speak softly and last decades."
+        title={cmsPage?.title ?? 'About BRISTI'}
+        description={cmsPage?.excerpt ?? 'We believe luxury should be felt, not shouted. BRISTI is a study in restraint — silhouettes, fabrics and finishes that speak softly and last decades.'}
         breadcrumb={[{ label: 'About' }]}
       />
 
-      <section className="bg-background py-16 sm:py-24">
+      {cmsPage ? (
+        <section className="bg-background pb-24">
+          <div className="container-lux">
+            <div className="mx-auto max-w-3xl prose-lux" dangerouslySetInnerHTML={{ __html: cmsPage.content }} />
+          </div>
+        </section>
+      ) : (
+        <section className="bg-background py-16 sm:py-24">
         <div className="container-lux">
           <div className="grid items-center gap-14 lg:grid-cols-2">
             <motion.div
@@ -80,6 +96,7 @@ export default function AboutPage() {
           </div>
         </div>
       </section>
+      )}
 
       <section className="bg-[#0a0a0a] py-16 sm:py-24">
         <div className="container-lux">

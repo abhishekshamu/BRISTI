@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { DEFAULT_SETTINGS } from '@shared/constants';
 
 export interface SeoInput {
@@ -7,6 +8,38 @@ export interface SeoInput {
   keywords?: string[];
   type?: string;
   url?: string;
+}
+
+export type JsonLdGraph = Record<string, unknown> | Record<string, unknown>[];
+
+export function setJsonLd(graph: JsonLdGraph): void {
+  document.querySelectorAll('script[data-jsonld]').forEach((node) => node.remove());
+  const items = Array.isArray(graph) ? graph : [graph];
+  if (!items.length) return;
+  const script = document.createElement('script');
+  script.type = 'application/ld+json';
+  script.dataset.jsonld = '';
+  script.textContent = JSON.stringify(items);
+  document.head.appendChild(script);
+}
+
+export function useJsonLd(graph: JsonLdGraph): void {
+  useEffect(() => {
+    setJsonLd(graph);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(graph)]);
+}
+
+export function organizationJsonLd(settings: { brandName?: string; slogan?: string; logo?: string; url?: string }): JsonLdGraph {
+  const logo = settings.logo && !['/logo.png', '/favicon.svg'].includes(settings.logo) ? settings.logo : undefined;
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: settings.brandName ?? DEFAULT_SETTINGS.brandName,
+    slogan: settings.slogan,
+    url: settings.url ?? window.location.origin,
+    ...(logo ? { logo } : {}),
+  };
 }
 
 export function setDocumentMeta(seo?: SeoInput): void {

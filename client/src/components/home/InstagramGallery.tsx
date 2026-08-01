@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { Instagram } from 'lucide-react';
 import { SectionHeading } from '@/components/shared/SectionHeading';
 
-const GALLERY = [
+const FALLBACK_GALLERY = [
   { id: 'photo-1441986300917-64674bd600d8', alt: 'Atelier lookbook' },
   { id: 'photo-1490481651871-ab68de25d43d', alt: 'Editorial campaign' },
   { id: 'photo-1509631179647-0177331693ae', alt: 'Detail shot' },
@@ -11,20 +11,34 @@ const GALLERY = [
   { id: 'photo-1445205170230-053b83016050', alt: 'The essentials' },
 ];
 
-export function InstagramGallery() {
+interface InstagramGalleryProps {
+  props?: {
+    eyebrow?: string;
+    title?: string;
+    description?: string;
+    url?: string;
+    images?: Array<{ image?: string; alt?: string }>;
+  };
+}
+
+export function InstagramGallery({ props }: InstagramGalleryProps) {
+  const gallery = props?.images?.length
+    ? props.images.map((image) => ({ id: image.image || '', alt: image.alt || 'Instagram post' }))
+    : FALLBACK_GALLERY;
+
   return (
     <section className="bg-secondary/40 py-16 sm:py-24">
       <div className="container-lux">
         <SectionHeading
-          eyebrow="@bristi"
-          title="The Instagram"
-          description="A quiet feed of fits, fabric and atelier moments."
+          eyebrow={props?.eyebrow || '@bristi'}
+          title={props?.title || 'The Instagram'}
+          description={props?.description || 'A quiet feed of fits, fabric and atelier moments.'}
         />
         <div className="mt-14 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-          {GALLERY.map((item, index) => (
+          {gallery.map((item, index) => (
             <motion.a
-              key={item.id}
-              href="https://instagram.com"
+              key={item.id + index}
+              href={props?.url || 'https://instagram.com'}
               target="_blank"
               rel="noreferrer"
               aria-label={`Open Instagram post: ${item.alt}`}
@@ -35,7 +49,7 @@ export function InstagramGallery() {
               className="group relative block aspect-square overflow-hidden bg-secondary"
             >
               <img
-                src={`https://images.unsplash.com/${item.id}?q=80&w=600&auto=format&fit=crop`}
+                src={item.id.startsWith('http') ? item.id : `https://images.unsplash.com/${item.id}?q=80&w=600&auto=format&fit=crop`}
                 alt={item.alt}
                 loading="lazy"
                 className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"

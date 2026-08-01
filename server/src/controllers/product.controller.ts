@@ -201,6 +201,18 @@ export class ProductController {
     });
   });
 
+  getByIds = asyncHandler(async (req: Request, res: Response) => {
+    const { ids } = req.query;
+    const idList = typeof ids === 'string'
+      ? ids.split(',').map((id) => id.trim()).filter(Boolean)
+      : [];
+    const products = await this.productService.getByIds(idList);
+    res.status(200).json({
+      success: true,
+      data: products
+    });
+  });
+
   addProductReview = asyncHandler(async (req: Request, res: Response) => {
     const { productId } = req.params;
     

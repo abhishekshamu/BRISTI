@@ -257,3 +257,11 @@
 .prose-lux img {
   @apply my-8 w-full object-cover;
 }
+
+.prose-lux-card {
+  @apply border border-border p-8 sm:p-10;
+}
+
+.prose-lux-card > :first-child {
+  @apply mt-0;
+}

@@ -45,6 +45,7 @@ router.get('/new-arrivals', productController.getNewArrivals);
 router.get('/on-sale', productController.getOnSaleProducts);
 router.get('/best-sellers', productController.getBestSellers);
 router.get('/trending', productController.getTrendingProducts);
+router.get('/by-ids', productController.getByIds);
 router.get('/search', searchProductsValidation, validateRequest, productController.searchProducts);
 router.get('/related/:productId', productController.getRelatedProducts);
 router.get('/category/:categoryId', productController.getProductsByCategory);

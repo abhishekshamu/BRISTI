@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { siteService } from '@/services/site.service';
+import { organizationJsonLd, setJsonLd } from '@/lib/seo';
 import type { SiteSettings } from '@shared/types';
 
 interface SettingsContextValue {
@@ -134,6 +135,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       const data = await siteService.getSettings();
       setSettings(data);
       applySettingsToDom(data);
+      setJsonLd(organizationJsonLd({ brandName: data.brandName, slogan: data.slogan, logo: data.logo }));
     } catch {
       // Keep current (static) theme when the API is unavailable
     } finally {

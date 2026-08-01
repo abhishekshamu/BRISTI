@@ -84,6 +84,13 @@ export class ProductRepository extends BaseRepository<any> {
     );
   }
 
+  async findByIds(ids: string[], options: any = {}): Promise<IProduct[]> {
+    return this.findMany(
+      { _id: { $in: ids }, status: 'active' },
+      options
+    );
+  }
+
   async search(query: string, options: any = {}): Promise<IProduct[]> {
     const searchRegex = new RegExp(query, 'i');
     return this.findMany(

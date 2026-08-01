@@ -9,16 +9,27 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { contactService } from '@/services/contact.service';
 import { siteService } from '@/services/site.service';
+import { pageService } from '@/services/page.service';
 import { usePageMeta } from '@/lib/seo';
 import { isValidEmailAddress } from '@/lib/utils';
 import { DEFAULT_SETTINGS } from '@shared/constants';
 
 export default function ContactPage() {
-  usePageMeta({ title: 'Contact — BRISTI', description: 'Speak with the BRISTI maison — our concierge is at your service seven days a week.' });
-
   const { data: settings } = useQuery({
     queryKey: ['settings'],
     queryFn: siteService.getSettings,
+  });
+
+  const { data: cmsPage } = useQuery({
+    queryKey: ['page', 'slug', 'contact'],
+    queryFn: () => pageService.getBySlug('contact'),
+    retry: false,
+    staleTime: 1000 * 60 * 30,
+  });
+
+  usePageMeta({
+    title: cmsPage?.seo?.title ?? 'Contact — BRISTI',
+    description: cmsPage?.seo?.description ?? 'Speak with the BRISTI maison — our concierge is at your service seven days a week.',
   });
 
   const contact = settings?.contactInfo ?? DEFAULT_SETTINGS.contactInfo;
@@ -65,29 +76,33 @@ export default function ContactPage() {
     <>
       <PageHeader
         eyebrow="At your service"
-        title="Contact the Maison"
-        description="Questions, commissions or private appointments — our concierge would be delighted to help."
+        title={cmsPage?.title ?? 'Contact the Maison'}
+        description={cmsPage?.excerpt ?? 'Questions, commissions or private appointments — our concierge would be delighted to help.'}
         breadcrumb={[{ label: 'Contact' }]}
       />
 
       <section className="bg-background pb-24">
         <div className="container-lux">
           <div className="grid gap-12 lg:grid-cols-[380px_1fr]">
-            <div className="flex flex-col gap-6">
-              {CONTACT_INFO.map(({ icon: Icon, title, lines }) => (
-                <div key={title} className="flex gap-5 border border-border p-6">
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center border border-accent/40 text-accent">
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <div>
-                    <h3 className="mb-2 text-xs font-medium uppercase tracking-lux-sm">{title}</h3>
-                    {lines.map((line) => (
-                      <p key={line} className="text-sm leading-6 text-muted-foreground">{line}</p>
-                    ))}
+            {cmsPage ? (
+              <div className="prose-lux prose-lux-card" dangerouslySetInnerHTML={{ __html: cmsPage.content }} />
+            ) : (
+              <div className="flex flex-col gap-6">
+                {CONTACT_INFO.map(({ icon: Icon, title, lines }) => (
+                  <div key={title} className="flex gap-5 border border-border p-6">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center border border-accent/40 text-accent">
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <h3 className="mb-2 text-xs font-medium uppercase tracking-lux-sm">{title}</h3>
+                      {lines.map((line) => (
+                        <p key={line} className="text-sm leading-6 text-muted-foreground">{line}</p>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-6 border border-border p-8 sm:p-10">
               <div className="grid gap-6 sm:grid-cols-2">

@@ -18,8 +18,9 @@ import { RatingStars } from '@/components/shared/RatingStars';
 import { ProductCard } from '@/components/product/ProductCard';
 import { ProductViewer } from '@/components/three/ProductViewer';
 import { ErrorState } from '@/components/shared/ErrorState';
-import { usePageMeta } from '@/lib/seo';
+import { usePageMeta, useJsonLd } from '@/lib/seo';
 import { formatPrice, getImageUrl } from '@/lib/utils';
+import { getRecentlyViewedIds, trackRecentlyViewed } from '@/lib/recently-viewed';
 
 export default function ProductDetailPage() {
   const { slug = '' } = useParams<{ slug: string }>();
@@ -53,12 +54,56 @@ export default function ProductDetailPage() {
     staleTime: 1000 * 60 * 5,
   });
 
+  const { data: recentlyViewed } = useQuery({
+    queryKey: ['products', 'recently-viewed', product?._id],
+    queryFn: () => productService.getByIds(getRecentlyViewedIds().slice(1, 9)),
+    staleTime: 1000 * 60 * 5,
+  });
+
+  useEffect(() => {
+    if (product) {
+      trackRecentlyViewed(String(product._id));
+    }
+  }, [product]);
+
   usePageMeta({
     title: product ? `${product.name} — BRISTI` : 'Product — BRISTI',
     description: product?.seo?.description ?? product?.shortDescription ?? product?.description,
     image: product?.images?.find((image) => image.isFeatured)?.url ?? product?.images?.[0]?.url,
     keywords: product?.seo?.keywords,
   });
+
+  useJsonLd(
+    product
+      ? [
+          {
+            '@context': 'https://schema.org',
+            '@type': 'Product',
+            name: product.name,
+            description: product.seo?.description ?? product.shortDescription ?? product.description,
+            sku: product.sku,
+            image: product.images?.map((image) => image.url),
+            brand: { '@type': 'Brand', name: 'BRISTI' },
+            offers: {
+              '@type': 'Offer',
+              price: product.price,
+              priceCurrency: 'USD',
+              availability: product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+            },
+            ...(product.rating?.average ? { aggregateRating: { '@type': 'AggregateRating', ratingValue: product.rating.average, reviewCount: product.rating.count ?? 0 } } : {}),
+          },
+          {
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: 'Home', item: window.location.origin },
+              { '@type': 'ListItem', position: 2, name: 'Products', item: `${window.location.origin}/products` },
+              { '@type': 'ListItem', position: 3, name: product.name },
+            ],
+          },
+        ]
+      : []
+  );
 
   useEffect(() => {
     if (product) {
@@ -346,6 +391,19 @@ export default function ProductDetailPage() {
           </Tabs>
         </div>
       </section>
+
+      {(recentlyViewed ?? []).length > 0 && (
+        <section className="border-t border-border bg-background py-16 sm:py-20">
+          <div className="container-lux">
+            <h2 className="font-display text-2xl font-medium sm:text-3xl">Recently viewed</h2>
+            <div className="mt-8 grid grid-cols-2 gap-x-5 gap-y-10 sm:gap-x-8 lg:grid-cols-4">
+              {(recentlyViewed ?? []).map((item) => (
+                <ProductCard key={String(item._id)} product={item} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
     </>
   );
 }

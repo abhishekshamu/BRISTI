@@ -7,7 +7,18 @@ import { catalogService } from '@/services/catalog.service';
 import { getImageUrl } from '@/lib/utils';
 import type { Collection } from '@shared/types';
 
-export function EditorialBanner() {
+interface EditorialBannerProps {
+  props?: {
+    eyebrow?: string;
+    title?: string;
+    description?: string;
+    image?: string;
+    primaryCta?: { label?: string; url?: string };
+    secondaryCta?: { label?: string; url?: string };
+  };
+}
+
+export function EditorialBanner({ props }: EditorialBannerProps) {
   const ref = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end start'] });
   const imageY = useTransform(scrollYProgress, [0, 1], ['-10%', '10%']);
@@ -19,7 +30,9 @@ export function EditorialBanner() {
   });
 
   const collection = (collections ?? [])[0] as Collection | undefined;
-  const image = getImageUrl(collection?.image ?? collection?.bannerImage);
+  const image = getImageUrl(props?.image) || getImageUrl(collection?.image ?? collection?.bannerImage);
+  const primaryCta = props?.primaryCta?.url ? { label: props.primaryCta.label || 'Our story', to: props.primaryCta.url } : { label: 'Our story', to: '/about' };
+  const secondaryCta = props?.secondaryCta?.url ? { label: props.secondaryCta.label || 'Read the journal', to: props.secondaryCta.url } : { label: 'Read the journal', to: '/journal' };
 
   return (
     <section ref={ref} className="relative overflow-hidden bg-[#0a0a0a]">
@@ -28,7 +41,7 @@ export function EditorialBanner() {
           {image ? (
             <motion.img
               src={image}
-              alt={collection?.name ?? 'BRISTI editorial'}
+              alt={props?.title ?? collection?.name ?? 'BRISTI editorial'}
               style={{ y: imageY }}
               className="absolute inset-0 h-[120%] w-full object-cover"
             />
@@ -49,20 +62,20 @@ export function EditorialBanner() {
             className="max-w-xl"
           >
             <span className="mb-6 flex items-center gap-3 text-[11px] font-medium uppercase tracking-lux text-accent">
-              <span className="h-px w-10 bg-accent" /> The Atelier Edit
+              <span className="h-px w-10 bg-accent" /> {props?.eyebrow || 'The Atelier Edit'}
             </span>
             <h2 className="font-display text-4xl font-medium leading-tight text-white sm:text-5xl lg:text-6xl">
-              Where heritage meets <em className="text-gradient-gold not-italic">the future</em>
+              {props?.title || <>Where heritage meets <em className="text-gradient-gold not-italic">the future</em></>}
             </h2>
             <p className="mt-6 text-sm leading-7 text-white/60 sm:text-base sm:leading-8">
-              From hand-finished seams to revolutionary fabrics, every BRISTI piece travels from sketch to wardrobe through two hundred artisan hands.
+              {props?.description || 'From hand-finished seams to revolutionary fabrics, every BRISTI piece travels from sketch to wardrobe through two hundred artisan hands.'}
             </p>
             <div className="mt-10 flex flex-wrap gap-4">
-              <Link to="/about" className="btn-lux-white">
-                Our story <ArrowRight className="h-4 w-4" />
+              <Link to={primaryCta.to} className="btn-lux-white">
+                {primaryCta.label} <ArrowRight className="h-4 w-4" />
               </Link>
-              <Link to="/journal" className="btn-lux-outline border-white/30 text-white hover:bg-white hover:text-black">
-                Read the journal
+              <Link to={secondaryCta.to} className="btn-lux-outline border-white/30 text-white hover:bg-white hover:text-black">
+                {secondaryCta.label}
               </Link>
             </div>
           </motion.div>
