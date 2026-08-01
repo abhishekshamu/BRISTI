@@ -48,18 +48,16 @@ function StatusBadge({ block }: { block: HeroBlock }) {
 }
 
 function PanelStats({ block }: { block: HeroBlock }) {
-  const panelCount = Array.isArray(block.panels) ? block.panels.length : 0;
-  const slideCount = Array.isArray(block.panels) ? block.panels.reduce((sum, p) => sum + (p.slides?.length ?? 0), 0) : 0;
-  const publishedSlides = Array.isArray(block.panels)
-    ? block.panels.reduce(
-        (sum, p) => sum + (p.slides?.filter((s) => s.status === 'published' && s.isActive).length ?? 0),
-        0
-      )
-    : 0;
+  const slides = Array.isArray(block.slides) && block.slides.length > 0
+    ? block.slides
+    : Array.isArray(block.panels)
+      ? block.panels.flatMap((p) => p.slides ?? [])
+      : [];
+  const slideCount = slides.length;
+  const publishedSlides = slides.filter((s) => s.status === 'published' && s.isActive).length;
   return (
     <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500 shrink-0">
-      <span className="inline-flex px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800">{panelCount} panel{panelCount === 1 ? '' : 's'}</span>
-      <span className="inline-flex px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800">{slideCount} slide{slideCount === 1 ? '' : 's'}</span>
+      <span className="inline-flex px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800">{slideCount} block{slideCount === 1 ? '' : 's'}</span>
       {publishedSlides < slideCount ? (
         <span className="inline-flex px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
           {publishedSlides} live
@@ -186,10 +184,12 @@ export default function HeroManager() {
   };
 
   const filtered = blocks.filter((block) => {
-    const panelLabels = Array.isArray(block.panels)
-      ? block.panels.map((p) => p.label ?? '').join(' ')
-      : '';
-    const matchesSearch = (block.name + ' ' + (block.title ?? '') + ' ' + (block.subtitle ?? '') + ' ' + (block.seoLabel ?? '') + ' ' + (block.badge ?? '') + ' ' + panelLabels)
+    const blockHeadings = Array.isArray(block.slides)
+      ? block.slides.map((s) => s.heading ?? '').join(' ')
+      : Array.isArray(block.panels)
+        ? block.panels.flatMap((p) => p.slides ?? []).map((s) => s.heading ?? '').join(' ')
+        : '';
+    const matchesSearch = (block.name + ' ' + (block.title ?? '') + ' ' + (block.subtitle ?? '') + ' ' + (block.seoLabel ?? '') + ' ' + (block.badge ?? '') + ' ' + blockHeadings)
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || block.status === statusFilter;
@@ -203,7 +203,7 @@ export default function HeroManager() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Hero Manager</h2>
-          <p className="text-slate-500 dark:text-slate-400">Hero sets drive the homepage — each set holds up to 5 panels, each panel auto-rotates its own slides. Drag to reorder, publish per set/panel/slide.</p>
+          <p className="text-slate-500 dark:text-slate-400">Hero sets drive the homepage strip — 5 blocks per view on desktop, 3 on tablet, 1 swipeable on mobile. Drag to reorder, publish per set/block. Changes go live instantly.</p>
         </div>
         <Link to="/hero/create" className="admin-btn-primary py-2.5 px-4 flex items-center">
           <Plus className="w-4 h-4 mr-2" />
@@ -293,8 +293,8 @@ export default function HeroManager() {
                 <GripVertical className="w-4 h-4 text-slate-300 dark:text-slate-600" />
               </div>
               <div className="w-28 h-16 shrink-0 rounded-md overflow-hidden bg-slate-100 dark:bg-slate-800">
-                {block.panels?.[0]?.slides?.[0]?.image || block.image ? (
-                  <img src={block.panels?.[0]?.slides?.[0]?.image || block.image} alt="" className="w-full h-full object-cover" />
+                {block.slides?.[0]?.image || block.panels?.[0]?.slides?.[0]?.image || block.image ? (
+                  <img src={block.slides?.[0]?.image || block.panels?.[0]?.slides?.[0]?.image || block.image} alt="" className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-[10px] text-slate-400">NO IMAGE</div>
                 )}
@@ -306,7 +306,7 @@ export default function HeroManager() {
                 </div>
                 <div className="flex items-center gap-3 mt-1 text-xs text-slate-500 dark:text-slate-400">
                   <span className="truncate max-w-[220px]">
-                    {block.panels?.[0]?.label || block.panels?.[0]?.slides?.[0]?.heading || block.subtitle || block.seoLabel || '—'}
+                    {block.slides?.[0]?.heading || block.panels?.[0]?.slides?.[0]?.heading || block.subtitle || block.seoLabel || '—'}
                   </span>
                 </div>
               </div>

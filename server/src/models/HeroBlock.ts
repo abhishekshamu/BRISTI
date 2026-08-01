@@ -35,6 +35,22 @@ const HeroSlideSchema = new Schema(
       enum: ['fade', 'zoom', 'slide'],
       default: 'zoom' as HeroSlideAnimationType,
     },
+    overlay: { type: Boolean, default: false },
+    overlayOpacity: { type: Number, default: 45, min: 0, max: 100 },
+    gradient: { type: Boolean, default: false },
+    textAlign: {
+      type: String,
+      enum: ['left', 'center', 'right'],
+      default: 'left' as const,
+    },
+    buttonColor: { type: String, trim: true },
+    animationSpeed: { type: Number, min: 0.3, max: 4 },
+    priority: { type: Number, default: 0 },
+    visibility: {
+      desktop: { type: Boolean, default: true },
+      tablet: { type: Boolean, default: true },
+      mobile: { type: Boolean, default: true },
+    },
     status: {
       type: String,
       enum: ['draft', 'published'],
@@ -82,12 +98,20 @@ const HeroBlockSchema: Schema = new Schema(
       required: true,
       trim: true,
     },
+    slides: {
+      type: [HeroSlideSchema],
+      default: [],
+      validate: {
+        validator: (slides: unknown[]) => slides.length <= 100,
+        message: 'A hero set can contain at most 100 blocks',
+      },
+    },
     panels: {
       type: [HeroPanelSchema],
       default: [],
       validate: {
         validator: (panels: unknown[]) => panels.length <= 5,
-        message: 'A hero set can contain at most 5 panels',
+        message: 'Legacy panels structure: at most 5 panels',
       },
     },
     overlay: {

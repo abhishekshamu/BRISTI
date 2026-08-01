@@ -488,7 +488,7 @@
   @apply mt-0;
 }
 
-/* ===== Hero Engine (CMS multi-panel, snitch-style) ===== */
+/* ===== Hero Engine (infinite GSAP strip, K panels per view) ===== */
 .hero-engine {
   position: relative;
   width: 100vw;
@@ -496,21 +496,35 @@
   overflow: hidden;
   background: var(--ink, #0a0a0a);
 }
+@media (max-width: 1023px) {
+  .hero-engine { height: 80vh; }
+}
 @media (max-width: 767px) {
   .hero-engine { height: 70vh; }
 }
 
-/* Desktop/tablet: exactly 3 equal-width panels */
-.hero-panels {
+/* Strip: flex row, each slot is exactly 1/K of the viewport width */
+.hero-strip {
+  position: absolute;
+  inset: 0;
   display: flex;
   height: 100%;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+}
+.hero-engine--desktop .hero-panel-slot { flex: 0 0 20%; }
+.hero-engine--tablet .hero-panel-slot { flex: 0 0 33.3333%; }
+.hero-engine--mobile .hero-panel-slot { flex: 0 0 100%; }
+
+.hero-panel-slot {
+  position: relative;
+  height: 100%;
+  min-width: 0;
 }
 
 .hero-panel {
   position: relative;
-  flex: 1 1 0;
-  max-width: 33.3333%;
-  min-width: 0;
+  width: 100%;
   height: 100%;
   overflow: hidden;
   background: var(--ink, #0a0a0a);
@@ -527,39 +541,14 @@
   overflow: hidden;
   background: var(--ink, #0a0a0a);
 }
-.hero-panel__slide--enter.hero-panel__anim--fade {
+.hero-panel__anim--fade,
+.hero-panel__anim--zoom,
+.hero-panel__anim--slide {
   animation: hero-panel-fade-in 0.6s cubic-bezier(0.65, 0, 0.35, 1) both;
-}
-.hero-panel__slide--exit.hero-panel__anim--fade {
-  animation: hero-panel-fade-out 0.6s cubic-bezier(0.65, 0, 0.35, 1) both;
-}
-.hero-panel__slide--enter.hero-panel__anim--zoom {
-  animation: hero-panel-fade-in 0.6s cubic-bezier(0.65, 0, 0.35, 1) both;
-}
-.hero-panel__slide--exit.hero-panel__anim--zoom {
-  animation: hero-panel-fade-out 0.6s cubic-bezier(0.65, 0, 0.35, 1) both;
-}
-.hero-panel__slide--enter.hero-panel__anim--slide {
-  animation: hero-panel-slide-in 0.6s cubic-bezier(0.65, 0, 0.35, 1) both;
-}
-.hero-panel__slide--exit.hero-panel__anim--slide {
-  animation: hero-panel-slide-out 0.6s cubic-bezier(0.65, 0, 0.35, 1) both;
 }
 @keyframes hero-panel-fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
-}
-@keyframes hero-panel-fade-out {
-  from { opacity: 1; }
-  to { opacity: 0; }
-}
-@keyframes hero-panel-slide-in {
-  from { opacity: 0; transform: translateX(5%); }
-  to { opacity: 1; transform: translateX(0); }
-}
-@keyframes hero-panel-slide-out {
-  from { opacity: 1; transform: translateX(0); }
-  to { opacity: 0; transform: translateX(-5%); }
 }
 
 .hero-panel__media {
@@ -568,6 +557,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
   will-change: transform;
 }
 
@@ -590,6 +580,11 @@
   to { background-position-x: -200%; }
 }
 
+.hero-panel__overlay {
+  position: absolute;
+  inset: 0;
+}
+
 .hero-panel__gradient {
   position: absolute;
   inset: 0;
@@ -603,6 +598,8 @@
   max-width: 80%;
   z-index: 2;
   pointer-events: none;
+  display: flex;
+  flex-direction: column;
   overflow-wrap: break-word;
 }
 .hero-panel__content a { pointer-events: auto; }
@@ -613,14 +610,14 @@
   gap: 0.6rem;
   max-width: 100%;
   margin-bottom: 0.75rem;
-  font-size: clamp(0.6rem, 0.7vw, 0.75rem);
+  font-size: clamp(0.5rem, 0.55vw, 0.65rem);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.24em;
   line-height: 1.4;
 }
 .hero-panel__eyebrow-rule {
-  width: 2rem;
+  width: 1.5rem;
   height: 1px;
   background: currentColor;
   opacity: 0.8;
@@ -630,49 +627,56 @@
   font-family: var(--font-body, 'Inter', sans-serif);
   font-weight: 900;
   text-transform: uppercase;
-  font-size: clamp(2rem, 6vw, 4.5rem);
   line-height: 0.95;
   letter-spacing: -0.01em;
   max-width: 100%;
   overflow-wrap: break-word;
 }
+.hero-engine--desktop .hero-panel__title { font-size: clamp(0.95rem, 1.25vw, 1.6rem); }
+.hero-engine--tablet .hero-panel__title { font-size: clamp(1.2rem, 2vw, 2.1rem); }
+.hero-engine--mobile .hero-panel__title { font-size: clamp(2rem, 8vw, 3.2rem); line-height: 1.02; }
+
+.hero-panel__description {
+  margin-top: 0.75rem;
+  max-width: 30ch;
+  font-weight: 500;
+  line-height: 1.55;
+  letter-spacing: 0.02em;
+  color: inherit;
+  opacity: 0.9;
+  overflow-wrap: break-word;
+}
+.hero-engine--desktop .hero-panel__description { font-size: clamp(0.65rem, 0.7vw, 0.85rem); }
+.hero-engine--tablet .hero-panel__description { font-size: clamp(0.75rem, 1vw, 0.95rem); }
+.hero-engine--mobile .hero-panel__description { font-size: clamp(0.85rem, 3vw, 1.05rem); }
 
 .hero-panel__cta-wrap {
-  margin-top: 1.5rem;
+  margin-top: 1.25rem;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.75rem;
-}
-
-.hero-panel__description {
-  margin-top: 0.9rem;
-  max-width: 32ch;
-  font-size: clamp(0.8rem, 0.9vw, 0.95rem);
-  font-weight: 500;
-  line-height: 1.6;
-  letter-spacing: 0.02em;
-  color: rgba(255, 255, 255, 0.92);
-  overflow-wrap: break-word;
+  gap: 0.6rem;
 }
 
 .hero-panel__cta {
-  padding: 0.7rem 1.5rem;
-  font-size: 0.68rem;
+  padding: 0.6rem 1.2rem;
+  font-size: 0.62rem;
   letter-spacing: 0.22em;
+  border: 1px solid transparent;
+  color: #ffffff;
+  transition: opacity 0.25s ease, background 0.25s ease, border-color 0.25s ease;
 }
+.hero-panel__cta--primary:hover { opacity: 0.85; }
 .hero-panel__cta--ghost {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.85);
-  color: #ffffff;
+  border-color: currentColor;
+  color: currentColor;
 }
 .hero-panel__cta--ghost:hover {
   background: rgba(255, 255, 255, 0.14);
   border-color: #ffffff;
 }
-@media (max-width: 767px) {
-  .hero-panel__cta { padding: 0.95rem 2.2rem; font-size: 0.78rem; }
-}
+.hero-engine--mobile .hero-panel__cta { padding: 0.95rem 2.2rem; font-size: 0.78rem; }
 
 .hero-panel__content--enter .hero-panel__eyebrow,
 .hero-panel__content--enter .hero-panel__title,
@@ -715,26 +719,3 @@
 }
 .hero-panel__dash:hover { background: rgba(255, 255, 255, 0.7); }
 .hero-panel__dash.is-active { width: 32px; background: #FFFFFF; }
-
-/* Mobile (<768px): single full-width swipeable panel carousel */
-.hero-mobile {
-  position: relative;
-  height: 100%;
-  overflow: hidden;
-  touch-action: pan-y;
-}
-.hero-mobile__track {
-  display: flex;
-  height: 100%;
-  will-change: transform;
-}
-.hero-mobile__slide {
-  flex: 0 0 100%;
-  position: relative;
-  overflow: hidden;
-}
-.hero-mobile__slide .hero-panel {
-  flex: none;
-  width: 100%;
-  max-width: none;
-}

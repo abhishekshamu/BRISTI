@@ -26,42 +26,79 @@ async function run() {
       changed = true;
     }
 
-    for (const panel of doc.panels ?? []) {
-      for (const slide of panel.slides ?? []) {
-        if (slide.headingColor === undefined) {
-          slide.headingColor = '#FFFFFF';
-          changed = true;
-        }
-        if (slide.showEyebrow === undefined) {
-          slide.showEyebrow = false;
-          changed = true;
-        }
-        if (slide.showCta === undefined) {
-          slide.showCta = false;
-          changed = true;
-        }
-        if (slide.description === undefined) {
-          slide.description = '';
-          changed = true;
-        }
-        if (slide.secondaryButtonText === undefined) {
-          slide.secondaryButtonText = '';
-          changed = true;
-        }
-        if (slide.secondaryButtonLink === undefined) {
-          slide.secondaryButtonLink = '';
-          changed = true;
-        }
-        if (slide.backgroundColor === undefined) {
-          slide.backgroundColor = '';
-          changed = true;
-        }
-        if (slide.animationType === undefined) {
-          slide.animationType = 'zoom';
-          changed = true;
-        }
-      }
+    const slides = Array.isArray(doc.slides) && doc.slides.length > 0
+      ? doc.slides
+      : Array.isArray(doc.panels) && doc.panels.length > 0
+        ? doc.panels.flatMap((p: any) => (Array.isArray(p.slides) ? p.slides : []))
+        : [];
+
+    if (Array.isArray(doc.slides) && doc.slides.length === 0 && slides.length > 0) {
+      doc.slides = slides;
+      changed = true;
     }
+
+    slides.forEach((slide: any, index: number) => {
+      if (slide.headingColor === undefined) {
+        slide.headingColor = '#FFFFFF';
+        changed = true;
+      }
+      if (slide.showEyebrow === undefined) {
+        slide.showEyebrow = false;
+        changed = true;
+      }
+      if (slide.showCta === undefined) {
+        slide.showCta = false;
+        changed = true;
+      }
+      if (slide.description === undefined) {
+        slide.description = '';
+        changed = true;
+      }
+      if (slide.secondaryButtonText === undefined) {
+        slide.secondaryButtonText = '';
+        changed = true;
+      }
+      if (slide.secondaryButtonLink === undefined) {
+        slide.secondaryButtonLink = '';
+        changed = true;
+      }
+      if (slide.backgroundColor === undefined) {
+        slide.backgroundColor = '';
+        changed = true;
+      }
+      if (slide.animationType === undefined) {
+        slide.animationType = 'zoom';
+        changed = true;
+      }
+      if (slide.overlay === undefined) {
+        slide.overlay = false;
+        changed = true;
+      }
+      if (slide.overlayOpacity === undefined) {
+        slide.overlayOpacity = 45;
+        changed = true;
+      }
+      if (slide.gradient === undefined) {
+        slide.gradient = false;
+        changed = true;
+      }
+      if (slide.textAlign === undefined) {
+        slide.textAlign = 'left';
+        changed = true;
+      }
+      if (slide.buttonColor === undefined) {
+        slide.buttonColor = '';
+        changed = true;
+      }
+      if (slide.priority === undefined) {
+        slide.priority = index;
+        changed = true;
+      }
+      if (slide.visibility === undefined) {
+        slide.visibility = { desktop: true, tablet: true, mobile: true };
+        changed = true;
+      }
+    });
 
     if (changed) {
       delete doc._id;
@@ -71,7 +108,8 @@ async function run() {
     }
   }
 
-  console.log(`Migrated ${updated} hero set(s) — overlays off, per-slide defaults applied (content untouched)`);
+  console.log(`Migrated ${updated} hero set(s) — flattened to slides (panels kept for reference), per-block defaults applied (content untouched)`);
+
   await stopMemoryMongo();
   await mongoose.disconnect();
 }

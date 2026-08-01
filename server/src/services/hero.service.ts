@@ -1,5 +1,6 @@
 import { HeroBlockModel, IHeroBlockDoc } from '../models/HeroBlock';
-import { HeroBlock, HeroPanel, HeroSlide } from 'shared/types';
+import { HeroBlock, HeroSlide } from 'shared/types';
+import { heroBus, HERO_CHANGED } from '../events/heroBus';
 
 function slideIsLive(slide: HeroSlide | undefined, now: Date): boolean {
   if (!slide) return false;
@@ -9,19 +10,18 @@ function slideIsLive(slide: HeroSlide | undefined, now: Date): boolean {
   return true;
 }
 
-function normalizePanel(panel: HeroPanel | undefined, now: Date): HeroPanel | null {
-  if (!panel) return null;
-  if (panel.status !== 'published' || panel.isActive === false) return null;
-  const slides = (panel.slides ?? []).filter((s) => slideIsLive(s, now));
-  if (slides.length === 0) return null;
-  return { ...panel, slides };
-}
-
 function normalizeBlock(doc: any): HeroBlock {
   const now = new Date();
+  if (Array.isArray(doc.slides) && doc.slides.length > 0) {
+    const slides = (doc.slides as HeroSlide[]).filter((s) => slideIsLive(s, now));
+    return { ...doc, slides };
+  }
   if (Array.isArray(doc.panels) && doc.panels.length > 0) {
-    const panels = (doc.panels as HeroPanel[]).map((p) => normalizePanel(p, now)).filter((p): p is HeroPanel => p !== null);
-    return { ...doc, panels };
+    const slides = (doc.panels as any[])
+      .filter((p) => p.status === 'published' && p.isActive !== false)
+      .flatMap((p) => (p.slides ?? []) as HeroSlide[])
+      .filter((s) => slideIsLive(s, now));
+    return { ...doc, slides };
   }
   const legacy = doc as any;
   const slide: HeroSlide = {
@@ -31,25 +31,22 @@ function normalizeBlock(doc: any): HeroBlock {
     videoMobile: legacy.videoMobile,
     eyebrow: legacy.badge,
     heading: legacy.title,
-    headingColor: '#FFFFFF',
+    headingColor: legacy.textColor ?? '#FFFFFF',
     showEyebrow: false,
     showCta: false,
     ctaText: legacy.primaryButton?.label,
     ctaLinkType: legacy.primaryButton?.linkType ?? 'custom',
     ctaLink: legacy.primaryButton?.link,
+    description: legacy.description,
+    secondaryButtonText: legacy.secondaryButton?.label,
+    secondaryButtonLink: legacy.secondaryButton?.link,
     status: legacy.status ?? 'published',
     isActive: legacy.isActive ?? true,
     altText: legacy.altText,
   };
-  const panel: HeroPanel = {
-    label: legacy.title,
-    slides: slideIsLive(slide, now) ? [slide] : [],
-    status: legacy.status ?? 'published',
-    isActive: legacy.isActive ?? true,
-  };
   return {
     ...doc,
-    panels: panel.slides.length ? [panel] : [],
+    slides: slideIsLive(slide, now) ? [slide] : [],
   };
 }
 
@@ -70,7 +67,7 @@ export class HeroService {
       .lean<IHeroBlockDoc[]>();
     return docs
       .map(normalizeBlock)
-      .filter((block) => block.panels.length > 0);
+      .filter((block) => block.slides.length > 0);
   }
 
   async getAllBlocks(filter: Record<string, unknown> = {}): Promise<IHeroBlockDoc[]> {
@@ -85,18 +82,22 @@ export class HeroService {
 
   async createBlock(data: Partial<HeroBlock>): Promise<IHeroBlockDoc> {
     const maxPriority = await HeroBlockModel.findOne().sort({ priority: -1 }).select('priority').lean().exec();
-    return HeroBlockModel.create({ ...data, priority: data.priority ?? (maxPriority ? maxPriority.priority + 1 : 0) });
+    const block = await HeroBlockModel.create({ ...data, priority: data.priority ?? (maxPriority ? maxPriority.priority + 1 : 0) });
+    heroBus.emit(HERO_CHANGED);
+    return block;
   }
 
   async updateBlock(id: string, data: Partial<HeroBlock>): Promise<IHeroBlockDoc> {
     const updated = await HeroBlockModel.findByIdAndUpdate(id, data, { new: true, runValidators: true }).exec();
     if (!updated) throw new Error('Hero block not found');
+    heroBus.emit(HERO_CHANGED);
     return updated;
   }
 
   async deleteBlock(id: string): Promise<void> {
     const deleted = await HeroBlockModel.findByIdAndDelete(id).exec();
     if (!deleted) throw new Error('Hero block not found');
+    heroBus.emit(HERO_CHANGED);
   }
 
   async duplicateBlock(id: string): Promise<IHeroBlockDoc> {
@@ -108,12 +109,15 @@ export class HeroService {
     (doc as any).name = `${doc.name ?? doc.title ?? 'Hero set'} (Copy)`;
     (doc as any).priority = maxPriority ? maxPriority.priority + 1 : 0;
     (doc as any).status = 'draft';
-    return HeroBlockModel.create(doc);
+    const block = await HeroBlockModel.create(doc);
+    heroBus.emit(HERO_CHANGED);
+    return block;
   }
 
   async reorderBlocks(orderedIds: string[]): Promise<void> {
     for (let index = 0; index < orderedIds.length; index += 1) {
       await HeroBlockModel.findByIdAndUpdate(orderedIds[index], { priority: index }).exec();
     }
+    heroBus.emit(HERO_CHANGED);
   }
 }

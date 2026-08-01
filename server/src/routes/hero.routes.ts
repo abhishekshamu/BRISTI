@@ -11,6 +11,9 @@ const heroController = new HeroController(new HeroService());
 // Public: active published blocks for the storefront hero
 router.get('/', heroController.getActiveBlocks);
 
+// Public: SSE stream — pushes a change event whenever a hero set is written
+router.get('/events', heroController.streamEvents);
+
 // Admin routes
 router.get('/all', protect, authorize('admin'), heroController.getAllBlocks);
 router.post('/', protect, authorize('admin'), createHeroValidation, validate, heroController.createBlock);

@@ -260,6 +260,14 @@ export interface HeroSlide {
   secondaryButtonLink?: string;
   backgroundColor?: string;
   animationType?: HeroSlideAnimationType;
+  overlay?: boolean;
+  overlayOpacity?: number;
+  gradient?: boolean;
+  textAlign?: HeroContentAlignment;
+  buttonColor?: string;
+  animationSpeed?: number;
+  priority?: number;
+  visibility?: HeroVisibility;
   status: HeroBlockStatus;
   isActive: boolean;
   scheduledStart?: Date;
@@ -278,14 +286,16 @@ export interface HeroPanel {
 export interface HeroBlock {
   _id: any;
   name: string;
-  panels: HeroPanel[];
-  overlay: boolean;
-  overlayOpacity: number;
-  gradient: boolean;
+  slides: HeroSlide[];
   animationSpeed: number;
   priority: number;
   status: HeroBlockStatus;
   isActive: boolean;
+  /* Legacy panels structure — kept optional for one-time migration into slides */
+  panels?: HeroPanel[];
+  overlay: boolean;
+  overlayOpacity: number;
+  gradient: boolean;
   /* Legacy flat fields — kept optional for one-time migration into panels */
   title?: string;
   subtitle?: string;

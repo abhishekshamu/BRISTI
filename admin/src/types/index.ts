@@ -83,6 +83,7 @@ export interface Collection {
 
 export type HeroLinkType = 'collection' | 'category' | 'product' | 'custom';
 export type HeroStatus = 'draft' | 'published';
+export type HeroSlideAnimationType = 'fade' | 'zoom' | 'slide';
 
 export interface HeroSlide {
   _id?: string;
@@ -102,7 +103,15 @@ export interface HeroSlide {
   secondaryButtonText?: string;
   secondaryButtonLink?: string;
   backgroundColor?: string;
-  animationType?: 'fade' | 'zoom' | 'slide';
+  animationType?: HeroSlideAnimationType;
+  overlay?: boolean;
+  overlayOpacity?: number;
+  gradient?: boolean;
+  textAlign?: 'left' | 'center' | 'right';
+  buttonColor?: string;
+  animationSpeed?: number;
+  priority?: number;
+  visibility?: { desktop: boolean; tablet: boolean; mobile: boolean };
   status: HeroStatus;
   isActive: boolean;
   scheduledStart?: string;
@@ -121,7 +130,9 @@ export interface HeroPanel {
 export interface HeroBlock {
   _id: string;
   name: string;
-  panels: HeroPanel[];
+  slides: HeroSlide[];
+  /* Legacy panels structure — kept optional for one-time migration into slides */
+  panels?: HeroPanel[];
   overlay: boolean;
   overlayOpacity: number;
   gradient: boolean;
