@@ -488,8 +488,12 @@
   @apply mt-0;
 }
 
-/* ===== Hero Engine (infinite GSAP strip, K panels per view) ===== */
-.hero-engine {
+/* ===== Hero Engine (Snitch-style editorial strip) ===== */
+/* Desktop window zones: preview ~9% | main ~41% | main ~41% | preview ~9%.
+   The uniform-seat track slides right beneath the window; the two center
+   zones are the "main" slots (text only there), the outer zones are
+   image-only preview peeks. */
+.hx-hero {
   position: relative;
   width: 100vw;
   height: 90vh;
@@ -497,14 +501,14 @@
   background: var(--ink, #0a0a0a);
 }
 @media (max-width: 1023px) {
-  .hero-engine { height: 80vh; }
+  .hx-hero { height: 80vh; }
 }
 @media (max-width: 767px) {
-  .hero-engine { height: 70vh; }
+  .hx-hero { height: 70vh; }
 }
 
-/* Strip: flex row, each slot is exactly 1/K of the viewport width */
-.hero-strip {
+/* Strip: uniform seats translate3d beneath the editorial window */
+.hx-track {
   position: absolute;
   inset: 0;
   display: flex;
@@ -512,118 +516,115 @@
   will-change: transform;
   transform: translate3d(0, 0, 0);
 }
-.hero-engine--desktop .hero-panel-slot { flex: 0 0 20%; }
-.hero-engine--tablet .hero-panel-slot { flex: 0 0 33.3333%; }
-.hero-engine--mobile .hero-panel-slot { flex: 0 0 100%; }
+.hx-track--desktop .hx-seat { flex: 0 0 25%; }
+.hx-track--tablet .hx-seat { flex: 0 0 33.3333%; }
+.hx-track--mobile .hx-seat { flex: 0 0 100%; }
 
-.hero-panel-slot {
+.hx-seat {
   position: relative;
   height: 100%;
   min-width: 0;
 }
 
-.hero-panel {
+.hx-card {
   position: relative;
   width: 100%;
   height: 100%;
   overflow: hidden;
   background: var(--ink, #0a0a0a);
 }
-
-.hero-panel__stage {
+.hx-card__stage {
   position: absolute;
   inset: 0;
 }
-
-.hero-panel__slide {
+.hx-card__slide {
   position: absolute;
   inset: 0;
   overflow: hidden;
   background: var(--ink, #0a0a0a);
 }
-.hero-panel__anim--fade,
-.hero-panel__anim--zoom,
-.hero-panel__anim--slide {
-  animation: hero-panel-fade-in 0.6s cubic-bezier(0.65, 0, 0.35, 1) both;
-}
-@keyframes hero-panel-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.hero-panel__media {
+.hx-card__media {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: center;
-  will-change: transform;
+  opacity: 0;
+  transition: opacity 0.8s ease;
 }
-
-.hero-panel__kenburns {
-  animation: hero-kenburns 16s ease-out forwards;
+.hx-card__media.is-loaded { opacity: 1; }
+.hx-card__kenburns {
+  animation: hx-kenburns 18s ease-out forwards;
 }
-@keyframes hero-kenburns {
+@keyframes hx-kenburns {
   from { transform: scale(1.02); }
   to { transform: scale(1.14); }
 }
 
-.hero-panel__shimmer {
+.hx-card__shimmer {
   position: absolute;
   inset: 0;
   background: linear-gradient(110deg, #161616 8%, #232323 18%, #161616 33%);
   background-size: 200% 100%;
-  animation: hero-shimmer 1.6s linear infinite;
+  animation: hx-shimmer 1.6s linear infinite;
 }
-@keyframes hero-shimmer {
+@keyframes hx-shimmer {
   to { background-position-x: -200%; }
 }
 
-.hero-panel__overlay {
+.hx-card__overlay {
   position: absolute;
   inset: 0;
 }
 
-.hero-panel__gradient {
+.hx-card__gradient {
   position: absolute;
   inset: 0;
   background: linear-gradient(to bottom, transparent 60%, rgba(0, 0, 0, 0.35) 100%);
 }
 
-.hero-panel__content {
+/* Content is baked into every seat but only surfaces on the two center
+   active cards (gate class `--on`); preview peeks stay text-free. */
+.hx-card__content {
   position: absolute;
-  left: 6%;
-  bottom: 8%;
-  max-width: 80%;
+  left: 7%;
+  right: 7%;
+  bottom: 7%;
   z-index: 2;
-  pointer-events: none;
   display: flex;
   flex-direction: column;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
   overflow-wrap: break-word;
 }
-.hero-panel__content a { pointer-events: auto; }
+.hx-card__content--on {
+  visibility: visible;
+  opacity: 1;
+}
+.hx-card__content a { pointer-events: auto; }
 
-.hero-panel__eyebrow {
+.hx-card__eyebrow {
   display: flex;
   align-items: center;
   gap: 0.6rem;
   max-width: 100%;
   margin-bottom: 0.75rem;
-  font-size: clamp(0.5rem, 0.55vw, 0.65rem);
+  font-size: clamp(0.55rem, 0.6vw, 0.7rem);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.24em;
   line-height: 1.4;
 }
-.hero-panel__eyebrow-rule {
+.hx-card__eyebrow-rule {
   width: 1.5rem;
   height: 1px;
   background: currentColor;
   opacity: 0.8;
 }
 
-.hero-panel__title {
+.hx-card__title {
   font-family: var(--font-body, 'Inter', sans-serif);
   font-weight: 900;
   text-transform: uppercase;
@@ -632,25 +633,25 @@
   max-width: 100%;
   overflow-wrap: break-word;
 }
-.hero-engine--desktop .hero-panel__title { font-size: clamp(0.95rem, 1.25vw, 1.6rem); }
-.hero-engine--tablet .hero-panel__title { font-size: clamp(1.2rem, 2vw, 2.1rem); }
-.hero-engine--mobile .hero-panel__title { font-size: clamp(2rem, 8vw, 3.2rem); line-height: 1.02; }
+.hx-track--desktop .hx-card__title { font-size: clamp(1.4rem, 2.5vw, 3rem); }
+.hx-track--tablet .hx-card__title { font-size: clamp(1.5rem, 3.2vw, 2.6rem); }
+.hx-track--mobile .hx-card__title { font-size: clamp(2rem, 9vw, 3.2rem); line-height: 1.02; }
 
-.hero-panel__description {
-  margin-top: 0.75rem;
-  max-width: 30ch;
+.hx-card__description {
+  margin-top: 0.8rem;
+  max-width: 34ch;
   font-weight: 500;
   line-height: 1.55;
   letter-spacing: 0.02em;
   color: inherit;
-  opacity: 0.9;
+  opacity: 0.92;
   overflow-wrap: break-word;
 }
-.hero-engine--desktop .hero-panel__description { font-size: clamp(0.65rem, 0.7vw, 0.85rem); }
-.hero-engine--tablet .hero-panel__description { font-size: clamp(0.75rem, 1vw, 0.95rem); }
-.hero-engine--mobile .hero-panel__description { font-size: clamp(0.85rem, 3vw, 1.05rem); }
+.hx-track--desktop .hx-card__description { font-size: clamp(0.72rem, 0.85vw, 1rem); }
+.hx-track--tablet .hx-card__description { font-size: clamp(0.8rem, 1.2vw, 1.05rem); }
+.hx-track--mobile .hx-card__description { font-size: clamp(0.9rem, 3.4vw, 1.1rem); }
 
-.hero-panel__cta-wrap {
+.hx-card__cta-wrap {
   margin-top: 1.25rem;
   display: flex;
   align-items: center;
@@ -658,45 +659,46 @@
   gap: 0.6rem;
 }
 
-.hero-panel__cta {
-  padding: 0.6rem 1.2rem;
-  font-size: 0.62rem;
+.hx-card__cta {
+  padding: 0.65rem 1.3rem;
+  font-size: 0.64rem;
   letter-spacing: 0.22em;
   border: 1px solid transparent;
   color: #ffffff;
   transition: opacity 0.25s ease, background 0.25s ease, border-color 0.25s ease;
 }
-.hero-panel__cta--primary:hover { opacity: 0.85; }
-.hero-panel__cta--ghost {
+.hx-card__cta--primary:hover { opacity: 0.85; }
+.hx-card__cta--ghost {
   background: transparent;
   border-color: currentColor;
   color: currentColor;
 }
-.hero-panel__cta--ghost:hover {
+.hx-card__cta--ghost:hover {
   background: rgba(255, 255, 255, 0.14);
   border-color: #ffffff;
 }
-.hero-engine--mobile .hero-panel__cta { padding: 0.95rem 2.2rem; font-size: 0.78rem; }
+.hx-track--mobile .hx-card__cta { padding: 0.95rem 2.2rem; font-size: 0.78rem; }
 
-.hero-panel__content--enter .hero-panel__eyebrow,
-.hero-panel__content--enter .hero-panel__title,
-.hero-panel__content--enter .hero-panel__description,
-.hero-panel__content--enter .hero-panel__cta,
-.hero-panel__content--enter > div {
-  animation: hero-content-enter 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+/* Entrance: IO-driven inView class (`--in`) triggers the staggered
+   content reveal whenever a card's content intersects the hero window */
+.hx-card__content--in .hx-card__eyebrow,
+.hx-card__content--in .hx-card__title,
+.hx-card__content--in .hx-card__description,
+.hx-card__content--in .hx-card__cta,
+.hx-card__content--in > div {
+  animation: hx-content-enter 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
-.hero-panel__content--enter .hero-panel__eyebrow,
-.hero-panel__content--enter .hero-panel__title { animation-delay: 0.15s; }
-.hero-panel__content--enter .hero-panel__description { animation-delay: 0.2s; }
-.hero-panel__content--enter .hero-panel__cta,
-.hero-panel__content--enter > div { animation-delay: 0.3s; }
-
-@keyframes hero-content-enter {
-  from { opacity: 0; transform: translateY(12px); }
+.hx-card__content--in .hx-card__eyebrow,
+.hx-card__content--in .hx-card__title { animation-delay: 0.1s; }
+.hx-card__content--in .hx-card__description { animation-delay: 0.18s; }
+.hx-card__content--in .hx-card__cta,
+.hx-card__content--in > div { animation-delay: 0.28s; }
+@keyframes hx-content-enter {
+  from { opacity: 0; transform: translateY(14px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-.hero-panel__dashes {
+.hx-dashes {
   position: absolute;
   left: 0;
   right: 0;
@@ -707,7 +709,7 @@
   gap: 6px;
   z-index: 3;
 }
-.hero-panel__dash {
+.hx-dash {
   width: 20px;
   height: 3px;
   border: 0;
@@ -717,5 +719,14 @@
   transition: width 0.3s ease, background 0.3s ease;
   cursor: pointer;
 }
-.hero-panel__dash:hover { background: rgba(255, 255, 255, 0.7); }
-.hero-panel__dash.is-active { width: 32px; background: #FFFFFF; }
+.hx-dash:hover { background: rgba(255, 255, 255, 0.7); }
+.hx-dash.is-active { width: 32px; background: #ffffff; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hx-card__content--in .hx-card__eyebrow,
+  .hx-card__content--in .hx-card__title,
+  .hx-card__content--in .hx-card__description,
+  .hx-card__content--in .hx-card__cta,
+  .hx-card__content--in > div { animation: none; }
+  .hx-card__kenburns { animation: none; }
+}
