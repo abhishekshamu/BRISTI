@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Edit, Trash2, Copy, GripVertical, Monitor, Tablet, Smartphone, Calendar, CheckSquare } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Copy, GripVertical, CheckSquare } from 'lucide-react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import type { HeroBlock } from '../../types/index';
@@ -47,12 +47,24 @@ function StatusBadge({ block }: { block: HeroBlock }) {
   );
 }
 
-function VisibilityIcons({ visibility }: { visibility: HeroBlock['visibility'] }) {
+function PanelStats({ block }: { block: HeroBlock }) {
+  const panelCount = Array.isArray(block.panels) ? block.panels.length : 0;
+  const slideCount = Array.isArray(block.panels) ? block.panels.reduce((sum, p) => sum + (p.slides?.length ?? 0), 0) : 0;
+  const publishedSlides = Array.isArray(block.panels)
+    ? block.panels.reduce(
+        (sum, p) => sum + (p.slides?.filter((s) => s.status === 'published' && s.isActive).length ?? 0),
+        0
+      )
+    : 0;
   return (
-    <div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500">
-      <Monitor className={`w-4 h-4 ${visibility?.desktop ? 'text-slate-700 dark:text-slate-200' : 'opacity-30'}`} />
-      <Tablet className={`w-4 h-4 ${visibility?.tablet ? 'text-slate-700 dark:text-slate-200' : 'opacity-30'}`} />
-      <Smartphone className={`w-4 h-4 ${visibility?.mobile ? 'text-slate-700 dark:text-slate-200' : 'opacity-30'}`} />
+    <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500 shrink-0">
+      <span className="inline-flex px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800">{panelCount} panel{panelCount === 1 ? '' : 's'}</span>
+      <span className="inline-flex px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800">{slideCount} slide{slideCount === 1 ? '' : 's'}</span>
+      {publishedSlides < slideCount ? (
+        <span className="inline-flex px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+          {publishedSlides} live
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -174,7 +186,10 @@ export default function HeroManager() {
   };
 
   const filtered = blocks.filter((block) => {
-    const matchesSearch = (block.title + ' ' + (block.subtitle ?? '') + ' ' + (block.seoLabel ?? '') + ' ' + (block.badge ?? ''))
+    const panelLabels = Array.isArray(block.panels)
+      ? block.panels.map((p) => p.label ?? '').join(' ')
+      : '';
+    const matchesSearch = (block.name + ' ' + (block.title ?? '') + ' ' + (block.subtitle ?? '') + ' ' + (block.seoLabel ?? '') + ' ' + (block.badge ?? '') + ' ' + panelLabels)
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || block.status === statusFilter;
@@ -188,11 +203,11 @@ export default function HeroManager() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Hero Manager</h2>
-          <p className="text-slate-500 dark:text-slate-400">Build the editorial hero — drag to reorder, publish, schedule and control visibility.</p>
+          <p className="text-slate-500 dark:text-slate-400">Hero sets drive the homepage — each set holds up to 5 panels, each panel auto-rotates its own slides. Drag to reorder, publish per set/panel/slide.</p>
         </div>
         <Link to="/hero/create" className="admin-btn-primary py-2.5 px-4 flex items-center">
           <Plus className="w-4 h-4 mr-2" />
-          Add Hero Block
+          Add Hero Set
         </Link>
       </div>
 
@@ -278,29 +293,24 @@ export default function HeroManager() {
                 <GripVertical className="w-4 h-4 text-slate-300 dark:text-slate-600" />
               </div>
               <div className="w-28 h-16 shrink-0 rounded-md overflow-hidden bg-slate-100 dark:bg-slate-800">
-                {block.image ? (
-                  <img src={block.image} alt="" className="w-full h-full object-cover" />
+                {block.panels?.[0]?.slides?.[0]?.image || block.image ? (
+                  <img src={block.panels?.[0]?.slides?.[0]?.image || block.image} alt="" className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-[10px] text-slate-400">NO IMAGE</div>
                 )}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-slate-900 dark:text-slate-100 truncate">{block.title}</h3>
+                  <h3 className="font-semibold text-slate-900 dark:text-slate-100 truncate">{block.name || block.title}</h3>
                   <span className="text-xs text-slate-400">#{block.priority ?? index}</span>
                 </div>
                 <div className="flex items-center gap-3 mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  <span className="truncate max-w-[220px]">{block.subtitle || block.seoLabel || '—'}</span>
-                  {block.scheduledStart || block.scheduledEnd ? (
-                    <span className="inline-flex items-center gap-1 shrink-0">
-                      <Calendar className="w-3.5 h-3.5" />
-                      {block.scheduledStart ? new Date(block.scheduledStart).toLocaleDateString() : '…'} →{' '}
-                      {block.scheduledEnd ? new Date(block.scheduledEnd).toLocaleDateString() : '∞'}
-                    </span>
-                  ) : null}
+                  <span className="truncate max-w-[220px]">
+                    {block.panels?.[0]?.label || block.panels?.[0]?.slides?.[0]?.heading || block.subtitle || block.seoLabel || '—'}
+                  </span>
                 </div>
               </div>
-              <VisibilityIcons visibility={block.visibility} />
+              <PanelStats block={block} />
               <div className="flex flex-col items-end gap-1.5">
                 <StatusBadge block={block} />
                 <div className="flex items-center space-x-1">

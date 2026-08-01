@@ -1,95 +1,112 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { heroService } from '@/services/hero.service';
 import { HeroSection } from '@/components/home/HeroSection';
-import type { HeroBlock } from '@shared/types';
+import type { HeroBlock, HeroPanel, HeroSlide } from '@shared/types';
 
 const HOLD_MS = 4800;
-const COPIES = 3;
+const SLIDE_MS = 700;
 const DEFAULT_SPEED = 0.7;
-
-function easeInOutQuart(t: number): number {
-  return t < 0.5 ? 8 * t * t * t * t : 1 - Math.pow(-2 * t + 2, 4) / 2;
-}
-
-function getVisibleCount(): number {
-  if (typeof window === 'undefined') return 5;
-  if (window.matchMedia('(max-width: 639px)').matches) return 1;
-  if (window.matchMedia('(max-width: 1023px)').matches) return 3;
-  return 5;
-}
+const MAX_PANELS = 3;
 
 function isFineHover(): boolean {
   return typeof window !== 'undefined' && window.matchMedia('(hover: hover)').matches;
 }
 
-function resolveColor(value?: string): string | undefined {
-  if (!value) return undefined;
-  return value.startsWith('#') ? value : `var(--${value})`;
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(() => typeof window !== 'undefined' && window.matchMedia(query).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(query);
+    const onChange = () => setMatches(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, [query]);
+  return matches;
 }
 
-function blockHref(button: HeroBlock['primaryButton']): string | undefined {
-  if (!button?.link) return undefined;
-  if (button.linkType === 'collection') return `/collection/${button.link}`;
-  if (button.linkType === 'category') return `/shop?category=${button.link}`;
-  if (button.linkType === 'product') return `/product/${button.link}`;
-  return button.link;
+function slideHref(slide: HeroSlide): string | undefined {
+  if (!slide?.ctaLink) return undefined;
+  if (slide.ctaLinkType === 'collection') return `/collection/${slide.ctaLink}`;
+  if (slide.ctaLinkType === 'category') return `/shop?category=${slide.ctaLink}`;
+  if (slide.ctaLinkType === 'product') return `/product/${slide.ctaLink}`;
+  return slide.ctaLink;
 }
 
-interface PanelProps {
-  block: HeroBlock;
-  copy: number;
-  visible: number;
-  inVisibleWindow: boolean;
-  inMediaWindow: boolean;
-  isLeading: boolean;
+function useSlideRotator(slides: HeroSlide[], paused: boolean, speed: number) {
+  const count = slides.length;
+  const [current, setCurrent] = useState(0);
+  const [previous, setPrevious] = useState<number | null>(null);
+  const currentRef = useRef(0);
+  currentRef.current = current;
+
+  const jumpTo = useCallback(
+    (target: number) => {
+      if (count === 0) return;
+      const clamped = ((target % count) + count) % count;
+      setPrevious(currentRef.current !== clamped ? currentRef.current : null);
+      currentRef.current = clamped;
+      setCurrent(clamped);
+    },
+    [count]
+  );
+
+  useEffect(() => {
+    if (current >= count) setCurrent(0);
+  }, [count, current]);
+
+  useEffect(() => {
+    if (count <= 1) return;
+    let timeout: number | undefined;
+    const schedule = () => {
+      timeout = window.setTimeout(() => {
+        jumpTo(currentRef.current + 1);
+        schedule();
+      }, HOLD_MS + Math.max(SLIDE_MS, speed * 1000));
+    };
+    if (!paused) schedule();
+    return () => {
+      if (timeout) window.clearTimeout(timeout);
+    };
+  }, [count, paused, speed, jumpTo, current]);
+
+  return { current, previous, jumpTo };
 }
 
-function Panel({ block, copy, visible, inVisibleWindow, inMediaWindow, isLeading }: PanelProps) {
-  const primaryHref = blockHref(block.primaryButton);
-  const alignment = block.contentAlignment ?? 'left';
-  const alignClass =
-    alignment === 'center' ? 'items-center text-center' : alignment === 'right' ? 'items-end text-right' : 'items-start text-left';
-  const textColor = resolveColor(block.textColor) ?? 'var(--on-ink)';
-  const accentColor = resolveColor(block.accentColor) ?? 'var(--accent)';
-  const buttonColor = resolveColor(block.buttonColor);
-  const kenburns = (block.animationStyle ?? 'kenburns') === 'kenburns' && inVisibleWindow;
-  const enter = inVisibleWindow && isLeading;
-  const altText = block.altText || block.seoLabel || block.title;
+interface SlideLayerProps {
+  slide: HeroSlide;
+  visible: boolean;
+  isMobile: boolean;
+  paused: boolean;
+  altText: string;
+}
 
-  const isMobile = visible === 1;
-  const image = isMobile ? block.imageMobile || block.image : block.image;
-  const video = isMobile ? block.videoMobile || block.video : block.video;
-
+function SlideLayer({ slide, visible, isMobile, paused, altText }: SlideLayerProps) {
+  const image = isMobile ? slide.imageMobile || slide.image : slide.image;
+  const video = isMobile ? slide.videoMobile || slide.video : slide.video;
   const videoRef = useRef<HTMLVideoElement>(null);
+
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
-    if (isLeading) {
-      v.play().catch(() => undefined);
-    } else {
-      v.pause();
-    }
-  }, [isLeading]);
+    if (visible && !paused) v.play().catch(() => undefined);
+    else v.pause();
+  }, [visible, paused]);
 
   return (
-    <div className="hero-engine__panel" role="group" aria-label={block.seoLabel || block.title}>
-      <div className="hero-engine__shimmer" aria-hidden="true" />
-
-      {image && inMediaWindow ? (
+    <div className={`hero-panel__slide${visible ? ' hero-panel__slide--enter' : ''}`} aria-hidden={!visible}>
+      <div className="hero-panel__shimmer" aria-hidden="true" />
+      {image ? (
         <img
-          key={`${String(block._id)}-${copy}-${isMobile ? 'm' : 'd'}`}
           src={image}
           alt={altText}
           loading="lazy"
           decoding="async"
-          className={`hero-engine__media ${kenburns ? 'hero-engine__kenburns' : ''}`}
           draggable={false}
+          className={`hero-panel__media ${visible ? 'hero-panel__kenburns' : ''}`}
         />
       ) : null}
-
-      {video && inMediaWindow ? (
+      {video ? (
         <video
           ref={videoRef}
           src={video}
@@ -97,54 +114,188 @@ function Panel({ block, copy, visible, inVisibleWindow, inMediaWindow, isLeading
           loop
           playsInline
           preload="metadata"
-          className={`hero-engine__media ${kenburns ? 'hero-engine__kenburns' : ''}`}
+          className={`hero-panel__media ${visible ? 'hero-panel__kenburns' : ''}`}
           aria-hidden="true"
         />
       ) : null}
+    </div>
+  );
+}
 
-      {block.overlay ? (
-        <div
-          className="absolute inset-0"
-          style={{ backgroundColor: `rgba(0, 0, 0, ${Math.min(0.85, Math.max(0, (block.overlayOpacity ?? 45) / 100))})` }}
-          aria-hidden="true"
-        />
-      ) : null}
+interface PanelViewProps {
+  panel: HeroPanel;
+  index: number;
+  paused: boolean;
+  isMobile: boolean;
+  speed: number;
+  overlay: boolean;
+  overlayOpacity: number;
+  gradient: boolean;
+  setName: string;
+}
 
-      {block.gradient ? (
-        <div
-          className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30"
-          aria-hidden="true"
-        />
-      ) : null}
+function PanelView({ panel, index, paused, isMobile, speed, overlay, overlayOpacity, gradient, setName }: PanelViewProps) {
+  const slides = panel.slides;
+  const { current, previous, jumpTo } = useSlideRotator(slides, paused, speed);
+  const slide = slides[current] ?? slides[0];
+  const href = slideHref(slide);
+  const altText = slide.altText || slide.heading || panel.label || `${setName} panel ${index + 1}`;
+  const slideKey = String(slide._id ?? current);
 
-      <div className={`hero-engine__content ${alignClass} ${enter ? 'hero-engine__content--enter' : ''}`} style={{ color: textColor }}>
-        {block.badge ? (
-          <span
-            className="hero-engine__eyebrow mb-4 flex items-center gap-3 font-medium uppercase tracking-lux"
-            style={{ color: accentColor }}
-          >
-            <span className="h-px w-8" style={{ backgroundColor: accentColor }} />
-            {block.badge}
-          </span>
+  return (
+    <div className="hero-panel" role="group" aria-label={panel.label || `${setName} panel ${index + 1}`}>
+      <div className="hero-panel__stage">
+        {previous !== null && slides[previous] ? (
+          <SlideLayer slide={slides[previous]} visible={false} isMobile={isMobile} paused={paused} altText={altText} />
         ) : null}
+        {slide ? (
+          <SlideLayer key={slideKey} slide={slide} visible isMobile={isMobile} paused={paused} altText={altText} />
+        ) : null}
+      </div>
 
-        <h2 className="hero-engine__panel-title font-display">{block.title}</h2>
+      {overlay ? <div className="hero-panel__overlay" style={{ opacity: Math.min(0.85, Math.max(0, overlayOpacity / 100)) }} aria-hidden="true" /> : null}
+      {gradient ? <div className="hero-panel__gradient" aria-hidden="true" /> : null}
 
-        {primaryHref && block.primaryButton?.label ? (
-          <div className="mt-7">
-            <span style={buttonColor ? { ['--btn-gold-bg' as string]: buttonColor } : undefined}>
-              {primaryHref.startsWith('/') ? (
-                <Link to={primaryHref} className="btn-lux-gold hero-engine__cta" onClick={(e) => e.stopPropagation()}>
-                  {block.primaryButton.label}
+      {slide ? (
+        <div key={`content-${slideKey}`} className="hero-panel__content hero-panel__content--enter">
+          {slide.eyebrow ? (
+            <span className="hero-panel__eyebrow" style={{ color: 'var(--accent)' }}>
+              <span className="hero-panel__eyebrow-rule" aria-hidden="true" />
+              {slide.eyebrow}
+            </span>
+          ) : null}
+          {slide.heading ? <h2 className="hero-panel__title">{slide.heading}</h2> : null}
+          {href && slide.ctaText ? (
+            <div className="mt-7">
+              {href.startsWith('/') ? (
+                <Link to={href} className="btn-lux-gold hero-panel__cta" onClick={(e) => e.stopPropagation()}>
+                  {slide.ctaText}
                 </Link>
               ) : (
-                <a href={primaryHref} target="_blank" rel="noreferrer" className="btn-lux-gold hero-engine__cta" onClick={(e) => e.stopPropagation()}>
-                  {block.primaryButton.label}
+                <a href={href} target="_blank" rel="noreferrer" className="btn-lux-gold hero-panel__cta" onClick={(e) => e.stopPropagation()}>
+                  {slide.ctaText}
                 </a>
               )}
-            </span>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {slides.length > 1 ? (
+        <div className="hero-panel__dashes" role="tablist" aria-label={`${panel.label || 'Panel'} slides`}>
+          {slides.map((s, i) => (
+            <button
+              key={String(s._id ?? i)}
+              type="button"
+              role="tab"
+              aria-selected={i === current}
+              aria-label={`Slide ${i + 1}`}
+              className={`hero-panel__dash${i === current ? ' is-active' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                jumpTo(i);
+              }}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+interface MobileCarouselProps {
+  panels: HeroPanel[];
+  paused: boolean;
+  speed: number;
+  overlay: boolean;
+  overlayOpacity: number;
+  gradient: boolean;
+  setName: string;
+}
+
+function MobileCarousel({ panels, paused, speed, overlay, overlayOpacity, gradient, setName }: MobileCarouselProps) {
+  const [panelIndex, setPanelIndex] = useState(0);
+  const [dx, setDx] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const widthRef = useRef(0);
+  const indexRef = useRef(0);
+  indexRef.current = panelIndex;
+  const dragStartRef = useRef({ x: 0, moved: false });
+
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const measure = () => {
+      widthRef.current = el.clientWidth;
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    setDragging(true);
+    setDx(0);
+    dragStartRef.current = { x: e.clientX, moved: false };
+  };
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!dragging) return;
+    const delta = e.clientX - dragStartRef.current.x;
+    if (!dragStartRef.current.moved && Math.abs(delta) < 6) return;
+    dragStartRef.current.moved = true;
+    setDx(delta);
+  };
+
+  const onPointerUp = (e: React.PointerEvent) => {
+    if (!dragging) return;
+    const width = widthRef.current;
+    const delta = dragStartRef.current.moved ? e.clientX - dragStartRef.current.x : 0;
+    setDragging(false);
+    setDx(0);
+    if (Math.abs(delta) > width * 0.25) {
+      const next = delta > 0 ? indexRef.current - 1 : indexRef.current + 1;
+      setPanelIndex(Math.max(0, Math.min(panels.length - 1, next)));
+    }
+  };
+
+  const baseX = -panelIndex * widthRef.current;
+
+  return (
+    <div
+      ref={rootRef}
+      className="hero-mobile"
+      style={{ touchAction: 'pan-y' }}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+    >
+      <div
+        className="hero-mobile__track"
+        style={{
+          transform: `translate3d(${(baseX + dx).toFixed(2)}px, 0, 0)`,
+          transition: dragging ? 'none' : 'transform 0.45s cubic-bezier(0.22, 1, 0.36, 1)',
+        }}
+      >
+        {panels.map((panel, index) => (
+          <div key={String(panel._id ?? index)} className="hero-mobile__slide">
+            <PanelView
+              panel={panel}
+              index={index}
+              paused={paused}
+              isMobile
+              speed={speed}
+              overlay={overlay}
+              overlayOpacity={overlayOpacity}
+              gradient={gradient}
+              setName={setName}
+            />
           </div>
-        ) : null}
+        ))}
       </div>
     </div>
   );
@@ -157,244 +308,89 @@ export function HeroEngine() {
     staleTime: 0,
     refetchInterval: 5000,
   });
-  const allBlocks = data ?? [];
+  const sets = data ?? [];
+  const set = sets[0] as HeroBlock | undefined;
 
-  const [visible, setVisible] = useState(getVisibleCount);
-  const [mediaTick, setMediaTick] = useState(0);
+  const panels = useMemo(() => {
+    if (!set?.panels) return [];
+    return set.panels.filter((p) => (p.slides ?? []).length > 0).slice(0, MAX_PANELS);
+  }, [set]);
 
-  const blocks = useMemo(() => {
-    const breakpoint = visible === 1 ? 'mobile' : visible === 3 ? 'tablet' : 'desktop';
-    return allBlocks.filter((block) => block.visibility?.[breakpoint] !== false);
-  }, [allBlocks, visible]);
+  const isMobile = useMediaQuery('(max-width: 767px)');
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const trackRef = useRef<HTMLDivElement>(null);
-
-  const stepRef = useRef(0);
-  const widthRef = useRef(0);
-  const draggingRef = useRef(false);
-  const dragDeltaRef = useRef(0);
-  const dragStartRef = useRef({ x: 0, moved: false });
+  const sectionRef = useRef<HTMLElement>(null);
+  const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
-  const phaseRef = useRef<'wait' | 'slide'>('wait');
-  const slideRef = useRef({ startT: 0, startPx: 0, endPx: 0, duration: 0, toStep: 0 });
-  const holdUntilRef = useRef(0);
-  const blocksRef = useRef(blocks);
-
-  blocksRef.current = blocks;
-  const total = blocks.length;
-
-  useEffect(() => {
-    const N = blocks.length;
-    const s = stepRef.current;
-    if (N === 0) {
-      phaseRef.current = 'wait';
-      holdUntilRef.current = performance.now() + HOLD_MS;
-      return;
-    }
-    if (s > N) stepRef.current = N;
-    if (s < -N) stepRef.current = -N;
-    if (phaseRef.current === 'wait') {
-      holdUntilRef.current = performance.now() + HOLD_MS;
-    }
-  }, [blocks.length, mediaTick]);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const measure = () => {
-      widthRef.current = container.clientWidth;
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(container);
-
-    const mqSmall = window.matchMedia('(max-width: 639px)');
-    const mqMedium = window.matchMedia('(max-width: 1023px)');
-    const onMq = () => setVisible(getVisibleCount());
-    mqSmall.addEventListener('change', onMq);
-    mqMedium.addEventListener('change', onMq);
-
-    const io = new IntersectionObserver(
-      (entries) => {
-        pausedRef.current = entries[0] ? !entries[0].isIntersecting : pausedRef.current;
-      },
-      { threshold: 0.05 }
-    );
-    io.observe(container);
-
-    const onVisibility = () => {
-      if (document.hidden) pausedRef.current = true;
-      else pausedRef.current = false;
-    };
-    document.addEventListener('visibilitychange', onVisibility);
-
-    const hoverable = isFineHover();
-    const onHoverEnter = () => {
-      if (hoverable) pausedRef.current = true;
-    };
-    const onHoverLeave = () => {
-      if (hoverable) pausedRef.current = false;
-    };
-    container.addEventListener('pointerenter', onHoverEnter);
-    container.addEventListener('pointerleave', onHoverLeave);
-
-    const animateTo = (targetStep: number) => {
-      const panelW = widthRef.current / getVisibleCount();
-      phaseRef.current = 'slide';
-      slideRef.current = {
-        startT: performance.now(),
-        startPx: -stepRef.current * panelW,
-        endPx: -targetStep * panelW,
-        duration: 350 + Math.abs(targetStep - stepRef.current) * 220,
-        toStep: targetStep,
-      };
-    };
-
-    const render = () => {
-      const trackEl = trackRef.current;
-      if (!trackEl) return;
-      const panelW = widthRef.current / getVisibleCount();
-      const step = stepRef.current;
-      const drag = draggingRef.current ? dragDeltaRef.current : 0;
-      trackEl.style.transform = `translate3d(${(-step * panelW + drag).toFixed(2)}px, 0, 0)`;
-    };
-
-    const onPointerDown = (e: PointerEvent) => {
-      if (e.pointerType === 'mouse' && e.button !== 0) return;
-      draggingRef.current = true;
-      dragDeltaRef.current = 0;
-      dragStartRef.current = { x: e.clientX, moved: false };
-      if (phaseRef.current === 'slide') phaseRef.current = 'wait';
-      container.setPointerCapture?.(e.pointerId);
-    };
-
-    const onPointerMove = (e: PointerEvent) => {
-      if (!draggingRef.current) return;
-      const dx = e.clientX - dragStartRef.current.x;
-      if (!dragStartRef.current.moved && Math.abs(dx) < 6) return;
-      dragStartRef.current.moved = true;
-      dragDeltaRef.current = dx;
-      render();
-    };
-
-    const onPointerUp = (e: PointerEvent) => {
-      if (!draggingRef.current) return;
-      draggingRef.current = false;
-      const dx = dragStartRef.current.moved ? e.clientX - dragStartRef.current.x : 0;
-      const panelW = widthRef.current / getVisibleCount();
-      const N = blocksRef.current.length;
-      if (Math.abs(dx) > panelW * 0.25) {
-        const steps = Math.round(dx / panelW);
-        const target = Math.max(-N, Math.min(N, stepRef.current - steps));
-        animateTo(target);
-      } else {
-        animateTo(stepRef.current);
-      }
-    };
-
-    container.addEventListener('pointerdown', onPointerDown);
-    container.addEventListener('pointermove', onPointerMove);
-    container.addEventListener('pointerup', onPointerUp);
-    container.addEventListener('pointercancel', onPointerUp);
-
-    let raf = 0;
-    const loop = (now: number) => {
-      raf = requestAnimationFrame(loop);
-      const N = blocksRef.current.length;
-      if (N === 0) return;
-      const panelW = widthRef.current / getVisibleCount();
-      const trackEl = trackRef.current;
-      if (!trackEl) return;
-
-      if (phaseRef.current === 'wait') {
-        if (draggingRef.current) return;
-        if (pausedRef.current) {
-          holdUntilRef.current = now + HOLD_MS;
-          return;
-        }
-        if (now >= holdUntilRef.current) {
-          const cur = stepRef.current;
-          const to = cur + 1;
-          const speed = blocksRef.current[((cur % N) + N) % N]?.animationSpeed ?? DEFAULT_SPEED;
-          phaseRef.current = 'slide';
-          slideRef.current = {
-            startT: now,
-            startPx: -cur * panelW,
-            endPx: -to * panelW,
-            duration: Math.max(350, speed * 1000),
-            toStep: to,
-          };
-        }
-      } else {
-        const s = slideRef.current;
-        const t = Math.min(1, (now - s.startT) / s.duration);
-        const eased = easeInOutQuart(t);
-        trackEl.style.transform = `translate3d(${(s.startPx + (s.endPx - s.startPx) * eased).toFixed(2)}px, 0, 0)`;
-        if (t >= 1) {
-          let ns = s.toStep;
-          if (ns > N) ns = -N;
-          if (ns < -N) ns = N;
-          stepRef.current = ns;
-          phaseRef.current = 'wait';
-          holdUntilRef.current = now + HOLD_MS;
-          setMediaTick((v) => v + 1);
-        }
-      }
-    };
-    raf = requestAnimationFrame(loop);
-
-    return () => {
-      cancelAnimationFrame(raf);
-      ro.disconnect();
-      io.disconnect();
-      mqSmall.removeEventListener('change', onMq);
-      mqMedium.removeEventListener('change', onMq);
-      document.removeEventListener('visibilitychange', onVisibility);
-      container.removeEventListener('pointerenter', onHoverEnter);
-      container.removeEventListener('pointerleave', onHoverLeave);
-      container.removeEventListener('pointerdown', onPointerDown);
-      container.removeEventListener('pointermove', onPointerMove);
-      container.removeEventListener('pointerup', onPointerUp);
-      container.removeEventListener('pointercancel', onPointerUp);
-    };
+  const applyPaused = useCallback((value: boolean) => {
+    pausedRef.current = value;
+    setPaused(value);
   }, []);
 
-  if (blocks.length === 0) return <HeroSection />;
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) => applyPaused(entries[0] ? !entries[0].isIntersecting : pausedRef.current),
+      { threshold: 0.05 }
+    );
+    io.observe(el);
+    const onVisibility = () => applyPaused(document.hidden);
+    const hoverable = isFineHover();
+    const onEnter = () => {
+      if (hoverable) applyPaused(true);
+    };
+    const onLeave = () => {
+      if (hoverable) applyPaused(false);
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    el.addEventListener('pointerenter', onEnter);
+    el.addEventListener('pointerleave', onLeave);
+    return () => {
+      io.disconnect();
+      document.removeEventListener('visibilitychange', onVisibility);
+      el.removeEventListener('pointerenter', onEnter);
+      el.removeEventListener('pointerleave', onLeave);
+    };
+  }, [applyPaused]);
 
-  const step = stepRef.current;
-  const copies = Array.from({ length: COPIES }, (_, c) => c);
-  const cycle = Math.max(1, total);
+  if (panels.length === 0) return <HeroSection />;
+
+  const name = set?.name ?? 'Featured';
+  const speed = set?.animationSpeed ?? DEFAULT_SPEED;
+  const overlay = set?.overlay ?? true;
+  const overlayOpacity = set?.overlayOpacity ?? 45;
+  const gradient = set?.gradient ?? true;
 
   return (
-    <section
-      ref={containerRef}
-      className="hero-engine"
-      aria-label="Featured campaigns"
-      style={{ touchAction: 'pan-y' }}
-    >
-      <div ref={trackRef} className="hero-engine__track">
-        {copies.map((copy) =>
-          blocks.map((block, index) => {
-            const panelPosition = copy * cycle + index;
-            const inVisibleWindow = panelPosition >= step && panelPosition < step + visible;
-            const inMediaWindow = panelPosition >= step - visible && panelPosition < step + visible * 2;
-            const isLeading = panelPosition >= step - 1 && panelPosition <= step;
-            return (
-              <Panel
-                key={`${String(block._id)}::${copy}`}
-                block={block}
-                copy={copy}
-                visible={visible}
-                inVisibleWindow={inVisibleWindow}
-                inMediaWindow={inMediaWindow}
-                isLeading={isLeading}
-              />
-            );
-          })
-        )}
-      </div>
+    <section ref={sectionRef} className="hero-engine" aria-label={name}>
+      {isMobile ? (
+        <MobileCarousel
+          panels={panels}
+          paused={paused}
+          speed={speed}
+          overlay={overlay}
+          overlayOpacity={overlayOpacity}
+          gradient={gradient}
+          setName={name}
+        />
+      ) : (
+        <div className="hero-panels">
+          {panels.map((panel, index) => (
+            <PanelView
+              key={String(panel._id ?? index)}
+              panel={panel}
+              index={index}
+              paused={paused}
+              isMobile={false}
+              speed={speed}
+              overlay={overlay}
+              overlayOpacity={overlayOpacity}
+              gradient={gradient}
+              setName={name}
+            />
+          ))}
+        </div>
+      )}
     </section>
   );
 }

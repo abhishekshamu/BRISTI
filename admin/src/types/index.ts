@@ -81,9 +81,48 @@ export interface Collection {
   updatedAt?: string;
 }
 
+export type HeroLinkType = 'collection' | 'category' | 'product' | 'custom';
+export type HeroStatus = 'draft' | 'published';
+
+export interface HeroSlide {
+  _id?: string;
+  image?: string;
+  imageMobile?: string;
+  video?: string;
+  videoMobile?: string;
+  eyebrow?: string;
+  heading?: string;
+  ctaText?: string;
+  ctaLinkType?: HeroLinkType;
+  ctaLink?: string;
+  status: HeroStatus;
+  isActive: boolean;
+  scheduledStart?: string;
+  scheduledEnd?: string;
+  altText?: string;
+}
+
+export interface HeroPanel {
+  _id?: string;
+  label?: string;
+  slides: HeroSlide[];
+  status: HeroStatus;
+  isActive: boolean;
+}
+
 export interface HeroBlock {
   _id: string;
-  title: string;
+  name: string;
+  panels: HeroPanel[];
+  overlay: boolean;
+  overlayOpacity: number;
+  gradient: boolean;
+  animationSpeed: number;
+  priority: number;
+  status: HeroStatus;
+  isActive: boolean;
+  /* Legacy flat fields — kept optional for one-time migration */
+  title?: string;
   subtitle?: string;
   description?: string;
   image?: string;
@@ -91,23 +130,16 @@ export interface HeroBlock {
   imageMobile?: string;
   videoMobile?: string;
   badge?: string;
-  primaryButton?: { label?: string; linkType?: 'collection' | 'category' | 'product' | 'custom'; link?: string };
-  secondaryButton?: { label?: string; linkType?: 'collection' | 'category' | 'product' | 'custom'; link?: string };
-  overlay: boolean;
-  overlayOpacity: number;
-  gradient: boolean;
-  contentAlignment: 'left' | 'center' | 'right';
+  primaryButton?: { label?: string; linkType?: HeroLinkType; link?: string };
+  secondaryButton?: { label?: string; linkType?: HeroLinkType; link?: string };
+  contentAlignment?: 'left' | 'center' | 'right';
   textColor?: string;
   buttonColor?: string;
   accentColor?: string;
-  animationStyle: 'slide' | 'fade' | 'kenburns';
-  animationSpeed: number;
-  visibility: { desktop: boolean; tablet: boolean; mobile: boolean };
-  priority: number;
+  animationStyle?: 'slide' | 'fade' | 'kenburns';
+  visibility?: { desktop: boolean; tablet: boolean; mobile: boolean };
   seoLabel?: string;
   altText?: string;
-  status: 'draft' | 'published';
-  isActive: boolean;
   scheduledStart?: string;
   scheduledEnd?: string;
   createdAt?: string;

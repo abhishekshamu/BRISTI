@@ -240,9 +240,45 @@ export interface HeroVisibility {
   mobile: boolean;
 }
 
+export interface HeroSlide {
+  _id?: any;
+  image?: string;
+  imageMobile?: string;
+  video?: string;
+  videoMobile?: string;
+  eyebrow?: string;
+  heading?: string;
+  ctaText?: string;
+  ctaLinkType?: HeroLinkType;
+  ctaLink?: string;
+  status: HeroBlockStatus;
+  isActive: boolean;
+  scheduledStart?: Date;
+  scheduledEnd?: Date;
+  altText?: string;
+}
+
+export interface HeroPanel {
+  _id?: any;
+  label?: string;
+  slides: HeroSlide[];
+  status: HeroBlockStatus;
+  isActive: boolean;
+}
+
 export interface HeroBlock {
   _id: any;
-  title: string;
+  name: string;
+  panels: HeroPanel[];
+  overlay: boolean;
+  overlayOpacity: number;
+  gradient: boolean;
+  animationSpeed: number;
+  priority: number;
+  status: HeroBlockStatus;
+  isActive: boolean;
+  /* Legacy flat fields — kept optional for one-time migration into panels */
+  title?: string;
   subtitle?: string;
   description?: string;
   image?: string;
@@ -252,21 +288,14 @@ export interface HeroBlock {
   badge?: string;
   primaryButton?: HeroButton;
   secondaryButton?: HeroButton;
-  overlay: boolean;
-  overlayOpacity: number;
-  gradient: boolean;
-  contentAlignment: HeroContentAlignment;
+  contentAlignment?: HeroContentAlignment;
   textColor?: string;
   buttonColor?: string;
   accentColor?: string;
-  animationStyle: HeroAnimationStyle;
-  animationSpeed: number;
-  visibility: HeroVisibility;
-  priority: number;
+  animationStyle?: HeroAnimationStyle;
+  visibility?: HeroVisibility;
   seoLabel?: string;
   altText?: string;
-  status: HeroBlockStatus;
-  isActive: boolean;
   scheduledStart?: Date;
   scheduledEnd?: Date;
   createdAt?: Date;

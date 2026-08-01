@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { HeroBlock, HeroBlockStatus, HeroAnimationStyle, HeroContentAlignment, HeroLinkType } from 'shared/types';
+import { HeroBlock, HeroBlockStatus, HeroLinkType } from 'shared/types';
 
 export interface IHeroBlockDoc extends Omit<HeroBlock, '_id'>, Document {}
 
@@ -12,20 +12,108 @@ const HeroButtonSchema = new Schema(
   { _id: false }
 );
 
-const HeroVisibilitySchema = new Schema(
+const HeroSlideSchema = new Schema(
   {
-    desktop: { type: Boolean, default: true },
-    tablet: { type: Boolean, default: true },
-    mobile: { type: Boolean, default: true },
+    image: { type: String, trim: true },
+    imageMobile: { type: String, trim: true },
+    video: { type: String, trim: true },
+    videoMobile: { type: String, trim: true },
+    eyebrow: { type: String, trim: true },
+    heading: { type: String, trim: true },
+    ctaText: { type: String, trim: true },
+    ctaLinkType: { type: String, enum: ['collection', 'category', 'product', 'custom'], default: 'custom' as HeroLinkType },
+    ctaLink: { type: String, trim: true },
+    status: {
+      type: String,
+      enum: ['draft', 'published'],
+      default: 'draft' as HeroBlockStatus,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    scheduledStart: {
+      type: Date,
+    },
+    scheduledEnd: {
+      type: Date,
+    },
+    altText: {
+      type: String,
+      trim: true,
+    },
   },
-  { _id: false }
+  { timestamps: true }
+);
+
+const HeroPanelSchema = new Schema(
+  {
+    label: { type: String, trim: true },
+    slides: { type: [HeroSlideSchema], default: [] },
+    status: {
+      type: String,
+      enum: ['draft', 'published'],
+      default: 'draft' as HeroBlockStatus,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+  },
+  { timestamps: true }
 );
 
 const HeroBlockSchema: Schema = new Schema(
   {
-    title: {
+    name: {
       type: String,
       required: true,
+      trim: true,
+    },
+    panels: {
+      type: [HeroPanelSchema],
+      default: [],
+      validate: {
+        validator: (panels: unknown[]) => panels.length <= 5,
+        message: 'A hero set can contain at most 5 panels',
+      },
+    },
+    overlay: {
+      type: Boolean,
+      default: true,
+    },
+    overlayOpacity: {
+      type: Number,
+      default: 45,
+      min: 0,
+      max: 100,
+    },
+    gradient: {
+      type: Boolean,
+      default: true,
+    },
+    animationSpeed: {
+      type: Number,
+      default: 0.7,
+      min: 0.3,
+      max: 4,
+    },
+    priority: {
+      type: Number,
+      default: 0,
+    },
+    status: {
+      type: String,
+      enum: ['draft', 'published'],
+      default: 'draft' as HeroBlockStatus,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    /* Legacy flat fields — kept optional for one-time migration into panels */
+    title: {
+      type: String,
       trim: true,
     },
     subtitle: {
@@ -58,24 +146,10 @@ const HeroBlockSchema: Schema = new Schema(
     },
     primaryButton: { type: HeroButtonSchema, default: {} },
     secondaryButton: { type: HeroButtonSchema, default: {} },
-    overlay: {
-      type: Boolean,
-      default: true,
-    },
-    overlayOpacity: {
-      type: Number,
-      default: 45,
-      min: 0,
-      max: 100,
-    },
-    gradient: {
-      type: Boolean,
-      default: true,
-    },
     contentAlignment: {
       type: String,
       enum: ['left', 'center', 'right'],
-      default: 'left' as HeroContentAlignment,
+      default: 'left',
     },
     textColor: {
       type: String,
@@ -92,18 +166,12 @@ const HeroBlockSchema: Schema = new Schema(
     animationStyle: {
       type: String,
       enum: ['slide', 'fade', 'kenburns'],
-      default: 'kenburns' as HeroAnimationStyle,
+      default: 'kenburns',
     },
-    animationSpeed: {
-      type: Number,
-      default: 1,
-      min: 0.3,
-      max: 4,
-    },
-    visibility: { type: HeroVisibilitySchema, default: { desktop: true, tablet: true, mobile: true } },
-    priority: {
-      type: Number,
-      default: 0,
+    visibility: {
+      desktop: { type: Boolean, default: true },
+      tablet: { type: Boolean, default: true },
+      mobile: { type: Boolean, default: true },
     },
     seoLabel: {
       type: String,
@@ -112,15 +180,6 @@ const HeroBlockSchema: Schema = new Schema(
     altText: {
       type: String,
       trim: true,
-    },
-    status: {
-      type: String,
-      enum: ['draft', 'published'],
-      default: 'draft' as HeroBlockStatus,
-    },
-    isActive: {
-      type: Boolean,
-      default: true,
     },
     scheduledStart: {
       type: Date,
