@@ -42,18 +42,10 @@ export class CollectionService {
     );
   }
 
-  async getFeaturedCollections(limit: number = 10): Promise<ICollection[]> {
-    const now = new Date();
+  async getFeaturedCollections(limit: number = 3): Promise<ICollection[]> {
     return this.collectionRepo.findMany(
-      { 
-        featured: true, 
-        isActive: true,
-        $or: [
-          { featuredUntil: { $exists: false } },
-          { featuredUntil: { $gt: now } }
-        ]
-      },
-      { sort: { featuredUntil: -1 }, limit }
+      { featured: true, isActive: true },
+      { sort: { sortOrder: 1, createdAt: -1 }, limit }
     );
   }
 

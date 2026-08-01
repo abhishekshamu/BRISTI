@@ -68,6 +68,7 @@ export interface Collection {
   bannerImage?: string;
   products: string[];
   featured: boolean;
+  sortOrder?: number;
   featuredUntil?: string;
   startDate?: string;
   endDate?: string;

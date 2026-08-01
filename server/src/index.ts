@@ -54,12 +54,27 @@ app.use(cors({
   credentials: true
 }));
 app.use(helmet());
+
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+
+// Endpoints excluded from rate limiting while developing, so localhost coding is never blocked
+const DEV_RATE_LIMIT_SKIP_PREFIXES = ['/health', '/api/admin/dashboard', '/api/theme'];
+
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: Number(process.env.API_RATE_LIMIT || 300),
+  // Production: strict (default 300 requests / 15 min). Development: greatly relaxed.
+  limit: IS_PRODUCTION
+    ? Number(process.env.API_RATE_LIMIT || 300)
+    : Number(process.env.API_RATE_LIMIT_DEV || 10000),
   standardHeaders: 'draft-7',
   legacyHeaders: false,
-  message: { success: false, message: 'Too many requests. Please try again later.' }
+  message: { success: false, message: 'Too many requests. Please try again later.' },
+  skip: (req) => {
+    if (IS_PRODUCTION) return false;
+    return DEV_RATE_LIMIT_SKIP_PREFIXES.some(
+      (prefix) => req.path === prefix || req.path.startsWith(prefix),
+    );
+  },
 }));
 app.use(morgan('dev'));
 app.use(cookieParser());

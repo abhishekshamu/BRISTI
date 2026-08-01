@@ -82,7 +82,6 @@ function applySettingsToDom(settings: SiteSettings | null): void {
     ['text', '--foreground'],
     ['accent', '--accent'],
     ['accent', '--ring'],
-    ['accent', '--gold'],
   ];
   for (const [key, cssVar] of colorMap) {
     const value = settings.colors?.[key];

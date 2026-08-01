@@ -9,15 +9,19 @@ import { getImageUrl } from '@/lib/utils';
 import type { Collection } from '@shared/types';
 
 export function FeaturedCollections() {
+  // Active + Featured + sorted by Display Order + limit 3 (server-side).
+  // Polls so admin changes (featured, order, active, image, title) appear
+  // on the homepage without a manual refresh.
   const { data: collections, isLoading } = useQuery({
     queryKey: ['collections', 'featured'],
     queryFn: () => catalogService.featuredCollections(3),
-    staleTime: 1000 * 60 * 30,
+    staleTime: 0,
+    refetchInterval: 15000,
   });
 
   if (isLoading) {
     return (
-      <section className="bg-background py-16 sm:py-24">
+      <section className="bg-secondary/40 py-16 sm:py-24">
         <div className="container-lux">
           <div className="grid gap-6 lg:grid-cols-3">
             {[0, 1, 2].map((i) => (
@@ -29,10 +33,11 @@ export function FeaturedCollections() {
     );
   }
 
-  const collectionsList = collections ?? [];
+  const featured = collections ?? [];
+  if (featured.length === 0) return null;
 
   return (
-    <section className="bg-background py-16 sm:py-24">
+    <section className="bg-secondary/40 py-16 sm:py-24">
       <div className="container-lux">
         <SectionHeading
           eyebrow="Curated for you"
@@ -41,8 +46,8 @@ export function FeaturedCollections() {
           link={{ label: 'View all collections', to: '/collections' }}
         />
         <div className="mt-14 grid gap-6 lg:grid-cols-3">
-          {collectionsList.map((collection: Collection, index) => {
-            const image = getImageUrl(collection.image);
+          {featured.map((collection: Collection, index) => {
+            const image = getImageUrl(collection.image ?? collection.bannerImage);
             return (
               <motion.div
                 key={String(collection._id)}
@@ -66,7 +71,9 @@ export function FeaturedCollections() {
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                   <div className="absolute inset-x-0 bottom-0 flex flex-col gap-3 p-8">
-                    <p className="text-[10px] font-medium uppercase tracking-lux-sm text-[var(--on-ink-dim)]">{collection.shortDescription || 'The Maison'}</p>
+                    <p className="text-[10px] font-medium uppercase tracking-lux-sm text-[var(--on-ink-dim)]">
+                      {collection.shortDescription ?? collection.description ?? 'The Maison'}
+                    </p>
                     <div className="flex items-center justify-between">
                       <h3 className="font-display text-3xl font-medium text-[var(--on-ink)]">{collection.name}</h3>
                       <span className="flex h-10 w-10 items-center justify-center border border-[var(--on-ink)]/30 text-[var(--on-ink)] transition-all duration-300 group-hover:border-accent group-hover:bg-accent">

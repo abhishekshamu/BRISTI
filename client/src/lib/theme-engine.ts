@@ -48,7 +48,6 @@ const SHADCN_TOKENS: Record<string, string> = {
   ring: '--ring',
   destructive: '--destructive',
   destructiveForeground: '--destructive-foreground',
-  gold: '--gold',
 };
 
 function loadGoogleFonts(headingFont: string, bodyFont: string): void {

@@ -26,7 +26,10 @@
     --input: 0 0% 88%;
     --ring: 44 68% 47%;
     --radius: 0.25rem;
-    --gold: 44 68% 47%;
+
+    /* Raw hex (not HSL triplet): consumed by CSS gradients and THREE.js, both of
+       which require a complete color value, not a shadcn space-separated triplet. */
+    --gold: #c9a227;
 
     /* Theme engine fallbacks (overridden live via inline styles) */
     --base-font-size: 16px;

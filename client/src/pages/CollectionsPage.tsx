@@ -15,8 +15,9 @@ export default function CollectionsPage() {
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['collections', 'all'],
-    queryFn: () => catalogService.listCollections({ limit: 100 }),
-    staleTime: 1000 * 60 * 30,
+    queryFn: () => catalogService.listCollections({ limit: 1000 }),
+    staleTime: 0,
+    refetchInterval: 15000,
   });
 
   const collections = data?.data ?? [];

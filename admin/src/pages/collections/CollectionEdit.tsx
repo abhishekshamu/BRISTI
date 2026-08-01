@@ -13,6 +13,7 @@ interface CollectionForm {
   image?: string;
   bannerImage?: string;
   featured: boolean;
+  sortOrder: number;
   isActive: boolean;
 }
 
@@ -113,8 +114,12 @@ export default function CollectionEdit() {
             <input {...register('bannerImage')} className="admin-input mt-1" />
           </div>
           <div className="flex items-center justify-between">
-            <label className="admin-label">Featured</label>
+            <label className="admin-label">Featured on Homepage</label>
             <input type="checkbox" {...register('featured')} className="w-4 h-4" />
+          </div>
+          <div>
+            <label className="admin-label">Display Order (homepage, lowest first)</label>
+            <input type="number" {...register('sortOrder', { valueAsNumber: true })} className="admin-input mt-1" />
           </div>
           <div className="flex items-center justify-between">
             <label className="admin-label">Active</label>

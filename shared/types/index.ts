@@ -210,6 +210,7 @@ export interface Collection {
   video?: string;
   products: string[]; // Product IDs
   featured: boolean;
+  sortOrder?: number;
   featuredUntil?: Date;
   startDate?: Date;
   endDate?: Date;

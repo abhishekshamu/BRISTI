@@ -8,6 +8,7 @@ export const createCollectionValidation = [
   body('image').optional().trim(),
   body('bannerImage').optional().trim(),
   body('featured').optional().isBoolean().withMessage('featured must be a boolean'),
+  body('sortOrder').optional().isInt().withMessage('sortOrder must be an integer'),
   body('isActive').optional().isBoolean().withMessage('isActive must be a boolean'),
 ];
 
@@ -15,4 +16,11 @@ export const updateCollectionValidation = [
   param('id').isMongoId().withMessage('Invalid collection ID'),
   body('name').optional().trim(),
   body('slug').optional().trim(),
+  body('description').optional().trim(),
+  body('shortDescription').optional().trim(),
+  body('image').optional().trim(),
+  body('bannerImage').optional().trim(),
+  body('featured').optional().isBoolean().withMessage('featured must be a boolean'),
+  body('sortOrder').optional().isInt().withMessage('sortOrder must be an integer'),
+  body('isActive').optional().isBoolean().withMessage('isActive must be a boolean'),
 ];

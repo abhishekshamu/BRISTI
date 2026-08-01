@@ -40,6 +40,10 @@ const CollectionSchema: Schema = new Schema({
     type: Boolean,
     default: false,
   },
+  sortOrder: {
+    type: Number,
+    default: 0,
+  },
   featuredUntil: {
     type: Date,
   },
@@ -69,6 +73,7 @@ const CollectionSchema: Schema = new Schema({
 CollectionSchema.index({ slug: 1 });
 CollectionSchema.index({ name: 1 });
 CollectionSchema.index({ featured: 1 });
+CollectionSchema.index({ sortOrder: 1 });
 CollectionSchema.index({ isActive: 1 });
 CollectionSchema.index({ startDate: 1 });
 CollectionSchema.index({ endDate: 1 });
