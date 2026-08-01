@@ -538,29 +538,94 @@ export interface Layout {
   updatedAt?: Date;
 }
 
+export type ThemeTransform = 'none' | 'uppercase' | 'capitalize';
+
+export interface ThemeFontSizeSet {
+  desktop: number;
+  tablet: number;
+  mobile: number;
+}
+
+export interface ThemeTypography {
+  headingFont: string;
+  bodyFont: string;
+  baseSize: ThemeFontSizeSet;
+  headingSizes: {
+    h1: ThemeFontSizeSet;
+    h2: ThemeFontSizeSet;
+    h3: ThemeFontSizeSet;
+    h4: ThemeFontSizeSet;
+    h5: ThemeFontSizeSet;
+    small: ThemeFontSizeSet;
+    eyebrow: ThemeFontSizeSet;
+  };
+  headingWeight: number;
+  bodyWeight: number;
+  headingTransform: ThemeTransform;
+  headingLineHeight: number;
+  bodyLineHeight: number;
+  headingLetterSpacing: string;
+  eyebrowTransform: ThemeTransform;
+  eyebrowLetterSpacing: string;
+}
+
+export interface ThemeButtons {
+  borderRadius: string;
+  paddingX: string;
+  paddingY: string;
+  fontSize: string;
+  fontWeight: number;
+  textTransform: ThemeTransform;
+  letterSpacing: string;
+  primaryBg: string;
+  primaryText: string;
+  primaryHoverBg: string;
+  goldBg: string;
+  goldText: string;
+  goldHoverBg: string;
+  outlineText: string;
+  outlineBorder: string;
+  outlineHoverBg: string;
+  outlineHoverText: string;
+  ghostText: string;
+  whiteBg: string;
+  whiteText: string;
+  whiteHoverBg: string;
+}
+
+export interface ThemeHeaderConfig {
+  height: string;
+  sticky: boolean;
+  showAnnouncementBar: boolean;
+}
+
+export interface ThemeFooterConfig {
+  paddingY: string;
+}
+
+export interface ThemeEffects {
+  radiusSm: string;
+  radiusMd: string;
+  radiusLg: string;
+  shadowSm: string;
+  shadowMd: string;
+  shadowLg: string;
+  transition: string;
+  marqueeDuration: string;
+}
+
 export interface ThemeSettings {
   _id: any;
   name: string;
+  description?: string;
   isActive: boolean;
-  colors: {
-    primary: string;
-    secondary: string;
-    background: string;
-    text: string;
-    accent: string;
-    gold: string;
-    darkGray: string;
-    lightGray: string;
-  };
-  typography: {
-    headingFont: string;
-    bodyFont: string;
-    baseSize: string;
-    scale: number;
-  };
-  borderRadius: string;
-  boxShadow: string;
-  transition: string;
+  isDark: boolean;
+  colors: Record<string, string>;
+  typography: ThemeTypography;
+  buttons: ThemeButtons;
+  header: ThemeHeaderConfig;
+  footer: ThemeFooterConfig;
+  effects: ThemeEffects;
   createdAt?: Date;
   updatedAt?: Date;
 }

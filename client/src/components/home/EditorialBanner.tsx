@@ -35,7 +35,7 @@ export function EditorialBanner({ props }: EditorialBannerProps) {
   const secondaryCta = props?.secondaryCta?.url ? { label: props.secondaryCta.label || 'Read the journal', to: props.secondaryCta.url } : { label: 'Read the journal', to: '/journal' };
 
   return (
-    <section ref={ref} className="relative overflow-hidden bg-[#0a0a0a]">
+    <section ref={ref} className="relative overflow-hidden bg-[var(--ink)]">
       <div className="grid min-h-[560px] lg:grid-cols-2">
         <div className="relative order-2 overflow-hidden lg:order-1">
           {image ? (
@@ -46,8 +46,8 @@ export function EditorialBanner({ props }: EditorialBannerProps) {
               className="absolute inset-0 h-[120%] w-full object-cover"
             />
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#1a1a1a] to-black">
-              <span className="font-display text-4xl tracking-[0.3em] text-white/20">BRISTI</span>
+            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[var(--ink-soft)] to-[var(--ink)]">
+              <span className="font-display text-4xl tracking-[0.3em] text-[var(--on-ink-faint)]">BRISTI</span>
             </div>
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent lg:bg-gradient-to-r lg:from-transparent lg:to-black/70" />
@@ -64,17 +64,17 @@ export function EditorialBanner({ props }: EditorialBannerProps) {
             <span className="mb-6 flex items-center gap-3 text-[11px] font-medium uppercase tracking-lux text-accent">
               <span className="h-px w-10 bg-accent" /> {props?.eyebrow || 'The Atelier Edit'}
             </span>
-            <h2 className="font-display text-4xl font-medium leading-tight text-white sm:text-5xl lg:text-6xl">
+            <h2 className="font-display text-4xl font-medium leading-tight text-[var(--on-ink)] sm:text-5xl lg:text-6xl">
               {props?.title || <>Where heritage meets <em className="text-gradient-gold not-italic">the future</em></>}
             </h2>
-            <p className="mt-6 text-sm leading-7 text-white/60 sm:text-base sm:leading-8">
+            <p className="mt-6 text-sm leading-7 text-[var(--on-ink-dim)] sm:text-base sm:leading-8">
               {props?.description || 'From hand-finished seams to revolutionary fabrics, every BRISTI piece travels from sketch to wardrobe through two hundred artisan hands.'}
             </p>
             <div className="mt-10 flex flex-wrap gap-4">
               <Link to={primaryCta.to} className="btn-lux-white">
                 {primaryCta.label} <ArrowRight className="h-4 w-4" />
               </Link>
-              <Link to={secondaryCta.to} className="btn-lux-outline border-white/30 text-white hover:bg-white hover:text-black">
+              <Link to={secondaryCta.to} className="btn-lux-outline border-[var(--on-ink)]/30 text-[var(--on-ink)] hover:bg-[var(--btn-white-bg)] hover:text-[var(--btn-white-text)]">
                 {secondaryCta.label}
               </Link>
             </div>

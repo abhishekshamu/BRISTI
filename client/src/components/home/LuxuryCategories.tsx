@@ -67,10 +67,10 @@ export function LuxuryCategories() {
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                   <div className="absolute inset-x-0 bottom-0 flex flex-col gap-3 p-8">
-                    <p className="text-[10px] font-medium uppercase tracking-lux-sm text-white/60">{category.description || 'The Maison'}</p>
+                    <p className="text-[10px] font-medium uppercase tracking-lux-sm text-[var(--on-ink-dim)]">{category.description || 'The Maison'}</p>
                     <div className="flex items-center justify-between">
-                      <h3 className="font-display text-3xl font-medium text-white">{category.name}</h3>
-                      <span className="flex h-10 w-10 items-center justify-center border border-white/30 text-white transition-all duration-300 group-hover:border-accent group-hover:bg-accent">
+                      <h3 className="font-display text-3xl font-medium text-[var(--on-ink)]">{category.name}</h3>
+                      <span className="flex h-10 w-10 items-center justify-center border border-[var(--on-ink)]/30 text-[var(--on-ink)] transition-all duration-300 group-hover:border-accent group-hover:bg-accent">
                         <ArrowRight className="h-4 w-4" />
                       </span>
                     </div>

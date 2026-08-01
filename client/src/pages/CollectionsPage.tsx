@@ -68,8 +68,8 @@ export default function CollectionsPage() {
                       )}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
                       <div className="absolute inset-x-0 bottom-0 flex flex-col gap-2 p-8">
-                        <h3 className="font-display text-3xl font-medium text-white">{collection.name}</h3>
-                        <p className="line-clamp-2 text-sm leading-6 text-white/70">
+                        <h3 className="font-display text-3xl font-medium text-[var(--on-ink)]">{collection.name}</h3>
+                        <p className="line-clamp-2 text-sm leading-6 text-[var(--on-ink-dim)]">
                           {collection.shortDescription ?? collection.description ?? 'Explore the collection'}
                         </p>
                         <span className="mt-3 inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-lux-sm text-accent">

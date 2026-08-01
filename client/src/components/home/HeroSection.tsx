@@ -46,14 +46,14 @@ export function HeroSection() {
   }, []);
 
   return (
-    <section ref={rootRef} className="relative flex min-h-[92vh] items-center overflow-hidden bg-[#0a0a0a] pt-20 lg:min-h-screen">
+    <section ref={rootRef} className="relative flex min-h-[92vh] items-center overflow-hidden bg-[var(--ink)] pt-20 lg:min-h-screen">
       <img
         src={heroImage}
         alt={props.headingLine1}
         className="absolute inset-0 h-full w-full object-cover"
         aria-hidden="true"
       />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(201,162,39,0.08),transparent_60%)]" aria-hidden="true" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,var(--glow-hero),transparent_60%)]" aria-hidden="true" />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/70 via-black/25 to-black/50 lg:bg-gradient-to-r lg:from-black/80 lg:via-transparent lg:to-black/30" aria-hidden="true" />
 
       <div className="container-lux relative z-10 py-24">
@@ -61,7 +61,7 @@ export function HeroSection() {
           <span data-hero-eyebrow className="mb-6 flex items-center gap-3 text-[11px] font-medium uppercase tracking-lux text-accent">
             <span className="h-px w-10 bg-accent" /> {props.eyebrow}
           </span>
-          <h1 className="font-display font-medium leading-[1.02] text-white">
+          <h1 className="font-display font-medium leading-[1.02] text-[var(--on-ink)]">
             <span data-hero-line className="block text-[13vw] sm:text-6xl lg:text-7xl xl:text-8xl">{props.headingLine1}</span>
             <span data-hero-line className="block text-[13vw] sm:text-6xl lg:text-7xl xl:text-8xl">
               <em className="text-gradient-gold not-italic">{props.headingLine2}</em>
@@ -69,7 +69,7 @@ export function HeroSection() {
           </h1>
         </div>
 
-        <p className="mt-8 max-w-md text-sm leading-7 text-white/60 sm:text-base sm:leading-8">{props.subheading}</p>
+        <p className="mt-8 max-w-md text-sm leading-7 text-[var(--on-ink-dim)] sm:text-base sm:leading-8">{props.subheading}</p>
 
         <div className="mt-10 flex flex-wrap items-center gap-4">
           <Link data-hero-cta to={props.primaryCta?.to ?? '/collections'} className="btn-lux-gold">
@@ -82,7 +82,7 @@ export function HeroSection() {
       </div>
 
       <div data-hero-float className="absolute bottom-8 left-1/2 hidden -translate-x-1/2 animate-pulse-soft lg:block">
-        <ChevronDown className="h-6 w-6 text-white/40" />
+        <ChevronDown className="h-6 w-6 text-[var(--on-ink)]/40" />
       </div>
     </section>
   );

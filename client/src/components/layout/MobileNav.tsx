@@ -31,7 +31,7 @@ export function MobileNav() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-[70] bg-[var(--backdrop)] backdrop-blur-sm"
             onClick={closeMobileNav}
           />
           <motion.aside
@@ -39,10 +39,10 @@ export function MobileNav() {
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
             transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
-            className="fixed inset-y-0 left-0 z-[71] flex w-[85%] max-w-sm flex-col bg-background"
+            className="fixed inset-y-0 left-0 z-[71] flex w-[85%] max-w-sm flex-col bg-[var(--mobile-drawer-bg)]"
           >
-            <div className="flex h-16 items-center justify-between border-b border-border px-6">
-              <Link to="/" onClick={closeMobileNav} className="font-display text-xl font-semibold tracking-[0.3em]">
+            <div className="flex h-16 items-center justify-between border-b border-[var(--mobile-nav-border)] px-6">
+              <Link to="/" onClick={closeMobileNav} className="font-display text-xl font-semibold tracking-[0.3em] text-[var(--mobile-drawer-text)]">
                 BRISTI
               </Link>
               <button type="button" aria-label="Close menu" onClick={closeMobileNav} className="flex h-10 w-10 items-center justify-center">
@@ -62,7 +62,7 @@ export function MobileNav() {
                     <Link
                       to={link.to}
                       onClick={closeMobileNav}
-                      className="flex items-center justify-between border-b border-border py-4 font-display text-2xl font-medium tracking-wide text-foreground"
+                      className="flex items-center justify-between border-b border-[var(--mobile-nav-border)] py-4 font-display text-2xl font-medium tracking-wide text-[var(--mobile-drawer-text)]"
                     >
                       {link.label}
                     </Link>
@@ -78,7 +78,7 @@ export function MobileNav() {
                       key={String(category._id)}
                       to={`/shop?category=${category.slug}`}
                       onClick={closeMobileNav}
-                      className="border border-border px-4 py-2 text-xs uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:border-accent hover:text-accent"
+                      className="border border-[var(--mobile-nav-border)] px-4 py-2 text-xs uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:border-accent hover:text-accent"
                     >
                       {category.name}
                     </Link>
@@ -87,7 +87,7 @@ export function MobileNav() {
               </div>
             </nav>
 
-            <div className="flex items-center justify-between border-t border-border px-6 py-5">
+            <div className="flex items-center justify-between border-t border-[var(--mobile-nav-border)] px-6 py-5">
               <Link to="/login" onClick={closeMobileNav} className="text-xs font-medium uppercase tracking-lux-sm hover:text-accent">
                 Sign in
               </Link>

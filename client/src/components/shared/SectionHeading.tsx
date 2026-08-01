@@ -36,18 +36,18 @@ export function SectionHeading({
           {align === 'center' && <span className="h-px w-8 bg-accent" />}
         </span>
       )}
-      <h2 className={cn('font-display text-3xl font-medium tracking-wide sm:text-4xl lg:text-5xl', dark ? 'text-white' : 'text-foreground')}>
+      <h2 className={cn('font-display text-3xl font-medium tracking-wide sm:text-4xl lg:text-5xl', dark ? 'text-[var(--on-ink)]' : 'text-foreground')}>
         {title}
       </h2>
       {description && (
-        <p className={cn('max-w-xl text-sm leading-7 sm:text-base', dark ? 'text-white/60' : 'text-muted-foreground')}>{description}</p>
+        <p className={cn('max-w-xl text-sm leading-7 sm:text-base', dark ? 'text-[var(--on-ink-dim)]' : 'text-muted-foreground')}>{description}</p>
       )}
       {link && (
         <Link
           to={link.to}
           className={cn(
             'group mt-2 inline-flex items-center gap-2 text-xs font-medium uppercase tracking-lux-sm transition-colors',
-            dark ? 'text-white hover:text-accent' : 'text-foreground hover:text-accent',
+            dark ? 'text-[var(--on-ink)] hover:text-accent' : 'text-foreground hover:text-accent',
           )}
         >
           {link.label}

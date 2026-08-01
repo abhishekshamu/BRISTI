@@ -53,16 +53,16 @@ export default function AboutPage() {
               transition={{ duration: 0.8 }}
               className="relative aspect-[4/5] overflow-hidden bg-secondary"
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#0d0d0d] to-black" />
+              <div className="absolute inset-0 bg-gradient-to-br from-[var(--ink-soft)] via-[var(--ink-muted)] to-[var(--ink)]" />
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="font-display text-6xl tracking-[0.35em] text-white/15">BRISTI</span>
+                <span className="font-display text-6xl tracking-[0.35em] text-[var(--on-ink-faint)]">BRISTI</span>
               </div>
-              <div className="absolute bottom-8 left-8 right-8 flex items-center gap-4 border border-white/15 bg-black/40 p-6 backdrop-blur">
+              <div className="absolute bottom-8 left-8 right-8 flex items-center gap-4 border border-[var(--on-ink)]/15 bg-[var(--ink)]/40 p-6 backdrop-blur">
                 <span className="flex h-12 w-12 items-center justify-center border border-accent/50 text-accent">
                   <Gem className="h-5 w-5" />
                 </span>
-                <p className="text-sm leading-6 text-white/70">
-                  "Elegance is refusal." — <span className="text-white">The founding principle of the maison.</span>
+                <p className="text-sm leading-6 text-[var(--on-ink-dim)]">
+                  "Elegance is refusal." — <span className="text-[var(--on-ink)]">The founding principle of the maison.</span>
                 </p>
               </div>
             </motion.div>
@@ -98,10 +98,10 @@ export default function AboutPage() {
       </section>
       )}
 
-      <section className="bg-[#0a0a0a] py-16 sm:py-24">
+      <section className="bg-[var(--ink)] py-16 sm:py-24">
         <div className="container-lux">
           <SectionHeading dark eyebrow="What we stand for" title="The values of the maison" />
-          <div className="mt-14 grid gap-px bg-white/10 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-14 grid gap-px bg-[var(--on-ink)]/10 sm:grid-cols-2 lg:grid-cols-4">
             {VALUES.map(({ icon: Icon, title, description }, index) => (
               <motion.div
                 key={title}
@@ -109,11 +109,11 @@ export default function AboutPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: '-40px' }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
-                className="flex flex-col gap-5 bg-[#0a0a0a] p-8"
+                className="flex flex-col gap-5 bg-[var(--ink)] p-8"
               >
                 <Icon className="h-7 w-7 text-accent" />
-                <h3 className="font-display text-2xl font-medium text-white">{title}</h3>
-                <p className="text-sm leading-7 text-white/60">{description}</p>
+                <h3 className="font-display text-2xl font-medium text-[var(--on-ink)]">{title}</h3>
+                <p className="text-sm leading-7 text-[var(--on-ink-dim)]">{description}</p>
               </motion.div>
             ))}
           </div>

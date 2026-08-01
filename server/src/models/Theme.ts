@@ -10,73 +10,41 @@ const ThemeSchema: Schema = new Schema({
     required: true,
     trim: true,
   },
+  description: {
+    type: String,
+    default: '',
+  },
   isActive: {
     type: Boolean,
     default: false,
   },
+  isDark: {
+    type: Boolean,
+    default: false,
+  },
   colors: {
-    primary: {
-      type: String,
-      required: true,
-    },
-    secondary: {
-      type: String,
-      required: true,
-    },
-    background: {
-      type: String,
-      required: true,
-    },
-    text: {
-      type: String,
-      required: true,
-    },
-    accent: {
-      type: String,
-      required: true,
-    },
-    gold: {
-      type: String,
-      default: '#C9A227',
-    },
-    darkGray: {
-      type: String,
-      default: '#1A1A1A',
-    },
-    lightGray: {
-      type: String,
-      default: '#F5F5F5',
-    },
+    type: Schema.Types.Mixed,
+    default: {},
   },
   typography: {
-    headingFont: {
-      type: String,
-      required: true,
-    },
-    bodyFont: {
-      type: String,
-      required: true,
-    },
-    baseSize: {
-      type: String,
-      required: true,
-    },
-    scale: {
-      type: Number,
-      default: 1.25,
-    },
+    type: Schema.Types.Mixed,
+    default: {},
   },
-  borderRadius: {
-    type: String,
-    default: '8px',
+  buttons: {
+    type: Schema.Types.Mixed,
+    default: {},
   },
-  boxShadow: {
-    type: String,
-    default: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+  header: {
+    type: Schema.Types.Mixed,
+    default: {},
   },
-  transition: {
-    type: String,
-    default: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+  footer: {
+    type: Schema.Types.Mixed,
+    default: {},
+  },
+  effects: {
+    type: Schema.Types.Mixed,
+    default: {},
   },
 }, {
   timestamps: true,
@@ -95,7 +63,7 @@ ThemeSchema.pre('save', async function(next) {
       { $set: { isActive: false } }
     );
   }
-  
+
   next();
 });
 
@@ -112,6 +80,3 @@ ThemeSchema.post('save', function() {
 });
 
 export const ThemeModel = mongoose.model<IThemeDoc>('Theme', ThemeSchema);
-
-
-

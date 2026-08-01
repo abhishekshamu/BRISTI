@@ -23,12 +23,12 @@ export function AnnouncementMarquee({ className }: { className?: string }) {
 
   const items = [...messages, ...messages];
   return (
-    <div className={cn('relative overflow-hidden bg-foreground py-1.5 text-background', className)}>
+    <div className={cn('relative overflow-hidden bg-[var(--announcement-background)] py-1.5 text-[var(--announcement-text)]', className)}>
       <div className="animate-marquee flex w-max items-center gap-12 whitespace-nowrap">
         {items.map((message, index) => (
           <span key={index} className="flex items-center gap-12 text-[9px] font-medium uppercase tracking-lux-sm">
             {message}
-            <span className="text-accent">✦</span>
+            <span className="text-[var(--announcement-accent)]">✦</span>
           </span>
         ))}
       </div>

@@ -69,7 +69,7 @@ export function CartDrawer() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-[70] bg-[var(--backdrop)] backdrop-blur-sm"
             onClick={closeCartDrawer}
           />
           <motion.aside
@@ -77,7 +77,7 @@ export function CartDrawer() {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'tween', duration: 0.35, ease: 'easeOut' }}
-            className="fixed inset-y-0 right-0 z-[71] flex w-full max-w-md flex-col bg-background"
+            className="fixed inset-y-0 right-0 z-[71] flex w-full max-w-md flex-col bg-[var(--cart-background)]"
           >
             <div className="flex h-16 shrink-0 items-center justify-between border-b border-border px-6">
               <h2 className="flex items-center gap-2 text-xs font-medium uppercase tracking-lux-sm">

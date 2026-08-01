@@ -71,19 +71,19 @@ export function Navbar() {
   const activeLink = ({ isActive }: { isActive: boolean }) =>
     cn(
       'relative pb-1 text-[11px] font-medium uppercase tracking-lux-sm transition-colors',
-      isActive ? 'text-accent' : 'text-foreground hover:text-accent',
+      isActive ? 'text-[var(--header-accent)]' : 'text-[var(--header-text)] hover:text-[var(--header-text-hover)]',
     );
 
   return (
     <header
       className={cn(
         'fixed inset-x-0 top-0 z-40 transition-all duration-500',
-        scrolled ? 'border-b border-border/60 bg-background/95 backdrop-blur-md' : 'bg-transparent',
+        scrolled ? 'border-b border-[var(--header-border)]/60 bg-[var(--header-background)]/95 backdrop-blur-md' : 'bg-transparent',
       )}
     >
       <AnnouncementMarquee />
       <div className="container-lux">
-        <div className="flex h-16 items-center justify-between gap-4 lg:h-20">
+        <div className="flex h-16 items-center justify-between gap-4 lg:h-[var(--header-height)]">
           <div className="flex flex-1 items-center gap-6 lg:flex-none lg:gap-10">
             <button
               type="button"
@@ -97,7 +97,7 @@ export function Navbar() {
               {showLogoImage ? (
                 <img src={settings?.logo} alt={brandName} className="h-8 w-auto object-contain" />
               ) : (
-                <span className="font-display text-2xl font-semibold tracking-[0.3em] text-foreground">{brandName}</span>
+                <span className="font-display text-2xl font-semibold tracking-[0.3em] text-[var(--header-text)]">{brandName}</span>
               )}
               <span className="mt-1 hidden text-[9px] uppercase tracking-lux text-muted-foreground sm:block">{tagline}</span>
             </Link>
@@ -105,7 +105,7 @@ export function Navbar() {
 
           <nav className="hidden items-center gap-8 lg:flex" aria-label="Primary">
             {navLinks.slice(0, 2).map((link) => (
-              <Link key={link.to} to={link.to} className="text-[11px] font-medium uppercase tracking-lux-sm text-foreground transition-colors hover:text-accent">
+              <Link key={link.to} to={link.to} className="text-[11px] font-medium uppercase tracking-lux-sm text-[var(--header-text)] transition-colors hover:text-[var(--header-text-hover)]">
                 {link.label}
               </Link>
             ))}
@@ -120,7 +120,7 @@ export function Navbar() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 8 }}
                     transition={{ duration: 0.2 }}
-                    className="absolute left-1/2 top-full w-[640px] -translate-x-1/2 border border-border bg-background p-8 shadow-2xl"
+                    className="absolute left-1/2 top-full w-[640px] -translate-x-1/2 border border-[var(--header-border)] bg-[var(--header-dropdown-bg)] p-8 shadow-2xl"
                   >
                     <div className="grid grid-cols-3 gap-8">
                       <div>
@@ -128,7 +128,7 @@ export function Navbar() {
                         <ul className="space-y-3">
                           {(categories ?? []).slice(0, 6).map((category) => (
                             <li key={String(category._id)}>
-                              <Link to={`/shop?category=${category.slug}`} className="text-sm text-foreground transition-colors hover:text-accent">
+                              <Link to={`/shop?category=${category.slug}`} className="text-sm text-[var(--header-dropdown-text)] transition-colors hover:text-[var(--header-text-hover)]">
                                 {category.name}
                               </Link>
                             </li>
@@ -140,25 +140,25 @@ export function Navbar() {
                         <ul className="space-y-3">
                           {navLinks.filter((l) => ['/collections', '/new-arrivals', '/sale'].includes(l.to)).map((link) => (
                             <li key={link.to}>
-                              <Link to={link.to} className="text-sm text-foreground transition-colors hover:text-accent">{link.label}</Link>
+                              <Link to={link.to} className="text-sm text-[var(--header-dropdown-text)] transition-colors hover:text-[var(--header-text-hover)]">{link.label}</Link>
                             </li>
                           ))}
                           {!navLinks.some((l) => l.to === '/collections') && (
-                            <li><Link to="/collections" className="text-sm text-foreground transition-colors hover:text-accent">All Collections</Link></li>
+                            <li><Link to="/collections" className="text-sm text-[var(--header-dropdown-text)] transition-colors hover:text-[var(--header-text-hover)]">All Collections</Link></li>
                           )}
                         </ul>
                         <p className="mb-4 mt-8 text-[10px] font-medium uppercase tracking-lux-sm text-muted-foreground">Explore</p>
                         <ul className="space-y-3">
                           {navLinks.filter((l) => ['/journal', '/about', '/contact'].includes(l.to)).map((link) => (
                             <li key={link.to}>
-                              <Link to={link.to} className="text-sm text-foreground transition-colors hover:text-accent">{link.label}</Link>
+                              <Link to={link.to} className="text-sm text-[var(--header-dropdown-text)] transition-colors hover:text-[var(--header-text-hover)]">{link.label}</Link>
                             </li>
                           ))}
                           {!navLinks.some((l) => l.to === '/journal') && (
-                            <li><Link to="/journal" className="text-sm text-foreground transition-colors hover:text-accent">The Journal</Link></li>
+                            <li><Link to="/journal" className="text-sm text-[var(--header-dropdown-text)] transition-colors hover:text-[var(--header-text-hover)]">The Journal</Link></li>
                           )}
                           {!navLinks.some((l) => l.to === '/about') && (
-                            <li><Link to="/about" className="text-sm text-foreground transition-colors hover:text-accent">Our Maison</Link></li>
+                            <li><Link to="/about" className="text-sm text-[var(--header-dropdown-text)] transition-colors hover:text-[var(--header-text-hover)]">Our Maison</Link></li>
                           )}
                         </ul>
                       </div>
@@ -174,7 +174,7 @@ export function Navbar() {
               </AnimatePresence>
             </div>
             {navLinks.slice(2).map((link) => (
-              <Link key={link.to} to={link.to} className="text-[11px] font-medium uppercase tracking-lux-sm text-foreground transition-colors hover:text-accent">
+              <Link key={link.to} to={link.to} className="text-[11px] font-medium uppercase tracking-lux-sm text-[var(--header-text)] transition-colors hover:text-[var(--header-text-hover)]">
                 {link.label}
               </Link>
             ))}

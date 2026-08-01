@@ -94,7 +94,7 @@ export default function WishlistPage() {
                         type="button"
                         aria-label="Remove from wishlist"
                         onClick={() => remove(String(product._id))}
-                        className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-red-500 shadow-sm transition-transform hover:scale-110"
+                        className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--ice)]/90 text-[hsl(var(--destructive))] shadow-sm transition-transform hover:scale-110"
                       >
                         <Heart className="h-4 w-4 fill-current" />
                       </button>

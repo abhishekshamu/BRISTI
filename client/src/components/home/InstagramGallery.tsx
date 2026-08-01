@@ -54,8 +54,8 @@ export function InstagramGallery({ props }: InstagramGalleryProps) {
                 loading="lazy"
                 className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
               />
-              <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                <Instagram className="h-5 w-5 text-white" />
+              <div className="absolute inset-0 flex items-center justify-center bg-[var(--image-overlay)] opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                <Instagram className="h-5 w-5 text-[var(--on-ink)]" />
               </div>
             </motion.a>
           ))}

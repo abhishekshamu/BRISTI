@@ -44,17 +44,17 @@ export default function CollectionDetailPage() {
 
   return (
     <>
-      <section className="relative flex min-h-[420px] items-end overflow-hidden bg-[#0a0a0a] pb-14 pt-36">
+      <section className="relative flex min-h-[420px] items-end overflow-hidden bg-[var(--ink)] pb-14 pt-36">
         {bannerImage && <img src={bannerImage} alt={collection?.name} className="absolute inset-0 h-full w-full object-cover opacity-50" />}
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/20" />
         <div className="container-lux relative">
           {collectionLoading ? (
-            <div className="h-16 w-2/3 animate-pulse bg-white/20" />
+            <div className="h-16 w-2/3 animate-pulse bg-[var(--on-ink)]/20" />
           ) : (
             <div className="flex flex-col gap-4">
               <span className="text-[11px] font-medium uppercase tracking-lux-sm text-accent">The Collection</span>
-              <h1 className="font-display text-5xl font-medium text-white sm:text-6xl">{collection?.name}</h1>
-              <p className="max-w-2xl text-sm leading-7 text-white/70 sm:text-base">
+              <h1 className="font-display text-5xl font-medium text-[var(--on-ink)] sm:text-6xl">{collection?.name}</h1>
+              <p className="max-w-2xl text-sm leading-7 text-[var(--on-ink-dim)] sm:text-base">
                 {collection?.description ?? collection?.shortDescription}
               </p>
             </div>

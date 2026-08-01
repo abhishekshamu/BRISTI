@@ -27,7 +27,7 @@ export function CampaignBanner() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-60px' }}
           transition={{ duration: 0.8, ease: 'easeOut' }}
-          className="relative aspect-[16/9] overflow-hidden bg-[#0a0a0a] lg:aspect-[21/9]"
+          className="relative aspect-[16/9] overflow-hidden bg-[var(--ink)] lg:aspect-[21/9]"
         >
           <img src={image} alt={props.title || 'Campaign'} className="h-full w-full object-cover" loading="lazy" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
@@ -37,11 +37,11 @@ export function CampaignBanner() {
               {props.eyebrow || 'The New Season'}
               <span className="h-px w-8 bg-accent" />
             </span>
-            <h2 className="max-w-3xl font-display text-4xl font-medium tracking-wide text-white sm:text-5xl lg:text-6xl">
+            <h2 className="max-w-3xl font-display text-4xl font-medium tracking-wide text-[var(--on-ink)] sm:text-5xl lg:text-6xl">
               {props.title || 'Autumn–Winter 2026'}
             </h2>
             {props.description && (
-              <p className="max-w-xl text-sm leading-7 text-white/70 sm:text-base">{props.description}</p>
+              <p className="max-w-xl text-sm leading-7 text-[var(--on-ink-dim)] sm:text-base">{props.description}</p>
             )}
             {props.cta && (
               <Link to={props.cta.to ?? '/collections'} className="btn-lux-gold group mt-2">

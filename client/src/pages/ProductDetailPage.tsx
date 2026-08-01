@@ -207,7 +207,7 @@ export default function ProductDetailPage() {
                       alt={currentImage.alt ?? product.name}
                       className="h-full w-full object-cover transition-transform duration-700 hover:scale-[1.03]"
                     />
-                    <span className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-foreground/70 shadow-sm">
+                    <span className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--ice)]/90 text-foreground/70 shadow-sm">
                       <ZoomIn className="h-4 w-4" />
                     </span>
                   </>

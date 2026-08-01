@@ -47,6 +47,42 @@ export class ThemeController {
     });
   });
 
+  updateActiveTheme = asyncHandler(async (req: Request, res: Response) => {
+    const theme = await this.themeService.updateActiveTheme(req.body);
+    res.status(200).json({
+      success: true,
+      data: theme
+    });
+  });
+
+  resetActiveTheme = asyncHandler(async (req: Request, res: Response) => {
+    const theme = await this.themeService.resetActiveTheme();
+    res.status(200).json({
+      success: true,
+      data: theme
+    });
+  });
+
+  applyPreset = asyncHandler(async (req: Request, res: Response) => {
+    const { name } = req.body;
+    if (!name || !['default', 'dark', 'light'].includes(name)) {
+      return res.status(400).json({ success: false, error: 'Invalid preset name' });
+    }
+    const theme = await this.themeService.applyPreset(name);
+    res.status(200).json({
+      success: true,
+      data: theme
+    });
+  });
+
+  duplicateTheme = asyncHandler(async (req: Request, res: Response) => {
+    const theme = await this.themeService.duplicateTheme();
+    res.status(201).json({
+      success: true,
+      data: theme
+    });
+  });
+
   deleteTheme = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     await this.themeService.deleteTheme(id);

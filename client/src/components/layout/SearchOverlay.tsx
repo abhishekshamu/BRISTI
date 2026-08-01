@@ -54,7 +54,7 @@ export function SearchOverlay() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-[60] flex items-start justify-center bg-black/70 px-4 pt-24 backdrop-blur-sm sm:pt-32"
+          className="fixed inset-0 z-[60] flex items-start justify-center bg-[var(--backdrop-strong)] px-4 pt-24 backdrop-blur-sm sm:pt-32"
           onClick={closeSearch}
         >
           <motion.div
@@ -62,7 +62,7 @@ export function SearchOverlay() {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -24, opacity: 0 }}
             transition={{ duration: 0.25 }}
-            className="w-full max-w-2xl bg-background shadow-2xl"
+            className="w-full max-w-2xl bg-[var(--search-result-bg)] shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
             <form

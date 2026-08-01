@@ -87,7 +87,7 @@ export function Footer() {
   };
 
   return (
-    <footer className="border-t border-border bg-background">
+    <footer className="border-t border-[var(--footer-border)] bg-[var(--footer-background)]">
       <div className="container-lux">
         <div className="grid gap-12 py-16 lg:grid-cols-[1.4fr_1fr_1fr_1fr] lg:py-20">
           <div className="flex flex-col gap-6">
@@ -95,11 +95,11 @@ export function Footer() {
               {showLogoImage ? (
                 <img src={settings?.logo} alt={brandName} className="h-10 w-auto object-contain" />
               ) : (
-                <span className="font-display text-3xl font-semibold tracking-[0.3em] text-foreground">{brandName}</span>
+                <span className="font-display text-3xl font-semibold tracking-[0.3em] text-[var(--footer-heading)]">{brandName}</span>
               )}
-              <span className="mt-2 text-[10px] uppercase tracking-lux text-muted-foreground">{tagline}</span>
+              <span className="mt-2 text-[10px] uppercase tracking-lux text-[var(--footer-text)]">{tagline}</span>
             </Link>
-            <p className="max-w-xs text-sm leading-7 text-muted-foreground">
+            <p className="max-w-xs text-sm leading-7 text-[var(--footer-text)]">
               {settings?.contactInfo?.address || 'Timeless elegance, modern sophistication. A maison devoted to the art of dressing well.'}
             </p>
             <form onSubmit={handleSubscribe} className="mt-2 flex max-w-sm items-stretch">
@@ -114,7 +114,7 @@ export function Footer() {
               <button
                 type="submit"
                 disabled={subscribing}
-                className="flex h-12 items-center gap-2 bg-foreground px-5 text-[11px] font-medium uppercase tracking-lux-sm text-background transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-60"
+                className="flex h-12 items-center gap-2 bg-[var(--footer-heading)] px-5 text-[11px] font-medium uppercase tracking-lux-sm text-[var(--footer-background)] transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-60"
               >
                 {subscribing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
               </button>
@@ -143,14 +143,14 @@ export function Footer() {
 
           {linkColumns.map((column) => (
             <div key={column.title}>
-              <h3 className="mb-6 text-[11px] font-medium uppercase tracking-lux-sm text-foreground">{column.title}</h3>
+              <h3 className="mb-6 text-[11px] font-medium uppercase tracking-lux-sm text-[var(--footer-heading)]">{column.title}</h3>
               <ul className="space-y-3.5">
                 {(column.links?.length ? column.links : [{ label: column.content || '', to: '#' }]).map((link) => (
                   <li key={link.label}>
                     {link.to === '#' ? (
-                      <span className="text-sm text-muted-foreground">{link.label}</span>
+                      <span className="text-sm text-[var(--footer-link)]">{link.label}</span>
                     ) : (
-                      <Link to={link.to} className="text-sm text-muted-foreground transition-colors hover:text-accent">
+                      <Link to={link.to} className="text-sm text-[var(--footer-link)] transition-colors hover:text-[var(--footer-link-hover)]">
                         {link.label}
                       </Link>
                     )}
@@ -161,9 +161,9 @@ export function Footer() {
           ))}
         </div>
 
-        <div className="flex flex-col items-center justify-between gap-4 border-t border-border py-8 sm:flex-row">
-          <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} {brandName}. All rights reserved.</p>
-          <p className="flex items-center gap-2 text-[10px] uppercase tracking-lux-sm text-muted-foreground">
+        <div className="flex flex-col items-center justify-between gap-4 border-t border-[var(--footer-border)] py-8 sm:flex-row">
+          <p className="text-xs text-[var(--footer-text)]">© {new Date().getFullYear()} {brandName}. All rights reserved.</p>
+          <p className="flex items-center gap-2 text-[10px] uppercase tracking-lux-sm text-[var(--footer-text)]">
             Crafted with care <span className="text-accent">✦</span> {tagline}
           </p>
         </div>

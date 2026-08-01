@@ -89,7 +89,7 @@ export function ProductCard({ product, className, eager = false }: { product: Pr
             aria-label={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
             onClick={handleWishlist}
             className={cn(
-              'absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow-sm backdrop-blur transition-all hover:scale-110',
+              'absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--ice)]/90 shadow-sm backdrop-blur transition-all hover:scale-110',
               inWishlist ? 'text-red-500' : 'text-foreground/70 hover:text-foreground',
             )}
           >
