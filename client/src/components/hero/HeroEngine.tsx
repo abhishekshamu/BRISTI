@@ -6,7 +6,7 @@ import { HeroSection } from '@/components/home/HeroSection';
 import type { HeroBlock, HeroPanel, HeroSlide } from '@shared/types';
 
 const HOLD_MS = 4800;
-const SLIDE_MS = 700;
+const SLIDE_MS = 450;
 const DEFAULT_SPEED = 0.7;
 const MAX_PANELS = 3;
 
@@ -33,12 +33,14 @@ function slideHref(slide: HeroSlide): string | undefined {
   return slide.ctaLink;
 }
 
-function useSlideRotator(slides: HeroSlide[], paused: boolean, speed: number) {
+function useSlideRotator(slides: HeroSlide[], paused: boolean, speed: number, initialIndex = 0, phaseOffsetMs = 0) {
   const count = slides.length;
-  const [current, setCurrent] = useState(0);
+  const [current, setCurrent] = useState(() => (count > 0 ? initialIndex % count : 0));
   const [previous, setPrevious] = useState<number | null>(null);
-  const currentRef = useRef(0);
+  const currentRef = useRef(current);
   currentRef.current = current;
+  const firstCycleRef = useRef(true);
+  const phaseOffsetRef = useRef(phaseOffsetMs);
 
   const jumpTo = useCallback(
     (target: number) => {
@@ -57,12 +59,14 @@ function useSlideRotator(slides: HeroSlide[], paused: boolean, speed: number) {
 
   useEffect(() => {
     if (count <= 1) return;
+    const cycleMs = HOLD_MS + Math.max(SLIDE_MS, speed * 1000);
     let timeout: number | undefined;
     const schedule = () => {
       timeout = window.setTimeout(() => {
         jumpTo(currentRef.current + 1);
         schedule();
-      }, HOLD_MS + Math.max(SLIDE_MS, speed * 1000));
+      }, cycleMs + (firstCycleRef.current ? phaseOffsetRef.current : 0));
+      firstCycleRef.current = false;
     };
     if (!paused) schedule();
     return () => {
@@ -132,11 +136,12 @@ interface PanelViewProps {
   overlayOpacity: number;
   gradient: boolean;
   setName: string;
+  phaseOffsetMs: number;
 }
 
-function PanelView({ panel, index, paused, isMobile, speed, overlay, overlayOpacity, gradient, setName }: PanelViewProps) {
+function PanelView({ panel, index, paused, isMobile, speed, overlay, overlayOpacity, gradient, setName, phaseOffsetMs }: PanelViewProps) {
   const slides = panel.slides;
-  const { current, previous, jumpTo } = useSlideRotator(slides, paused, speed);
+  const { current, previous, jumpTo } = useSlideRotator(slides, paused, speed, index, phaseOffsetMs);
   const slide = slides[current] ?? slides[0];
   const href = slideHref(slide);
   const altText = slide.altText || slide.heading || panel.label || `${setName} panel ${index + 1}`;
@@ -293,6 +298,7 @@ function MobileCarousel({ panels, paused, speed, overlay, overlayOpacity, gradie
               overlayOpacity={overlayOpacity}
               gradient={gradient}
               setName={setName}
+              phaseOffsetMs={(index * 700) % 5500}
             />
           </div>
         ))}
@@ -362,7 +368,13 @@ export function HeroEngine() {
   const gradient = set?.gradient ?? true;
 
   return (
-    <section ref={sectionRef} className="hero-engine" aria-label={name}>
+    <section
+      ref={sectionRef}
+      className="hero-engine"
+      aria-label={name}
+      onTouchStart={() => applyPaused(true)}
+      onTouchEnd={() => applyPaused(false)}
+    >
       {isMobile ? (
         <MobileCarousel
           panels={panels}
@@ -387,6 +399,7 @@ export function HeroEngine() {
               overlayOpacity={overlayOpacity}
               gradient={gradient}
               setName={name}
+              phaseOffsetMs={(index * 700) % 5500}
             />
           ))}
         </div>
