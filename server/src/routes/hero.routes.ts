@@ -1,0 +1,23 @@
+import { Router } from 'express';
+import { HeroController } from '../controllers/hero.controller';
+import { HeroService } from '../services/hero.service';
+import { protect, authorize } from '../middleware/auth.middleware';
+import { validate } from '../validators/index';
+import { createHeroValidation, updateHeroValidation, heroIdValidation } from '../validators/hero.validators';
+
+const router = Router();
+const heroController = new HeroController(new HeroService());
+
+// Public: active published blocks for the storefront hero
+router.get('/', heroController.getActiveBlocks);
+
+// Admin routes
+router.get('/all', protect, authorize('admin'), heroController.getAllBlocks);
+router.post('/', protect, authorize('admin'), createHeroValidation, validate, heroController.createBlock);
+router.post('/reorder', protect, authorize('admin'), heroController.reorderBlocks);
+router.get('/:id', protect, authorize('admin'), heroIdValidation, validate, heroController.getBlockById);
+router.put('/:id', protect, authorize('admin'), updateHeroValidation, validate, heroController.updateBlock);
+router.delete('/:id', protect, authorize('admin'), heroIdValidation, validate, heroController.deleteBlock);
+router.post('/:id/duplicate', protect, authorize('admin'), heroIdValidation, validate, heroController.duplicateBlock);
+
+export default router;

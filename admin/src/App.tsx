@@ -42,6 +42,8 @@ import Settings from './pages/settings/Settings';
 import Roles from './pages/roles/Roles';
 import AuditLogs from './pages/audit/AuditLogs';
 import NotFound from './pages/auth/NotFound';
+import HeroManager from './pages/hero/HeroManager';
+import HeroEdit from './pages/hero/HeroEdit';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth();
@@ -101,6 +103,9 @@ function App() {
         <Route path="faqs/create" element={<FaqCreate />} />
         <Route path="faqs/:id/edit" element={<FaqEdit />} />
         <Route path="theme/homepage-builder" element={<HomepageBuilder />} />
+        <Route path="hero" element={<HeroManager />} />
+        <Route path="hero/create" element={<HeroEdit />} />
+        <Route path="hero/:id/edit" element={<HeroEdit />} />
         <Route path="theme/page-builder" element={<PageBuilder />} />
         <Route path="theme/editor" element={<ThemeEditor />} />
         <Route path="theme/typography" element={<TypographyEditor />} />

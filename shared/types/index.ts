@@ -223,6 +223,54 @@ export interface Collection {
   updatedAt?: Date;
 }
 
+export type HeroLinkType = 'collection' | 'category' | 'product' | 'custom';
+export type HeroContentAlignment = 'left' | 'center' | 'right';
+export type HeroAnimationStyle = 'slide' | 'fade' | 'kenburns';
+export type HeroBlockStatus = 'draft' | 'published';
+
+export interface HeroButton {
+  label?: string;
+  linkType?: HeroLinkType;
+  link?: string;
+}
+
+export interface HeroVisibility {
+  desktop: boolean;
+  tablet: boolean;
+  mobile: boolean;
+}
+
+export interface HeroBlock {
+  _id: any;
+  title: string;
+  subtitle?: string;
+  description?: string;
+  image?: string;
+  video?: string;
+  badge?: string;
+  primaryButton?: HeroButton;
+  secondaryButton?: HeroButton;
+  overlay: boolean;
+  overlayOpacity: number;
+  gradient: boolean;
+  contentAlignment: HeroContentAlignment;
+  textColor?: string;
+  buttonColor?: string;
+  accentColor?: string;
+  animationStyle: HeroAnimationStyle;
+  animationSpeed: number;
+  visibility: HeroVisibility;
+  priority: number;
+  seoLabel?: string;
+  altText?: string;
+  status: HeroBlockStatus;
+  isActive: boolean;
+  scheduledStart?: Date;
+  scheduledEnd?: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export interface User {
   _id: any;
   email: string;

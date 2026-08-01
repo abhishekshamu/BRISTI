@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useSiteSettings } from '@/context/SettingsContext';
-import { HeroSection } from '@/components/home/HeroSection';
+import { HeroEngine } from '@/components/hero/HeroEngine';
 import { ValueProps } from '@/components/home/ValueProps';
 import { LuxuryCategories } from '@/components/home/LuxuryCategories';
 import { FeaturedCollections } from '@/components/home/FeaturedCollections';
@@ -37,7 +37,7 @@ type SectionKey = (typeof STATIC_ORDER)[number];
 
 function Section({ type, props }: { type: SectionKey; props?: Record<string, any> }) {
   switch (type) {
-    case 'hero': return <HeroSection />;
+    case 'hero': return <HeroEngine />;
     case 'valueProps': return <ValueProps props={props} />;
     case 'luxuryCategories': return <LuxuryCategories />;
     case 'featuredCollections': return <FeaturedCollections />;

@@ -487,3 +487,77 @@
 .prose-lux-card > :first-child {
   @apply mt-0;
 }
+
+/* ===== Hero Engine (CMS-driven) ===== */
+.hero-engine {
+  position: relative;
+  height: 92vh;
+  overflow: hidden;
+  background: var(--ink, #0a0a0a);
+  --hero-visible: 5;
+  cursor: grab;
+}
+.hero-engine:active { cursor: grabbing; }
+@media (max-width: 1023px) {
+  .hero-engine { --hero-visible: 3; }
+}
+@media (max-width: 639px) {
+  .hero-engine { --hero-visible: 1; height: 80vh; }
+}
+
+.hero-engine__track {
+  display: flex;
+  height: 100%;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+  user-select: none;
+}
+
+.hero-engine__panel {
+  position: relative;
+  flex: 0 0 auto;
+  width: calc(100% / var(--hero-visible));
+  height: 100%;
+  overflow: hidden;
+  background: var(--ink, #0a0a0a);
+}
+
+.hero-engine__media {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  will-change: transform;
+}
+
+.hero-engine__kenburns {
+  animation: hero-kenburns 16s ease-out forwards;
+}
+@keyframes hero-kenburns {
+  from { transform: scale(1.02); }
+  to { transform: scale(1.14); }
+}
+
+.hero-engine__shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, #161616 8%, #232323 18%, #161616 33%);
+  background-size: 200% 100%;
+  animation: hero-shimmer 1.6s linear infinite;
+}
+@keyframes hero-shimmer {
+  to { background-position-x: -200%; }
+}
+
+.hero-engine__content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(2rem, 6vw, 6rem);
+  z-index: 2;
+  pointer-events: none;
+}
+.hero-engine__content a { pointer-events: auto; }

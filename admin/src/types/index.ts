@@ -81,6 +81,37 @@ export interface Collection {
   updatedAt?: string;
 }
 
+export interface HeroBlock {
+  _id: string;
+  title: string;
+  subtitle?: string;
+  description?: string;
+  image?: string;
+  video?: string;
+  badge?: string;
+  primaryButton?: { label?: string; linkType?: 'collection' | 'category' | 'product' | 'custom'; link?: string };
+  secondaryButton?: { label?: string; linkType?: 'collection' | 'category' | 'product' | 'custom'; link?: string };
+  overlay: boolean;
+  overlayOpacity: number;
+  gradient: boolean;
+  contentAlignment: 'left' | 'center' | 'right';
+  textColor?: string;
+  buttonColor?: string;
+  accentColor?: string;
+  animationStyle: 'slide' | 'fade' | 'kenburns';
+  animationSpeed: number;
+  visibility: { desktop: boolean; tablet: boolean; mobile: boolean };
+  priority: number;
+  seoLabel?: string;
+  altText?: string;
+  status: 'draft' | 'published';
+  isActive: boolean;
+  scheduledStart?: string;
+  scheduledEnd?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Coupon {
   _id: string;
   code: string;
