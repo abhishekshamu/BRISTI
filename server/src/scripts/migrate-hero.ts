@@ -25,6 +25,10 @@ async function run() {
       doc.gradient = false;
       changed = true;
     }
+    if (doc.animationSpeed === undefined) {
+      doc.animationSpeed = 4.5;
+      changed = true;
+    }
 
     const slides = Array.isArray(doc.slides) && doc.slides.length > 0
       ? doc.slides
@@ -88,6 +92,10 @@ async function run() {
       }
       if (slide.buttonColor === undefined) {
         slide.buttonColor = '';
+        changed = true;
+      }
+      if (slide.animationSpeed === undefined) {
+        slide.animationSpeed = 4.5;
         changed = true;
       }
       if (slide.priority === undefined) {

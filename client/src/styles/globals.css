@@ -488,11 +488,13 @@
   @apply mt-0;
 }
 
-/* ===== Hero Engine (Snitch-style editorial strip) ===== */
-/* Desktop window zones: preview ~9% | main ~41% | main ~41% | preview ~9%.
-   The uniform-seat track slides right beneath the window; the two center
-   zones are the "main" slots (text only there), the outer zones are
-   image-only preview peeks. */
+
+/* ===== Hero Engine — editorial stage (large center cards + edge previews) ===== */
+/* Desktop/tablet window: preview peek | main card | main card | preview peek.
+   The two center cards are large (pair centered, ~80vw), the outer cards are
+   image-only slivers. Mobile: one main card with previous/next peeking.
+   All motion is GSAP-driven (translate3d + rAF ticker); no CSS animations. */
+
 .hx-hero {
   position: relative;
   width: 100vw;
@@ -507,23 +509,25 @@
   .hx-hero { height: 70vh; }
 }
 
-/* Strip: uniform seats translate3d beneath the editorial window */
-.hx-track {
+.hx-stage {
   position: absolute;
   inset: 0;
-  display: flex;
-  height: 100%;
+  overflow: hidden;
+}
+
+/* Seat geometry comes from the engine (--hx-w / --hx-h on the section root);
+   601x751 aspect ratio is preserved at every breakpoint. */
+.hx-seat {
+  position: absolute;
+  left: 0;
+  top: calc((100% - var(--hx-h)) / 2);
+  width: var(--hx-w);
+  height: var(--hx-h);
+  aspect-ratio: 601 / 751;
   will-change: transform;
   transform: translate3d(0, 0, 0);
-}
-.hx-track--desktop .hx-seat { flex: 0 0 25%; }
-.hx-track--tablet .hx-seat { flex: 0 0 33.3333%; }
-.hx-track--mobile .hx-seat { flex: 0 0 100%; }
-
-.hx-seat {
-  position: relative;
-  height: 100%;
-  min-width: 0;
+  background: var(--ink, #0a0a0a);
+  overflow: hidden;
 }
 
 .hx-card {
@@ -541,9 +545,9 @@
   position: absolute;
   inset: 0;
   overflow: hidden;
-  background: var(--ink, #0a0a0a);
 }
-.hx-card__media {
+.hx-card__media,
+.hx-card__video {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -551,46 +555,40 @@
   object-fit: cover;
   object-position: center;
   opacity: 0;
-  transition: opacity 0.8s ease;
+  transition: opacity 0.7s ease;
+  will-change: transform;
 }
-.hx-card__media.is-loaded { opacity: 1; }
-.hx-card__kenburns {
-  animation: hx-kenburns 18s ease-out forwards;
+.hx-card__media.is-loaded,
+.hx-card__video.is-loaded {
+  opacity: 1;
 }
-@keyframes hx-kenburns {
-  from { transform: scale(1.02); }
-  to { transform: scale(1.14); }
-}
-
 .hx-card__shimmer {
   position: absolute;
   inset: 0;
-  background: linear-gradient(110deg, #161616 8%, #232323 18%, #161616 33%);
+  background: linear-gradient(110deg, #141414 8%, #1f1f1f 18%, #141414 33%);
   background-size: 200% 100%;
-  animation: hx-shimmer 1.6s linear infinite;
 }
-@keyframes hx-shimmer {
-  to { background-position-x: -200%; }
-}
-
 .hx-card__overlay {
   position: absolute;
   inset: 0;
+  opacity: 0;
+  background: #000;
 }
-
 .hx-card__gradient {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to bottom, transparent 60%, rgba(0, 0, 0, 0.35) 100%);
+  opacity: 0;
+  background: linear-gradient(to bottom, transparent 55%, rgba(0, 0, 0, 0.45) 100%);
 }
 
-/* Content is baked into every seat but only surfaces on the two center
-   active cards (gate class `--on`); preview peeks stay text-free. */
+/* Content is baked into every seat (SEO-friendly) but only surfaces on the
+   active main cards — visibility toggles via the `is-main` class, opacity and
+   entrance/exit are driven by GSAP. Preview peeks stay image-only. */
 .hx-card__content {
   position: absolute;
   left: 7%;
   right: 7%;
-  bottom: 7%;
+  bottom: 6%;
   z-index: 2;
   display: flex;
   flex-direction: column;
@@ -599,11 +597,12 @@
   pointer-events: none;
   overflow-wrap: break-word;
 }
-.hx-card__content--on {
+.hx-card__content.is-main {
   visibility: visible;
-  opacity: 1;
 }
-.hx-card__content a { pointer-events: auto; }
+.hx-card__content a {
+  pointer-events: auto;
+}
 
 .hx-card__eyebrow {
   display: flex;
@@ -633,9 +632,9 @@
   max-width: 100%;
   overflow-wrap: break-word;
 }
-.hx-track--desktop .hx-card__title { font-size: clamp(1.4rem, 2.5vw, 3rem); }
-.hx-track--tablet .hx-card__title { font-size: clamp(1.5rem, 3.2vw, 2.6rem); }
-.hx-track--mobile .hx-card__title { font-size: clamp(2rem, 9vw, 3.2rem); line-height: 1.02; }
+.hx-hero--desktop .hx-card__title { font-size: clamp(1.5rem, 2.4vw, 3.1rem); }
+.hx-hero--tablet .hx-card__title { font-size: clamp(1.5rem, 3vw, 2.6rem); }
+.hx-hero--mobile .hx-card__title { font-size: clamp(2rem, 9vw, 3.2rem); line-height: 1.02; }
 
 .hx-card__description {
   margin-top: 0.8rem;
@@ -647,9 +646,9 @@
   opacity: 0.92;
   overflow-wrap: break-word;
 }
-.hx-track--desktop .hx-card__description { font-size: clamp(0.72rem, 0.85vw, 1rem); }
-.hx-track--tablet .hx-card__description { font-size: clamp(0.8rem, 1.2vw, 1.05rem); }
-.hx-track--mobile .hx-card__description { font-size: clamp(0.9rem, 3.4vw, 1.1rem); }
+.hx-hero--desktop .hx-card__description { font-size: clamp(0.72rem, 0.85vw, 1rem); }
+.hx-hero--tablet .hx-card__description { font-size: clamp(0.8rem, 1.2vw, 1.05rem); }
+.hx-hero--mobile .hx-card__description { font-size: clamp(0.9rem, 3.4vw, 1.1rem); }
 
 .hx-card__cta-wrap {
   margin-top: 1.25rem;
@@ -677,26 +676,7 @@
   background: rgba(255, 255, 255, 0.14);
   border-color: #ffffff;
 }
-.hx-track--mobile .hx-card__cta { padding: 0.95rem 2.2rem; font-size: 0.78rem; }
-
-/* Entrance: IO-driven inView class (`--in`) triggers the staggered
-   content reveal whenever a card's content intersects the hero window */
-.hx-card__content--in .hx-card__eyebrow,
-.hx-card__content--in .hx-card__title,
-.hx-card__content--in .hx-card__description,
-.hx-card__content--in .hx-card__cta,
-.hx-card__content--in > div {
-  animation: hx-content-enter 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-.hx-card__content--in .hx-card__eyebrow,
-.hx-card__content--in .hx-card__title { animation-delay: 0.1s; }
-.hx-card__content--in .hx-card__description { animation-delay: 0.18s; }
-.hx-card__content--in .hx-card__cta,
-.hx-card__content--in > div { animation-delay: 0.28s; }
-@keyframes hx-content-enter {
-  from { opacity: 0; transform: translateY(14px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+.hx-hero--mobile .hx-card__cta { padding: 0.95rem 2.2rem; font-size: 0.78rem; }
 
 .hx-dashes {
   position: absolute;
@@ -710,23 +690,25 @@
   z-index: 3;
 }
 .hx-dash {
-  width: 20px;
-  height: 3px;
+  width: 22px;
+  height: 2px;
   border: 0;
   padding: 0;
   border-radius: 2px;
-  background: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.35);
   transition: width 0.3s ease, background 0.3s ease;
   cursor: pointer;
 }
 .hx-dash:hover { background: rgba(255, 255, 255, 0.7); }
-.hx-dash.is-active { width: 32px; background: #ffffff; }
+.hx-dash.is-active { width: 40px; background: #ffffff; }
+.hx-dash:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.8);
+  outline-offset: 2px;
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .hx-card__content--in .hx-card__eyebrow,
-  .hx-card__content--in .hx-card__title,
-  .hx-card__content--in .hx-card__description,
-  .hx-card__content--in .hx-card__cta,
-  .hx-card__content--in > div { animation: none; }
-  .hx-card__kenburns { animation: none; }
+  .hx-card__media,
+  .hx-card__video {
+    transition: none;
+  }
 }

@@ -203,7 +203,7 @@ export default function HeroManager() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Hero Manager</h2>
-          <p className="text-slate-500 dark:text-slate-400">Hero sets drive the homepage strip — 5 blocks per view on desktop, 3 on tablet, 1 swipeable on mobile. Drag to reorder, publish per set/block. Changes go live instantly.</p>
+          <p className="text-slate-500 dark:text-slate-400">Hero sets drive the homepage editorial stage — two large centre cards with image-only previews at the edges (desktop/tablet), one main card with side previews on mobile. Drag to reorder, publish per set/block. Changes go live instantly.</p>
         </div>
         <Link to="/hero/create" className="admin-btn-primary py-2.5 px-4 flex items-center">
           <Plus className="w-4 h-4 mr-2" />

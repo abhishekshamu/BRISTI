@@ -85,7 +85,7 @@ const emptyBlock = (): BlockForm => ({
   gradient: false,
   textAlign: 'left',
   buttonColor: '',
-  animationSpeed: 0.7,
+  animationSpeed: 4.5,
   priority: 0,
   visibilityDesktop: true,
   visibilityTablet: true,
@@ -102,7 +102,7 @@ const emptySet = (): SetForm => ({
   status: 'draft',
   isActive: true,
   priority: 0,
-  animationSpeed: 0.7,
+  animationSpeed: 4.5,
   blocks: [emptyBlock()],
 });
 
@@ -145,7 +145,7 @@ function fromSlide(s: any, localId?: string): BlockForm {
     gradient: s.gradient ?? false,
     textAlign: s.textAlign ?? 'left',
     buttonColor: s.buttonColor ?? '',
-    animationSpeed: s.animationSpeed ?? 0.7,
+    animationSpeed: s.animationSpeed ?? 4.5,
     priority: s.priority ?? 0,
     visibilityDesktop: s.visibility?.desktop ?? true,
     visibilityTablet: s.visibility?.tablet ?? true,
@@ -397,7 +397,7 @@ export default function HeroEdit() {
           <div>
             <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{isEdit ? 'Edit' : 'Add'} Hero Set</h2>
             <p className="text-slate-500 dark:text-slate-400">
-              Blocks feed the infinite strip: 5 per view on desktop, 3 on tablet, 1 (swipeable) on mobile. Storefront updates instantly.
+              Blocks feed the editorial stage: two large center cards with image-only previews peeking at the edges (desktop/tablet), one main card with side previews on mobile. Storefront updates instantly.
             </p>
           </div>
         </div>
@@ -478,8 +478,9 @@ export default function HeroEdit() {
             <input type="number" value={form.priority} onChange={(e) => updateSet({ priority: Number(e.target.value) })} className="admin-input mt-1" />
           </div>
           <div>
-            <label className="admin-label">Default transition speed (seconds, 0.3–4)</label>
-            <input type="number" step="0.1" min="0.3" max="4" value={form.animationSpeed} onChange={(e) => updateSet({ animationSpeed: Number(e.target.value) })} className="admin-input mt-1" />
+            <label className="admin-label">Default hold duration (seconds, 0.3–5)</label>
+            <input type="number" step="0.1" min="0.3" max="5" value={form.animationSpeed} onChange={(e) => updateSet({ animationSpeed: Number(e.target.value) })} className="admin-input mt-1" />
+            <p className="text-xs text-slate-400 mt-1">How long each card stays before the next slide. Recommended: 4–5s.</p>
           </div>
         </div>
       </div>
@@ -675,23 +676,24 @@ export default function HeroEdit() {
                 </select>
               </div>
               <div>
-                <label className="admin-label">Transition speed (seconds, 0.3–4)</label>
-                <input type="number" step="0.1" min="0.3" max="4" value={block.animationSpeed} onChange={(e) => updateBlock(idx, { animationSpeed: Number(e.target.value) })} className="admin-input mt-1" />
+                <label className="admin-label">Hold duration (seconds, 0.3–5)</label>
+                <input type="number" step="0.1" min="0.3" max="5" value={block.animationSpeed} onChange={(e) => updateBlock(idx, { animationSpeed: Number(e.target.value) })} className="admin-input mt-1" />
+                <p className="text-xs text-slate-400 mt-1">Wait before sliding to the next card. Recommended: 4–5s.</p>
               </div>
               <div>
                 <label className="admin-label">Visibility</label>
                 <div className="flex flex-col gap-1.5 mt-2 text-sm text-slate-600 dark:text-slate-400">
                   <label className="flex items-center gap-2">
                     <input type="checkbox" checked={block.visibilityDesktop} onChange={(e) => updateBlock(idx, { visibilityDesktop: e.target.checked })} className="w-3.5 h-3.5" />
-                    Desktop (5-up)
+                    Desktop
                   </label>
                   <label className="flex items-center gap-2">
                     <input type="checkbox" checked={block.visibilityTablet} onChange={(e) => updateBlock(idx, { visibilityTablet: e.target.checked })} className="w-3.5 h-3.5" />
-                    Tablet (3-up)
+                    Tablet
                   </label>
                   <label className="flex items-center gap-2">
                     <input type="checkbox" checked={block.visibilityMobile} onChange={(e) => updateBlock(idx, { visibilityMobile: e.target.checked })} className="w-3.5 h-3.5" />
-                    Mobile (1-up)
+                    Mobile
                   </label>
                 </div>
               </div>

@@ -44,7 +44,7 @@ const HeroSlideSchema = new Schema(
       default: 'left' as const,
     },
     buttonColor: { type: String, trim: true },
-    animationSpeed: { type: Number, min: 0.3, max: 4 },
+    animationSpeed: { type: Number, min: 0.3, max: 5 },
     priority: { type: Number, default: 0 },
     visibility: {
       desktop: { type: Boolean, default: true },
@@ -130,9 +130,9 @@ const HeroBlockSchema: Schema = new Schema(
     },
     animationSpeed: {
       type: Number,
-      default: 0.7,
+      default: 4.5,
       min: 0.3,
-      max: 4,
+      max: 5,
     },
     priority: {
       type: Number,
