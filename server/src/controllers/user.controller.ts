@@ -60,4 +60,26 @@ export class UserController {
   updatePreferences = asyncHandler(async (req: Request, res: Response) => {
     res.json({ success: true, data: await this.userService.updatePreferences(req.user!.id, req.body) });
   });
+
+  listCustomers = asyncHandler(async (req: Request, res: Response) => {
+    const { page = 1, limit = 20, search } = req.query;
+    const result = await this.userService.listCustomers({
+      page: parseInt(page as string),
+      limit: parseInt(limit as string),
+      search: search as string | undefined,
+    });
+    res.status(200).json({ success: true, data: result });
+  });
+
+  getCustomerById = asyncHandler(async (req: Request, res: Response) => {
+    res.status(200).json({ success: true, data: await this.userService.getCustomerById(req.params.id) });
+  });
+
+  updateCustomerStatus = asyncHandler(async (req: Request, res: Response) => {
+    const { status } = req.body;
+    if (!status) {
+      throw new ValidationError('Please provide a status');
+    }
+    res.status(200).json({ success: true, data: await this.userService.updateCustomerStatus(req.params.id, status) });
+  });
 }

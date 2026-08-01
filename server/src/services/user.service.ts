@@ -103,5 +103,29 @@ export class UserService {
     const updated: any = await this.userRepo.updatePreferences(userId, { ...user.preferences?.toObject?.(), ...user.preferences, ...preferences });
     return updated.preferences;
   }
+
+  async listCustomers(options: any = {}): Promise<any> {
+    return this.userRepo.listCustomers(options);
+  }
+
+  async getCustomerById(customerId: string): Promise<any> {
+    const customer = await this.userRepo.findById(customerId);
+    if (!customer || customer.role !== 'customer') {
+      throw new NotFoundError('Customer not found');
+    }
+    return customer.toObject();
+  }
+
+  async updateCustomerStatus(customerId: string, status: string): Promise<any> {
+    if (!['active', 'suspended', 'deleted'].includes(status)) {
+      throw new ValidationError('Invalid customer status');
+    }
+    const customer = await this.userRepo.findById(customerId);
+    if (!customer || customer.role !== 'customer') {
+      throw new NotFoundError('Customer not found');
+    }
+    const updated = await this.userRepo.updateById(customerId, { status });
+    return updated.toObject();
+  }
 }
 

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { UserController } from '../controllers/user.controller';
 import { UserService } from '../services/user.service';
 import { UserRepository } from '../repositories/user.repository';
-import { protect } from '../middleware/auth.middleware';
+import { protect, authorize } from '../middleware/auth.middleware';
 import { validateRequest } from '../validators';
 import { addressIdValidation, createAddressValidation, preferencesValidation, updateAddressValidation, updateProfileValidation } from '../validators/user.validators';
 
@@ -11,6 +11,10 @@ const userService = new UserService(userRepo);
 const userController = new UserController(userService);
 
 const router = Router();
+
+router.get('/customers', protect, authorize('admin'), userController.listCustomers);
+router.get('/customers/:id', protect, authorize('admin'), userController.getCustomerById);
+router.put('/customers/:id/status', protect, authorize('admin'), userController.updateCustomerStatus);
 
 router.get('/profile', protect, userController.getProfile);
 router.put('/profile', protect, updateProfileValidation, validateRequest, userController.updateProfile);

@@ -11,6 +11,7 @@ import Categories from './pages/categories/Categories';
 import Collections from './pages/collections/Collections';
 import Orders from './pages/orders/Orders';
 import OrderDetail from './pages/orders/OrderDetail';
+import Customers from './pages/customers/Customers';
 import Inventory from './pages/inventory/Inventory';
 import Coupons from './pages/coupons/Coupons';
 import MediaManager from './pages/media/MediaManager';
@@ -84,6 +85,7 @@ function App() {
         <Route path="collections/:id/edit" element={<CollectionEdit />} />
         <Route path="orders" element={<Orders />} />
         <Route path="orders/:id" element={<OrderDetail />} />
+        <Route path="customers" element={<Customers />} />
         <Route path="inventory" element={<Inventory />} />
         <Route path="coupons" element={<Coupons />} />
         <Route path="coupons/create" element={<CouponCreate />} />

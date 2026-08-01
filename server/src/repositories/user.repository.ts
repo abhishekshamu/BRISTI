@@ -19,6 +19,23 @@ export class UserRepository extends BaseRepository<any> {
     return this.findMany({ status: 'active' }, options);
   }
 
+  async listCustomers(options: { page?: number; limit?: number; search?: string; sort?: any } = {}): Promise<any> {
+    const filter: any = { role: 'customer' };
+    if (options.search) {
+      const regex = new RegExp(options.search, 'i');
+      filter.$or = [
+        { firstName: { $regex: regex } },
+        { lastName: { $regex: regex } },
+        { email: { $regex: regex } },
+      ];
+    }
+    return this.paginate(filter, {
+      page: options.page,
+      limit: options.limit,
+      sort: options.sort ?? { createdAt: -1 },
+    });
+  }
+
   async findByRole(role: string, options: any = {}): Promise<IUser[]> {
     return this.findMany({ role }, options);
   }

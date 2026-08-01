@@ -75,13 +75,15 @@ export class OrderController {
   });
 
   getAllOrders = asyncHandler(async (req: Request, res: Response) => {
-    const { page = 1, limit = 20, status, paymentStatus } = req.query;
+    const { page = 1, limit = 20, status, paymentStatus, customer } = req.query;
     const options: any = {
       page: parseInt(page as string),
       limit: parseInt(limit as string),
       sort: { createdAt: -1 }
     };
-    const result = await this.orderService.getAllOrders({ status, paymentStatus }, options);
+    const filter: any = { status, paymentStatus };
+    if (customer) filter.userId = customer;
+    const result = await this.orderService.getAllOrders(filter, options);
 
     res.status(200).json({
       success: true,

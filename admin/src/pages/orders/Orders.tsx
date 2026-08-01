@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Search, Filter, Eye, MoreHorizontal } from 'lucide-react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
@@ -27,15 +27,20 @@ export default function Orders() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [searchParams] = useSearchParams();
+  const customerFilter = searchParams.get('customer');
 
   useEffect(() => {
     fetchOrders();
-  }, [page, statusFilter]);
+  }, [page, statusFilter, customerFilter]);
 
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/orders/all?page=${page}&limit=20${statusFilter !== 'all' ? `&status=${statusFilter}` : ''}`);
+      const params: string[] = [`page=${page}`, 'limit=20'];
+      if (statusFilter !== 'all') params.push(`status=${statusFilter}`);
+      if (customerFilter) params.push(`customer=${customerFilter}`);
+      const response = await api.get(`/orders/all?${params.join('&')}`);
       setOrders(response.data.data);
       setTotalPages(response.data.pagination?.pages || 1);
     } catch (error) {

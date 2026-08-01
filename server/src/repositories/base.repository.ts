@@ -1,5 +1,15 @@
 import { Model, FilterQuery, UpdateQuery, QueryOptions } from 'mongoose';
 
+function stripUndefined(obj: any): any {
+  if (!obj || typeof obj !== 'object') return obj;
+  const cleaned: any = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value === undefined) continue;
+    cleaned[key] = value;
+  }
+  return cleaned;
+}
+
 export abstract class BaseRepository<T> {
   constructor(protected model: Model<any>) {}
 
@@ -13,7 +23,7 @@ export abstract class BaseRepository<T> {
   }
 
   async findOne(filter: FilterQuery<T>, session?: any): Promise<T | null> {
-    return (await this.model.findOne(filter).session(session ?? null).exec()) as T | null;
+    return (await this.model.findOne(stripUndefined(filter)).session(session ?? null).exec()) as T | null;
   }
 
   async findMany(
@@ -21,7 +31,7 @@ export abstract class BaseRepository<T> {
     options: QueryOptions = {},
     session?: any
   ): Promise<T[]> {
-    return (await this.model.find(filter, {}, { ...options, session }).exec()) as T[];
+    return (await this.model.find(stripUndefined(filter), {}, { ...options, session }).exec()) as T[];
   }
 
   async updateById(id: string, data: UpdateQuery<T>, session?: any): Promise<T | null> {
@@ -60,11 +70,11 @@ export abstract class BaseRepository<T> {
   }
 
   async count(filter: FilterQuery<T> = {}): Promise<number> {
-    return this.model.countDocuments(filter);
+    return this.model.countDocuments(stripUndefined(filter));
   }
 
   async paginate(
-    filter: FilterQuery<T> = {},
+    filterRaw: FilterQuery<T> = {},
     options: {
       page?: number;
       limit?: number;
@@ -78,6 +88,8 @@ export abstract class BaseRepository<T> {
     limit: number;
     pages: number;
   }> {
+    const filter = stripUndefined(filterRaw);
+
     const page = options.page ?? 1;
     const limit = options.limit ?? 10;
     const skip = (page - 1) * limit;
