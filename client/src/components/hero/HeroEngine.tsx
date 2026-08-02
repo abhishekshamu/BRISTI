@@ -18,9 +18,9 @@ const RATIO = 601 / 751;
 type ViewportKey = 'desktop' | 'tablet' | 'mobile';
 
 const CONFIG: Record<ViewportKey, { gap: number; cardFactor: number; vPad: number }> = {
-  desktop: { gap: 16, cardFactor: 0.4, vPad: 28 },
+  desktop: { gap: 16, cardFactor: 0.47, vPad: 20 },
   tablet: { gap: 12, cardFactor: 0.4, vPad: 24 },
-  mobile: { gap: 8, cardFactor: 0.72, vPad: 16 },
+  mobile: { gap: 6, cardFactor: 0.78, vPad: 16 },
 };
 
 const mod = (a: number, b: number) => ((a % b) + b) % b;
@@ -217,6 +217,11 @@ export function HeroEngine() {
     layoutRef.current = { w, h, gap: cfg.gap, step, offset0, cardW };
     root.style.setProperty('--hx-w', `${cardW}px`);
     root.style.setProperty('--hx-h', `${cardH}px`);
+    if (vp === 'mobile') {
+      root.style.height = `${(w * cfg.cardFactor) / RATIO + cfg.vPad * 2}px`;
+    } else {
+      root.style.removeProperty('height');
+    }
   }, []);
 
   const applyLayout = useCallback((pos: number) => {

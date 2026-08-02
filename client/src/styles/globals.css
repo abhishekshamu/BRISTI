@@ -489,21 +489,34 @@
 }
 
 
-/* ===== Hero Engine — editorial stage (large center cards + edge previews) ===== */
+/* ===== Hero Engine : editorial stage (large center cards + edge previews) ===== */
 /* Desktop/tablet window: preview peek | main card | main card | preview peek.
-   The two center cards are large (pair centered, ~80vw), the outer cards are
-   image-only slivers. Mobile: one main card with previous/next peeking.
-   All motion is GSAP-driven (translate3d + rAF ticker); no CSS animations. */
+   The two center cards are large (pair centered), the outer cards are
+   image-only slivers. Every card keeps a fixed gap (desktop 16px,
+   tablet 12px, mobile 6px) driven by the engine's translate3d layout.
+   Outer margins: the hero spans the full viewport; the stage is inset
+   10px (desktop), 16px (tablet), 12px (mobile) so cards keep a slim
+   premium margin from the browser edges. The hero starts directly BELOW
+   the full fixed header (announcement bar + navbar) with 0px gap; the top
+   offset uses the actual header height (27px constant = announcement bar
+   + header border) so the hero sits flush under the header with no overlap.
+   Mobile: one main card with narrow 6px-gap preview peeks, 12px side
+   container padding, and the height auto-fitted to the card (no white space).
+   All motion is GSAP-driven (translate3d + rAF ticker); no CSS animations.
+   The hero container sits BELOW the fixed header (announcement bar + navbar)
+   via margin-top; nothing overlays it. */
 
 .hx-hero {
   position: relative;
   width: 100vw;
   height: 90vh;
   overflow: hidden;
-  background: var(--ink, #0a0a0a);
+  background: #ffffff;
+  margin-top: calc(var(--header-height, 80px) + 27px);
 }
 @media (max-width: 1023px) {
-  .hx-hero { height: 80vh; }
+  .hx-hero { height: 80vh; margin-top: calc(64px + 27px); }
+  .hx-stage { left: 16px; right: 16px; }
 }
 @media (max-width: 767px) {
   .hx-hero { height: 70vh; }
@@ -511,7 +524,10 @@
 
 .hx-stage {
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 10px;
+  right: 10px;
   overflow: hidden;
 }
 
@@ -582,7 +598,7 @@
 }
 
 /* Content is baked into every seat (SEO-friendly) but only surfaces on the
-   active main cards — visibility toggles via the `is-main` class, opacity and
+   active main cards ï¿½ visibility toggles via the `is-main` class, opacity and
    entrance/exit are driven by GSAP. Preview peeks stay image-only. */
 .hx-card__content {
   position: absolute;
@@ -695,15 +711,20 @@
   border: 0;
   padding: 0;
   border-radius: 2px;
-  background: rgba(255, 255, 255, 0.35);
+  background: rgba(10, 10, 10, 0.35);
   transition: width 0.3s ease, background 0.3s ease;
   cursor: pointer;
 }
-.hx-dash:hover { background: rgba(255, 255, 255, 0.7); }
-.hx-dash.is-active { width: 40px; background: #ffffff; }
+.hx-dash:hover { background: rgba(10, 10, 10, 0.6); }
+.hx-dash.is-active { width: 40px; background: #0a0a0a; }
 .hx-dash:focus-visible {
-  outline: 2px solid rgba(255, 255, 255, 0.8);
+  outline: 2px solid rgba(10, 10, 10, 0.75);
   outline-offset: 2px;
+}
+
+@media (max-width: 767px) {
+  .hx-stage { left: 12px; right: 12px; }
+  .hx-dashes { bottom: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
