@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Edit, Trash2, BookOpen, Eye } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, BookOpen } from 'lucide-react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 
@@ -25,11 +25,7 @@ export default function Blogs() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  useEffect(() => {
-    fetchBlogs();
-  }, [statusFilter]);
-
-  const fetchBlogs = async () => {
+  const fetchBlogs = useCallback(async () => {
     try {
       const response = await api.get(`/blogs${statusFilter !== 'all' ? `?status=${statusFilter}` : ''}`);
       setBlogs(response.data.data || []);
@@ -38,7 +34,11 @@ export default function Blogs() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter]);
+
+  useEffect(() => {
+    fetchBlogs();
+  }, [fetchBlogs]);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this blog post?')) return;

@@ -62,7 +62,7 @@ export default function Customers() {
   useEffect(() => {
     const timer = setTimeout(() => fetchCustomers(), searchQuery ? 350 : 0);
     return () => clearTimeout(timer);
-  }, [fetchCustomers]);
+  }, [fetchCustomers, searchQuery]);
 
   const toggleStatus = async (customer: Customer) => {
     const next = customer.status === 'active' ? 'suspended' : 'active';

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { ArrowLeft, Save } from 'lucide-react';
@@ -40,13 +40,7 @@ export default function BlogEdit() {
 
   const content = watch('content');
 
-  useEffect(() => {
-    if (id) {
-      fetchBlog();
-    }
-  }, [id]);
-
-  const fetchBlog = async () => {
+  const fetchBlog = useCallback(async () => {
     try {
       const response = await api.get(`/blogs/${id}`);
       const blog = response.data.data;
@@ -61,7 +55,13 @@ export default function BlogEdit() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, reset, navigate]);
+
+  useEffect(() => {
+    if (id) {
+      fetchBlog();
+    }
+  }, [id, fetchBlog]);
 
   const onSubmit = async (data: BlogForm) => {
     try {

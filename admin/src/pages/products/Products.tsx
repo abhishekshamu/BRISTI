@@ -1,13 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Plus,
   Search,
   Filter,
-  MoreHorizontal,
   Edit,
   Trash2,
-  Eye,
   Package,
 } from 'lucide-react';
 import api from '../../lib/api';
@@ -34,11 +32,7 @@ export default function Products() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  useEffect(() => {
-    fetchProducts();
-  }, [page, statusFilter]);
-
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
       const response = await api.get(`/products?page=${page}&limit=20${statusFilter !== 'all' ? `&status=${statusFilter}` : ''}`);
@@ -49,7 +43,11 @@ export default function Products() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, statusFilter]);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this product?')) return;

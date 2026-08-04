@@ -262,7 +262,7 @@ export default function HeroEdit() {
         })
         .finally(() => setLoading(false));
     }
-  }, [id]);
+  }, [id, navigate]);
 
   const updateSet = useCallback((patch: Partial<SetForm>) => {
     setForm((f) => ({ ...f, ...patch }));

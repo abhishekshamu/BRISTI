@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Navigation, Save, Plus, Trash2 } from 'lucide-react';
+import { Save, Plus, Trash2 } from 'lucide-react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 

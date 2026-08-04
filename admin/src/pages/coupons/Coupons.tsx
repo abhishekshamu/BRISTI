@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Search, Edit, Trash2, Ticket, Percent } from 'lucide-react';
 import api from '../../lib/api';
@@ -27,11 +27,7 @@ export default function Coupons() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  useEffect(() => {
-    fetchCoupons();
-  }, [statusFilter]);
-
-  const fetchCoupons = async () => {
+  const fetchCoupons = useCallback(async () => {
     try {
       const response = await api.get(`/coupons${statusFilter !== 'all' ? `?isActive=${statusFilter === 'active'}` : ''}`);
       setCoupons(response.data.data || []);
@@ -40,7 +36,11 @@ export default function Coupons() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter]);
+
+  useEffect(() => {
+    fetchCoupons();
+  }, [fetchCoupons]);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this coupon?')) return;

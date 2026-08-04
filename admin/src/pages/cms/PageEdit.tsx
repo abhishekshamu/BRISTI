@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { ArrowLeft, Save } from 'lucide-react';
@@ -38,13 +38,7 @@ export default function PageEdit() {
 
   const content = watch('content');
 
-  useEffect(() => {
-    if (id) {
-      fetchPage();
-    }
-  }, [id]);
-
-  const fetchPage = async () => {
+  const fetchPage = useCallback(async () => {
     try {
       const response = await api.get(`/pages/${id}`);
       const page = response.data.data;
@@ -58,7 +52,13 @@ export default function PageEdit() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, reset, navigate]);
+
+  useEffect(() => {
+    if (id) {
+      fetchPage();
+    }
+  }, [id, fetchPage]);
 
   const onSubmit = async (data: PageForm) => {
     try {

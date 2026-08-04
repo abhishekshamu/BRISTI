@@ -4,8 +4,6 @@ import {
   ShoppingCart,
   Users,
   Package,
-  TrendingUp,
-  TrendingDown,
   ArrowUpRight,
   ArrowDownRight,
   MoreHorizontal,

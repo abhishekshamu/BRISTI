@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { ArrowLeft, Save, Upload, X, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Save, X, Plus, Trash2 } from 'lucide-react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 
@@ -99,15 +99,7 @@ export default function ProductEdit() {
     setValue('variants', variants.filter((_: any, i: number) => i !== index));
   };
 
-  useEffect(() => {
-    if (id) {
-      fetchProduct();
-      fetchCategories();
-      fetchCollections();
-    }
-  }, [id]);
-
-  const fetchProduct = async () => {
+  const fetchProduct = useCallback(async () => {
     try {
       const response = await api.get(`/products/${id}`);
       const product = response.data.data;
@@ -123,25 +115,33 @@ export default function ProductEdit() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, reset, navigate]);
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       const response = await api.get('/categories');
       setCategories(response.data.data || []);
     } catch (error) {
       console.error('Failed to fetch categories');
     }
-  };
+  }, []);
 
-  const fetchCollections = async () => {
+  const fetchCollections = useCallback(async () => {
     try {
       const response = await api.get('/collections');
       setCollections(response.data.data || []);
     } catch (error) {
       console.error('Failed to fetch collections');
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (id) {
+      fetchProduct();
+      fetchCategories();
+      fetchCollections();
+    }
+  }, [id, fetchProduct, fetchCategories, fetchCollections]);
 
   const addImage = () => {
     if (imageUrl && !images.includes(imageUrl)) {

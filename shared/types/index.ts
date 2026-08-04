@@ -183,6 +183,7 @@ export interface Category {
   name: string;
   slug: string;
   description?: string;
+  subtitle?: string;
   image?: string;
   bannerImage?: string;
   parentId?: string;
@@ -395,6 +396,19 @@ export interface OrderItem {
   price: number;
   total: number;
   sku: string;
+  image?: string;
+}
+
+export interface OrderStatusHistoryEntry {
+  status: string;
+  note?: string;
+  changedBy?: string;
+  changedAt: Date;
+}
+
+export interface OrderEmailHistoryEntry {
+  type: 'confirmation' | 'shipping' | 'delivered';
+  sentAt: Date;
 }
 
 export interface Order {
@@ -408,7 +422,7 @@ export interface Order {
   shipping: number;
   discount: number;
   total: number;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned' | 'refunded';
+  status: 'pending' | 'confirmed' | 'processing' | 'packed' | 'shipped' | 'delivered' | 'cancelled' | 'returned' | 'refunded';
   paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded' | 'partially_refunded';
   paymentMethod: 'credit_card' | 'debit_card' | 'paypal' | 'apple_pay' | 'google_pay' | 'razorpay' | 'stripe' | 'cod';
   paymentId?: string;
@@ -441,6 +455,8 @@ export interface Order {
   trackingUrl?: string;
   couponCode?: string;
   couponDiscount?: number;
+  statusHistory?: OrderStatusHistoryEntry[];
+  emailHistory?: OrderEmailHistoryEntry[];
   createdAt?: Date;
   updatedAt?: Date;
   deliveredAt?: Date;

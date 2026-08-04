@@ -153,6 +153,13 @@ export const COLOR_GROUPS: ColorGroupDef[] = [
     ],
   },
   {
+    id: 'homepageTheme',
+    label: 'Homepage Theme',
+    tokens: [
+      { key: 'featuredCategoryBorder', label: 'Featured Category Border Color' },
+    ],
+  },
+  {
     id: 'shop',
     label: 'Shop Page',
     tokens: [

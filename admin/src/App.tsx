@@ -44,6 +44,7 @@ import AuditLogs from './pages/audit/AuditLogs';
 import NotFound from './pages/auth/NotFound';
 import HeroManager from './pages/hero/HeroManager';
 import HeroEdit from './pages/hero/HeroEdit';
+import Messages from './pages/messages/Messages';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth();
@@ -102,6 +103,7 @@ function App() {
         <Route path="faqs" element={<Faqs />} />
         <Route path="faqs/create" element={<FaqCreate />} />
         <Route path="faqs/:id/edit" element={<FaqEdit />} />
+        <Route path="messages" element={<Messages />} />
         <Route path="theme/homepage-builder" element={<HomepageBuilder />} />
         <Route path="hero" element={<HeroManager />} />
         <Route path="hero/create" element={<HeroEdit />} />

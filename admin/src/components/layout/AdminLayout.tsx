@@ -29,6 +29,7 @@ import {
   BookOpen,
   HelpCircle,
   Users,
+  Mail,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -46,6 +47,7 @@ const adminMenuItems = [
   { title: 'CMS', path: '/pages', icon: FileText },
   { title: 'Blog', path: '/blogs', icon: BookOpen },
   { title: 'FAQ', path: '/faqs', icon: HelpCircle },
+  { title: 'Messages', path: '/messages', icon: Mail },
   { title: 'Homepage Builder', path: '/theme/homepage-builder', icon: Home },
   { title: 'Hero Manager', path: '/hero', icon: PanelsTopLeft },
   { title: 'Page Builder', path: '/theme/page-builder', icon: PenTool },

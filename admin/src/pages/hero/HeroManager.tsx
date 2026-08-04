@@ -153,11 +153,6 @@ export default function HeroManager() {
     setSelected((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]));
   };
 
-  const toggleSelectAll = () => {
-    if (selected.length === filtered.length) setSelected([]);
-    else setSelected(filtered.map((b) => b._id));
-  };
-
   const bulkUpdate = async (patch: Record<string, unknown>, message: string) => {
     if (selected.length === 0) return;
     try {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { GripVertical, Plus, Trash2, Settings, Save } from 'lucide-react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
@@ -14,7 +14,7 @@ export default function PageBuilder() {
   const [sections, setSections] = useState<BuilderSection[]>([]);
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [pageName, setPageName] = useState('');
-  const [pageSlug, setPageSlug] = useState('');
+  const [pageSlug] = useState('');
   const [pageId, setPageId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 

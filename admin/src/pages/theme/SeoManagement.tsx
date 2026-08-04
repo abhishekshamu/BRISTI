@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Globe, Save } from 'lucide-react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
@@ -20,22 +20,22 @@ export default function SeoManagement() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchSettings();
-  }, []);
-
-  const fetchSettings = async () => {
+  const fetchSettings = useCallback(async () => {
     try {
       const response = await api.get('/settings');
       if (response.data.data?.seo) {
-        setSettings({ ...settings, ...response.data.data.seo });
+        setSettings((prev) => ({ ...prev, ...response.data.data.seo }));
       }
     } catch (error) {
       console.error('Failed to fetch settings');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
 
   const handleSave = async () => {
     try {

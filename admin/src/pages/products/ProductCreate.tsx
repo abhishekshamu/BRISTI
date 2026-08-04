@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { ArrowLeft, Save, Upload, X, Plus } from 'lucide-react';
+import { ArrowLeft, Save, X, Plus } from 'lucide-react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 

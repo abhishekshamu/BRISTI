@@ -43,7 +43,7 @@ export default function CouponCreate() {
   const onSubmit = async (data: CouponForm) => {
     try {
       setLoading(true);
-      const response = await api.post('/coupons', data);
+      await api.post('/coupons', data);
       toast.success('Coupon created successfully');
       navigate('/coupons');
     } catch (error: any) {

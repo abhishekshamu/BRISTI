@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { ArrowLeft, Save } from 'lucide-react';
@@ -26,13 +26,7 @@ export default function FaqEdit() {
     formState: { errors },
   } = useForm<FaqForm>();
 
-  useEffect(() => {
-    if (id) {
-      fetchFaq();
-    }
-  }, [id]);
-
-  const fetchFaq = async () => {
+  const fetchFaq = useCallback(async () => {
     try {
       const response = await api.get(`/faqs/${id}`);
       reset(response.data.data);
@@ -42,7 +36,13 @@ export default function FaqEdit() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, reset, navigate]);
+
+  useEffect(() => {
+    if (id) {
+      fetchFaq();
+    }
+  }, [id, fetchFaq]);
 
   const onSubmit = async (data: FaqForm) => {
     try {

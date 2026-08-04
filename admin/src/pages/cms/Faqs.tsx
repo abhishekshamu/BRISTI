@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Search, Edit, Trash2, HelpCircle } from 'lucide-react';
 import api from '../../lib/api';
@@ -20,11 +20,7 @@ export default function Faqs() {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
 
-  useEffect(() => {
-    fetchFaqs();
-  }, [categoryFilter]);
-
-  const fetchFaqs = async () => {
+  const fetchFaqs = useCallback(async () => {
     try {
       const response = await api.get(`/faqs${categoryFilter !== 'all' ? `?category=${categoryFilter}` : ''}`);
       setFaqs(response.data.data || []);
@@ -33,7 +29,11 @@ export default function Faqs() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [categoryFilter]);
+
+  useEffect(() => {
+    fetchFaqs();
+  }, [fetchFaqs]);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this FAQ?')) return;

@@ -31,7 +31,7 @@ export default function FaqCreate() {
   const onSubmit = async (data: FaqForm) => {
     try {
       setLoading(true);
-      const response = await api.post('/faqs', data);
+      await api.post('/faqs', data);
       toast.success('FAQ created successfully');
       navigate('/faqs');
     } catch (error: any) {

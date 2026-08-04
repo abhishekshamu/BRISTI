@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { ArrowLeft, Save } from 'lucide-react';
@@ -7,10 +7,13 @@ import toast from 'react-hot-toast';
 
 interface CategoryForm {
   name: string;
+  slug?: string;
+  subtitle?: string;
   description?: string;
   image?: string;
   bannerImage?: string;
   parentId?: string;
+  sortOrder: number;
   isActive: boolean;
   seoTitle?: string;
   seoDescription?: string;
@@ -30,38 +33,56 @@ export default function CategoryEdit() {
     formState: { errors },
   } = useForm<CategoryForm>();
 
-  useEffect(() => {
-    if (id) {
-      fetchCategory();
-      fetchCategories();
-    }
-  }, [id]);
-
-  const fetchCategory = async () => {
+  const fetchCategory = useCallback(async () => {
     try {
       const response = await api.get(`/categories/${id}`);
-      reset(response.data.data);
+      const category = response.data.data;
+      reset({
+        name: category.name,
+        slug: category.slug,
+        subtitle: category.subtitle,
+        description: category.description,
+        image: category.image,
+        bannerImage: category.bannerImage,
+        parentId: category.parentId ?? '',
+        sortOrder: category.sortOrder ?? 0,
+        isActive: category.isActive ?? true,
+        seoTitle: category.seo?.title,
+        seoDescription: category.seo?.description,
+      });
     } catch (error) {
       toast.error('Failed to fetch category');
       navigate('/categories');
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, reset, navigate]);
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       const response = await api.get('/categories');
       setCategories(response.data.data || []);
     } catch (error) {
       console.error('Failed to fetch categories');
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (id) {
+      fetchCategory();
+      fetchCategories();
+    }
+  }, [id, fetchCategory, fetchCategories]);
 
   const onSubmit = async (data: CategoryForm) => {
     try {
       setSaving(true);
-      await api.put(`/categories/${id}`, data);
+      await api.put(`/categories/${id}`, {
+        ...data,
+        sortOrder: Number(data.sortOrder ?? 0),
+        seo: { title: data.seoTitle, description: data.seoDescription },
+        slug: data.slug?.trim() || undefined,
+      });
       toast.success('Category updated successfully');
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to update category');
@@ -98,31 +119,55 @@ export default function CategoryEdit() {
       <form id="category-form" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div className="admin-card p-6 space-y-4">
           <div>
-            <label className="admin-label">Name</label>
+            <label className="admin-label">Category Name</label>
             <input {...register('name', { required: 'Name is required' })} className="admin-input mt-1" />
             {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>}
+          </div>
+          <div>
+            <label className="admin-label">Category Slug</label>
+            <input {...register('slug')} className="admin-input mt-1" />
+          </div>
+          <div>
+            <label className="admin-label">Category Subtitle</label>
+            <textarea {...register('subtitle')} rows={2} placeholder="Shown as the premium description on the category landing page" className="admin-input mt-1" />
           </div>
           <div>
             <label className="admin-label">Description</label>
             <textarea {...register('description')} rows={3} className="admin-input mt-1" />
           </div>
-          <div>
-            <label className="admin-label">Image URL</label>
-            <input {...register('image')} className="admin-input mt-1" />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="admin-label">Image URL</label>
+              <input {...register('image')} className="admin-input mt-1" />
+            </div>
+            <div>
+              <label className="admin-label">Category Banner URL</label>
+              <input {...register('bannerImage')} placeholder="Shown above the title (optional)" className="admin-input mt-1" />
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="admin-label">Parent Category</label>
+              <select {...register('parentId')} className="admin-input mt-1">
+                <option value="">None (Top Level)</option>
+                {categories.filter((c) => c._id !== id).map(cat => <option key={cat._id} value={cat._id}>{cat.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="admin-label">Display Order</label>
+              <input type="number" min={0} {...register('sortOrder', { valueAsNumber: true })} className="admin-input mt-1" />
+            </div>
           </div>
           <div>
-            <label className="admin-label">Banner Image URL</label>
-            <input {...register('bannerImage')} className="admin-input mt-1" />
+            <label className="admin-label">SEO Title</label>
+            <input {...register('seoTitle')} placeholder={`e.g. BRISTI | ${'{Category Name}'}`} className="admin-input mt-1" />
           </div>
           <div>
-            <label className="admin-label">Parent Category</label>
-            <select {...register('parentId')} className="admin-input mt-1">
-              <option value="">None (Top Level)</option>
-              {categories.filter((c) => c._id !== id).map(cat => <option key={cat._id} value={cat._id}>{cat.name}</option>)}
-            </select>
+            <label className="admin-label">SEO Description</label>
+            <textarea {...register('seoDescription')} rows={2} className="admin-input mt-1" />
           </div>
           <div className="flex items-center justify-between">
-            <label className="admin-label">Active</label>
+            <label className="admin-label">Status (Active)</label>
             <input type="checkbox" {...register('isActive')} className="w-4 h-4" />
           </div>
         </div>

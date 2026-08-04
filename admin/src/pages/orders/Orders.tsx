@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Search, Filter, Eye, MoreHorizontal } from 'lucide-react';
+import { Search, Filter, Eye } from 'lucide-react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 
@@ -14,7 +14,7 @@ interface Order {
   shipping: number;
   discount: number;
   total: number;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned' | 'refunded';
+  status: 'pending' | 'confirmed' | 'processing' | 'packed' | 'shipped' | 'delivered' | 'cancelled' | 'returned' | 'refunded';
   paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded' | 'partially_refunded';
   paymentMethod: string;
   createdAt: string;
@@ -30,11 +30,7 @@ export default function Orders() {
   const [searchParams] = useSearchParams();
   const customerFilter = searchParams.get('customer');
 
-  useEffect(() => {
-    fetchOrders();
-  }, [page, statusFilter, customerFilter]);
-
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
       const params: string[] = [`page=${page}`, 'limit=20'];
@@ -48,7 +44,11 @@ export default function Orders() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, statusFilter, customerFilter]);
+
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -56,6 +56,10 @@ export default function Orders() {
         return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
       case 'processing':
         return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+      case 'packed':
+        return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400';
+      case 'confirmed':
+        return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
       case 'shipped':
         return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400';
       case 'pending':
@@ -123,11 +127,14 @@ export default function Orders() {
           >
             <option value="all">All Status</option>
             <option value="pending">Pending</option>
+            <option value="confirmed">Confirmed</option>
             <option value="processing">Processing</option>
+            <option value="packed">Packed</option>
             <option value="shipped">Shipped</option>
             <option value="delivered">Delivered</option>
             <option value="cancelled">Cancelled</option>
             <option value="refunded">Refunded</option>
+            <option value="returned">Returned</option>
           </select>
         </div>
       </div>

@@ -21,7 +21,6 @@ import {
   Download,
   TrendingUp,
   Eye,
-  ShoppingCart,
   Users,
   DollarSign,
 } from 'lucide-react';
@@ -43,7 +42,6 @@ ChartJS.register(
 
 export default function Analytics() {
   const [dateRange, setDateRange] = useState('7d');
-  const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
   const [pageViews, setPageViews] = useState<any>(null);
   const [events, setEvents] = useState<any[]>([]);
@@ -54,7 +52,6 @@ export default function Analytics() {
 
   const fetchAnalytics = async () => {
     try {
-      setLoading(true);
       const [statsRes, viewsRes, eventsRes] = await Promise.all([
         api.get('/analytics/stats'),
         api.get('/analytics/page-views'),
@@ -65,8 +62,6 @@ export default function Analytics() {
       setEvents(eventsRes.data.data || []);
     } catch (error) {
       toast.error('Failed to fetch analytics');
-    } finally {
-      setLoading(false);
     }
   };
 

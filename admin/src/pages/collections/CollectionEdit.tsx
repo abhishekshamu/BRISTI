@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { ArrowLeft, Save } from 'lucide-react';
@@ -30,13 +30,7 @@ export default function CollectionEdit() {
     formState: { errors },
   } = useForm<CollectionForm>();
 
-  useEffect(() => {
-    if (id) {
-      fetchCollection();
-    }
-  }, [id]);
-
-  const fetchCollection = async () => {
+  const fetchCollection = useCallback(async () => {
     try {
       const response = await api.get(`/collections/${id}`);
       reset(response.data.data);
@@ -46,7 +40,13 @@ export default function CollectionEdit() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, reset, navigate]);
+
+  useEffect(() => {
+    if (id) {
+      fetchCollection();
+    }
+  }, [id, fetchCollection]);
 
   const onSubmit = async (data: CollectionForm) => {
     try {

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Search, Filter, Download, FileText, User, Edit, Trash2, Eye, Plus } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Search, Download, FileText, User, Edit, Trash2, Eye, Plus } from 'lucide-react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 
@@ -24,11 +24,7 @@ export default function AuditLogs() {
   const [actionFilter, setActionFilter] = useState('all');
   const [entityFilter, setEntityFilter] = useState('all');
 
-  useEffect(() => {
-    fetchLogs();
-  }, [actionFilter, entityFilter]);
-
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     try {
       const params = new URLSearchParams();
       if (actionFilter !== 'all') params.set('action', actionFilter);
@@ -41,7 +37,11 @@ export default function AuditLogs() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [actionFilter, entityFilter]);
+
+  useEffect(() => {
+    fetchLogs();
+  }, [fetchLogs]);
 
   const getActionIcon = (action: string) => {
     switch (action) {

@@ -119,3 +119,45 @@
 .dark ::-webkit-scrollbar-thumb:hover {
   background: #64748b;
 }
+
+/* Print styles: only the invoice block is printed */
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  .invoice-print,
+  .invoice-print * {
+    visibility: visible !important;
+  }
+  .invoice-print {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 24px;
+    font-size: 12px;
+    color: #000;
+  }
+  .invoice-print h1 {
+    font-size: 20px;
+    margin-bottom: 8px;
+  }
+  .invoice-print p {
+    margin: 4px 0;
+  }
+  .invoice-print table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+  }
+  .invoice-print th,
+  .invoice-print td {
+    border: 1px solid #000;
+    padding: 6px 8px;
+    text-align: left;
+  }
+  .invoice-print th {
+    background: #f1f5f9;
+  }
+}

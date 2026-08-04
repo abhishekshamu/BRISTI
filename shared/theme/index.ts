@@ -142,6 +142,9 @@ const DEFAULT_COLORS: Record<string, string> = {
   collectionTitle: '#FFFFFF',
   collectionDesc: 'rgba(255, 255, 255, 0.60)',
 
+  // Homepage featured category cards → --featured-category-border
+  featuredCategoryBorder: '#E5E5E5',
+
   // Shop
   shopBackground: '#FFFFFF',
   shopText: '#0D0D0D',
@@ -361,6 +364,7 @@ const DARK_OVERRIDE: ThemePresetShape = {
     searchBackground: '#0A0A0A',
     searchText: '#F5F5F5',
     searchResultBg: '#111111',
+    featuredCategoryBorder: '#262626',
     mobileDrawerBg: '#0A0A0A',
     mobileNavBg: '#0A0A0A',
     mobileNavBorder: '#262626',

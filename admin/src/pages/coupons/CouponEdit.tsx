@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { ArrowLeft, Save } from 'lucide-react';
@@ -35,13 +35,7 @@ export default function CouponEdit() {
     formState: { errors },
   } = useForm<CouponForm>();
 
-  useEffect(() => {
-    if (id) {
-      fetchCoupon();
-    }
-  }, [id]);
-
-  const fetchCoupon = async () => {
+  const fetchCoupon = useCallback(async () => {
     try {
       const response = await api.get(`/coupons/${id}`);
       reset(response.data.data);
@@ -51,7 +45,13 @@ export default function CouponEdit() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, reset, navigate]);
+
+  useEffect(() => {
+    if (id) {
+      fetchCoupon();
+    }
+  }, [id, fetchCoupon]);
 
   const onSubmit = async (data: CouponForm) => {
     try {

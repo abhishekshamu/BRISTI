@@ -36,7 +36,7 @@ export default function CollectionCreate() {
   const onSubmit = async (data: CollectionForm) => {
     try {
       setLoading(true);
-      const response = await api.post('/collections', data);
+      await api.post('/collections', data);
       toast.success('Collection created successfully');
       navigate('/collections');
     } catch (error: any) {

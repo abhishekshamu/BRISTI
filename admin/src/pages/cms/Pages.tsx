@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Edit, Trash2, FileText, Eye } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, FileText } from 'lucide-react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 
@@ -21,11 +21,7 @@ export default function Pages() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  useEffect(() => {
-    fetchPages();
-  }, [statusFilter]);
-
-  const fetchPages = async () => {
+  const fetchPages = useCallback(async () => {
     try {
       const response = await api.get(`/pages${statusFilter !== 'all' ? `?status=${statusFilter}` : ''}`);
       setPages(response.data.data || []);
@@ -34,7 +30,11 @@ export default function Pages() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter]);
+
+  useEffect(() => {
+    fetchPages();
+  }, [fetchPages]);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this page?')) return;

@@ -15,6 +15,7 @@ interface Category {
   _id: string;
   name: string;
   slug: string;
+  subtitle?: string;
   description?: string;
   image?: string;
   bannerImage?: string;
@@ -104,11 +105,15 @@ export default function Categories() {
             </div>
             <div>
               <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{category.name}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">{category.slug}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">/{category.slug}</p>
+              {category.subtitle && (
+                <p className="mt-0.5 line-clamp-1 text-xs italic text-slate-400 dark:text-slate-500">{category.subtitle}</p>
+              )}
             </div>
           </div>
 
           <div className="flex items-center space-x-4">
+            <span className="hidden text-xs text-slate-400 dark:text-slate-500 sm:block">Order {category.sortOrder ?? 0}</span>
             <span className="text-sm text-slate-500 dark:text-slate-400">
               {category.productCount || 0} products
             </span>

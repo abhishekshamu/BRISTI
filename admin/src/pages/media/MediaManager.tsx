@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Upload, Search, Grid, List, FolderOpen, FileImage, Trash2, Download } from 'lucide-react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
@@ -27,11 +27,7 @@ export default function MediaManager() {
   const [selectedFolder, setSelectedFolder] = useState('all');
   const [uploading, setUploading] = useState(false);
 
-  useEffect(() => {
-    fetchMedia();
-  }, [selectedFolder]);
-
-  const fetchMedia = async () => {
+  const fetchMedia = useCallback(async () => {
     try {
       const response = await api.get(`/media${selectedFolder !== 'all' ? `?folder=${selectedFolder}` : ''}`);
       setFiles(response.data.data || []);
@@ -40,7 +36,11 @@ export default function MediaManager() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedFolder]);
+
+  useEffect(() => {
+    fetchMedia();
+  }, [fetchMedia]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
