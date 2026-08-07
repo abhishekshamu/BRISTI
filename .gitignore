@@ -39,3 +39,6 @@ tmp/
 *.tmp
 backups/
 backup-*/
+node_modules
+dist
+.env
