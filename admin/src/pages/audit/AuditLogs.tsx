@@ -1,7 +1,10 @@
-import { useState, useEffect } from 'react';
-import { Search, Filter, Download, FileText, User, Edit, Trash2, Eye, Plus } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Download, FileText, User, Edit, Trash2, Eye, Plus } from 'lucide-react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
+import PageShell from '../../components/ui/PageShell';
+import DataTable, { type Column } from '../../components/ui/DataTable';
+import Badge, { type BadgeTone } from '../../components/ui/Badge';
 
 interface AuditLog {
   _id: string;
@@ -17,6 +20,9 @@ interface AuditLog {
   createdAt: string;
 }
 
+const getActionTone = (action: string): BadgeTone =>
+  action === 'create' ? 'green' : action === 'update' ? 'blue' : action === 'delete' ? 'red' : 'slate';
+
 export default function AuditLogs() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,11 +30,7 @@ export default function AuditLogs() {
   const [actionFilter, setActionFilter] = useState('all');
   const [entityFilter, setEntityFilter] = useState('all');
 
-  useEffect(() => {
-    fetchLogs();
-  }, [actionFilter, entityFilter]);
-
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     try {
       const params = new URLSearchParams();
       if (actionFilter !== 'all') params.set('action', actionFilter);
@@ -41,7 +43,11 @@ export default function AuditLogs() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [actionFilter, entityFilter]);
+
+  useEffect(() => {
+    fetchLogs();
+  }, [fetchLogs]);
 
   const getActionIcon = (action: string) => {
     switch (action) {
@@ -53,34 +59,24 @@ export default function AuditLogs() {
     }
   };
 
-  const getActionColor = (action: string) => {
-    switch (action) {
-      case 'create': return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
-      case 'update': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
-      case 'delete': return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
-      case 'view': return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400';
-      default: return 'bg-slate-100 text-slate-700';
-    }
-  };
-
   const filteredLogs = logs.filter(log => {
-    const matchesSearch = 
+    const matchesSearch =
       log.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       log.userEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
       log.entityType.toLowerCase().includes(searchQuery.toLowerCase()) ||
       log.entityId.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     const matchesAction = actionFilter === 'all' || log.action === actionFilter;
     const matchesEntity = entityFilter === 'all' || log.entityType === entityFilter;
-    
+
     return matchesSearch && matchesAction && matchesEntity;
   });
 
   const entityTypes = Array.from(new Set(logs.map(l => l.entityType)));
 
   const handleExport = () => {
-    const csv = [
-      ['Timestamp', 'Action', 'Entity', 'Entity ID', 'User', 'Email', 'IP Address'].join(','),
+    const rows = [
+      ['Timestamp', 'Action', 'Entity', 'Entity ID', 'User', 'Email', 'IP Address'],
       ...filteredLogs.map(log => [
         new Date(log.createdAt).toISOString(),
         log.action,
@@ -89,140 +85,137 @@ export default function AuditLogs() {
         log.userName,
         log.userEmail,
         log.ipAddress || '',
-      ].join(','))
-    ].join('\n');
+      ]),
+    ];
+    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
 
     const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'audit-logs.csv';
-    a.click();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'audit-logs.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success('Audit logs exported');
   };
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Audit Logs</h2>
-          <p className="text-slate-500 dark:text-slate-400">Track all admin activities and changes</p>
+  const columns: Column<AuditLog>[] = [
+    {
+      key: 'timestamp',
+      header: 'Timestamp',
+      sortKey: 'timestamp',
+      render: (log) => (
+        <span className="text-sm text-slate-600 dark:text-slate-400">
+          {new Date(log.createdAt).toLocaleString()}
+        </span>
+      ),
+    },
+    {
+      key: 'action',
+      header: 'Action',
+      sortKey: 'action',
+      render: (log) => (
+        <div className="flex items-center gap-2">
+          {getActionIcon(log.action)}
+          <Badge tone={getActionTone(log.action)}>{log.action}</Badge>
         </div>
+      ),
+    },
+    {
+      key: 'entityType',
+      header: 'Entity',
+      sortKey: 'entityType',
+      render: (log) => (
+        <span className="text-sm font-medium text-slate-900 dark:text-slate-100 capitalize">{log.entityType}</span>
+      ),
+    },
+    {
+      key: 'entityId',
+      header: 'Entity ID',
+      sortKey: 'entityId',
+      render: (log) => (
+        <span className="text-sm font-mono text-slate-600 dark:text-slate-400">{log.entityId}</span>
+      ),
+    },
+    {
+      key: 'user',
+      header: 'User',
+      sortKey: 'user',
+      render: (log) => (
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
+            <User className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{log.userName}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{log.userEmail}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'ipAddress',
+      header: 'IP Address',
+      sortKey: 'ipAddress',
+      render: (log) => (
+        <span className="text-sm font-mono text-slate-600 dark:text-slate-400">{log.ipAddress || '-'}</span>
+      ),
+    },
+  ];
+
+  return (
+    <PageShell
+      title="Audit Logs"
+      subtitle="Track all admin activities and changes"
+      actions={
         <button
           onClick={handleExport}
-          className="admin-btn-secondary py-2.5 px-4 flex items-center"
+          className="admin-btn-secondary h-10 px-4 text-sm flex items-center gap-1.5"
         >
-          <Download className="w-4 h-4 mr-2" />
+          <Download className="w-4 h-4" />
           Export CSV
         </button>
-      </div>
-
-      {/* Filters */}
-      <div className="admin-card p-4">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search logs..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="admin-input pl-10"
-            />
-          </div>
-          <select
-            value={actionFilter}
-            onChange={(e) => setActionFilter(e.target.value)}
-            className="admin-input"
-          >
-            <option value="all">All Actions</option>
-            <option value="create">Create</option>
-            <option value="update">Update</option>
-            <option value="delete">Delete</option>
-            <option value="view">View</option>
-          </select>
-          <select
-            value={entityFilter}
-            onChange={(e) => setEntityFilter(e.target.value)}
-            className="admin-input"
-          >
-            <option value="all">All Entities</option>
-            {entityTypes.map(type => (
-              <option key={type} value={type}>{type}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Logs table */}
-      <div className="admin-card overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
-          </div>
-        ) : (
+      }
+    >
+      <DataTable
+        columns={columns}
+        rows={filteredLogs}
+        rowKey={(log) => log._id}
+        loading={loading}
+        searchable
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Search logs..."
+        filters={
           <>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-700">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-500 dark:text-slate-400">Timestamp</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-500 dark:text-slate-400">Action</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-500 dark:text-slate-400">Entity</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-500 dark:text-slate-400">Entity ID</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-500 dark:text-slate-400">User</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-500 dark:text-slate-400">IP Address</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredLogs.map((log) => (
-                    <tr key={log._id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                      <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">
-                        {new Date(log.createdAt).toLocaleString()}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center space-x-2">
-                          {getActionIcon(log.action)}
-                          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full capitalize ${getActionColor(log.action)}`}>
-                            {log.action}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-sm font-medium text-slate-900 dark:text-slate-100 capitalize">
-                        {log.entityType}
-                      </td>
-                      <td className="py-3 px-4 text-sm font-mono text-slate-600 dark:text-slate-400">
-                        {log.entityId}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
-                            <User className="w-4 h-4 text-slate-600 dark:text-slate-400" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{log.userName}</p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">{log.userEmail}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-sm font-mono text-slate-600 dark:text-slate-400">
-                        {log.ipAddress || '-'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {filteredLogs.length === 0 && (
-              <div className="text-center py-12">
-                <FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                <p className="text-slate-500 dark:text-slate-400">No audit logs found</p>
-              </div>
-            )}
+            <select
+              value={actionFilter}
+              onChange={(e) => setActionFilter(e.target.value)}
+              className="admin-input"
+            >
+              <option value="all">All Actions</option>
+              <option value="create">Create</option>
+              <option value="update">Update</option>
+              <option value="delete">Delete</option>
+              <option value="view">View</option>
+            </select>
+            <select
+              value={entityFilter}
+              onChange={(e) => setEntityFilter(e.target.value)}
+              className="admin-input"
+            >
+              <option value="all">All Entities</option>
+              {entityTypes.map(type => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
           </>
-        )}
-      </div>
-    </div>
+        }
+        clientPagination
+        pageSize={20}
+        emptyTitle="No audit logs found"
+        emptyBody="Admin activity will appear here once actions are performed."
+      />
+    </PageShell>
   );
 }

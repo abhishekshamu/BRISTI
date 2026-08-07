@@ -1,0 +1,16 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch();
+const page = await b.newPage({ viewport: { width: 1440, height: 900 } });
+const errs = [];
+page.on('console', (m) => { if (m.type() === 'error') errs.push(m.text().slice(0, 200)); });
+page.on('pageerror', (e) => errs.push('PAGEERR ' + e.message.slice(0, 200)));
+await page.goto('http://localhost:3004/', { waitUntil: 'networkidle', timeout: 45000 });
+await page.waitForTimeout(1500);
+const m = await page.evaluate(() => ({ ovf: document.documentElement.scrollWidth - document.documentElement.clientWidth, imgs: [...document.images].filter(i => i.complete && i.naturalWidth === 0).length, links: document.querySelectorAll('a').length, h1: document.querySelector('h1')?.textContent }));
+console.log('STORE /', JSON.stringify(m));
+console.log('errors:', errs.slice(0, 5));
+await page.goto('http://localhost:3003/login', { waitUntil: 'networkidle', timeout: 45000 }).catch(() => {});
+await page.waitForTimeout(1200);
+const m2 = await page.evaluate(() => ({ ovf: document.documentElement.scrollWidth - document.documentElement.clientWidth, forms: document.querySelectorAll('form').length }));
+console.log('ADMIN /login', JSON.stringify(m2));
+await b.close();

@@ -1,7 +1,12 @@
-import { useState, useEffect } from 'react';
-import { Save, Plus, Trash2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Plus, Trash2, Image } from 'lucide-react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
+import MediaPicker from '../../components/media/MediaPicker';
+import PageShell from '../../components/ui/PageShell';
+import StickySaveBar from '../../components/ui/StickySaveBar';
+import PageSpinner from '../../components/ui/PageSpinner';
+import { useUnsavedChanges } from '../../lib/unsaved-context';
 
 interface FooterSection {
   type: string;
@@ -13,10 +18,13 @@ interface FooterSection {
 }
 
 export default function FooterEditor() {
+  const { dirty, setDirty } = useUnsavedChanges();
   const [sections, setSections] = useState<FooterSection[]>([]);
+  const [logo, setLogo] = useState('');
   const [saving, setSaving] = useState(false);
   const [newSection, setNewSection] = useState({ type: 'text', title: '', content: '' });
   const [loading, setLoading] = useState(true);
+  const baselineRef = useRef<string>('');
 
   useEffect(() => {
     fetchFooterSections();
@@ -27,6 +35,8 @@ export default function FooterEditor() {
       const response = await api.get('/settings');
       const footer = response.data.data?.footer?.sections || [];
       setSections(footer);
+      setLogo(response.data.data?.logo || '');
+      baselineRef.current = response.data.data?.logo || '';
     } catch (error) {
       console.error('Failed to fetch footer');
     } finally {
@@ -75,6 +85,9 @@ export default function FooterEditor() {
     try {
       setSaving(true);
       await api.put('/settings/footer', { sections });
+      await api.put('/settings/branding', { logo });
+      setDirty(false);
+      baselineRef.current = logo;
       toast.success('Footer saved successfully');
     } catch (error) {
       toast.error('Failed to save footer');
@@ -83,36 +96,31 @@ export default function FooterEditor() {
     }
   };
 
+  const handleCancel = () => {
+    setLogo(baselineRef.current);
+    setDirty(false);
+  };
+
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
-      </div>
-    );
+    return <PageSpinner label="Loading footer…" />;
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Footer Editor</h2>
-          <p className="text-slate-500 dark:text-slate-400">Configure your site footer</p>
-        </div>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="admin-btn-primary py-2.5 px-4 flex items-center"
-        >
-          {saving ? (
-            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          ) : (
-            <>
-              <Save className="w-4 h-4 mr-2" />
-              Save Footer
-            </>
-          )}
-        </button>
+    <PageShell title="Footer Editor" subtitle="Configure your site footer">
+      <div className="admin-card p-6">
+        <h3 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
+          <Image className="w-5 h-5 text-slate-600" /> Footer Logo
+        </h3>
+        <MediaPicker
+          label="Logo"
+          value={logo}
+          onChange={(url) => {
+            setLogo(url);
+            setDirty(true);
+          }}
+          ratio="logo"
+          folder="footer"
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -213,6 +221,14 @@ export default function FooterEditor() {
           </div>
         </div>
       </div>
-    </div>
+
+      <StickySaveBar
+        dirty={dirty}
+        onSave={handleSave}
+        onCancel={handleCancel}
+        saving={saving}
+        saveLabel="Save Footer"
+      />
+    </PageShell>
   );
 }

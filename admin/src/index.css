@@ -4,48 +4,55 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Neutral premium — warm graphite on soft gray, gold as the only accent */
+    --background: 220 14% 96.5%;
+    --foreground: 226 57% 8%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 226 57% 8%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
+    --popover-foreground: 226 57% 8%;
+    --primary: 226 57% 13%;
     --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
+    --secondary: 220 12% 93%;
+    --secondary-foreground: 226 45% 14%;
+    --muted: 220 12% 94%;
+    --muted-foreground: 218 14% 42%;
+    --accent: 46 78% 96%;
+    --accent-foreground: 44 65% 33%;
+    --destructive: 0 72% 55%;
     --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --radius: 0.5rem;
+    --border: 220 12% 89%;
+    --input: 220 12% 87%;
+    --ring: 226 40% 45%;
+    --radius: 0.75rem;
+    --gold: 46 68% 47%;
+    --gold-light: 45 88% 67%;
+    --gold-dark: 44 65% 33%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --background: 228 24% 6.5%;
+    --foreground: 213 22% 92%;
+    --card: 227 21% 9.5%;
+    --card-foreground: 213 22% 92%;
+    --popover: 227 21% 9.5%;
+    --popover-foreground: 213 22% 92%;
     --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
+    --primary-foreground: 226 57% 10%;
+    --secondary: 227 20% 15%;
+    --secondary-foreground: 213 22% 92%;
+    --muted: 227 20% 15%;
+    --muted-foreground: 215 15% 62%;
+    --accent: 227 20% 15%;
+    --accent-foreground: 45 88% 67%;
+    --destructive: 0 64% 42%;
     --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --border: 227 16% 19%;
+    --input: 227 16% 21%;
+    --ring: 45 88% 67%;
+    --gold: 45 88% 67%;
+    --gold-light: 45 88% 72%;
+    --gold-dark: 46 68% 47%;
   }
 }
 
@@ -54,45 +61,266 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+    letter-spacing: -0.006em;
   }
 }
 
 @layer components {
+  /* ============================================================
+     BRISTI Admin Design System — neutral premium + gold accent
+     ============================================================ */
+
+  /* Card — soft ring, refined shadow, generous radius */
   .admin-card {
-    @apply bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm;
+    @apply bg-card text-card-foreground rounded-xl border border-slate-200 dark:border-slate-800 shadow-[0_1px_2px_rgba(16,24,40,0.05)];
   }
-  
+  .admin-card-hover {
+    @apply transition-all duration-200 hover:shadow-[0_8px_24px_rgba(16,24,40,0.08)] hover:-translate-y-px;
+  }
+
+  /* Card section with numbered heading (form groups) */
+  .admin-form-section {
+    @apply admin-card overflow-hidden;
+  }
+  .admin-form-section-header {
+    @apply flex items-start gap-3.5 px-6 py-4.5 border-b border-slate-100 dark:border-slate-800/80;
+  }
+  .admin-form-section-number {
+    @apply w-7 h-7 shrink-0 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-semibold flex items-center justify-center;
+  }
+  .admin-form-section-title {
+    @apply text-[15px] font-semibold tracking-tight text-slate-900 dark:text-slate-100;
+  }
+  .admin-form-section-desc {
+    @apply text-[13px] text-slate-500 dark:text-slate-400 mt-0.5 max-w-xl;
+  }
+  .admin-form-section-body {
+    @apply p-6 space-y-6;
+  }
+
+  /* Inputs — taller, readable, refined focus */
   .admin-input {
-    @apply flex h-10 w-full rounded-md border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply flex h-11 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 px-3.5 py-2 text-[15px] text-foreground shadow-[inset_0_1px_1px_rgba(16,24,40,0.02)] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400/40 focus:ring-offset-1 focus:ring-offset-white dark:focus:ring-offset-slate-950 dark:focus:ring-gold/30 disabled:cursor-not-allowed disabled:opacity-50 transition-colors;
   }
-  
+
+  /* Buttons */
   .admin-btn {
-    @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex items-center justify-center rounded-lg text-sm font-medium tracking-tight transition-all focus:outline-none focus:ring-2 focus:ring-slate-400/50 focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
   }
-  
   .admin-btn-primary {
-    @apply admin-btn bg-slate-900 text-slate-50 hover:bg-slate-800 dark:bg-slate-50 dark:text-slate-900 dark:hover:bg-slate-200;
+    @apply admin-btn h-10 px-4 bg-slate-900 text-slate-50 hover:bg-slate-800 shadow-[0_1px_2px_rgba(16,24,40,0.25)] hover:shadow-[0_4px_10px_rgba(16,24,40,0.2)] dark:bg-slate-50 dark:text-slate-900 dark:hover:bg-slate-200;
   }
-  
   .admin-btn-secondary {
-    @apply admin-btn bg-slate-100 text-slate-900 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700;
+    @apply admin-btn h-10 px-4 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/70 hover:text-slate-900 dark:hover:text-white;
   }
-  
   .admin-btn-ghost {
-    @apply admin-btn hover:bg-slate-100 dark:hover:bg-slate-800;
+    @apply admin-btn h-10 px-3 hover:bg-slate-100 dark:hover:bg-slate-800;
   }
-  
+  .admin-btn-danger {
+    @apply admin-btn h-10 px-4 bg-red-600 text-white hover:bg-red-700 shadow-[0_1px_2px_rgba(220,38,38,0.25)];
+  }
+  .admin-btn-gold {
+    @apply admin-btn h-10 px-4 bg-[hsl(var(--gold))] text-black hover:bg-[hsl(var(--gold-dark))] focus-visible:ring-[hsl(var(--gold))] shadow-[0_1px_2px_rgba(146,114,16,0.3)];
+  }
+  .admin-btn-outline-gold {
+    @apply admin-btn h-10 px-4 border border-[hsl(var(--gold)/0.5)] text-[hsl(var(--gold-dark))] dark:text-[hsl(var(--gold-light))] hover:bg-[hsl(var(--gold)/0.08)];
+  }
+
   .admin-label {
-    @apply text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70;
+    @apply text-[13px] font-medium text-slate-700 dark:text-slate-300 leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70;
+  }
+
+  /* ============================================================
+     Layout primitives
+     ============================================================ */
+
+  /* Page container — 95vw, capped at 1700px */
+  .admin-page {
+    @apply w-full max-w-[1700px] mx-auto;
+  }
+
+  /* Page header row */
+  .admin-page-header {
+    @apply flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5 mb-8;
+  }
+
+  .admin-breadcrumb {
+    @apply flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 mb-2.5;
+  }
+
+  .admin-page-title {
+    @apply text-[26px] leading-[1.15] font-semibold tracking-tight text-slate-900 dark:text-slate-50;
+  }
+
+  .admin-page-subtitle {
+    @apply text-[14px] text-slate-500 dark:text-slate-400 mt-1.5 max-w-2xl;
+  }
+
+  /* Badges */
+  .admin-badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-full whitespace-nowrap tracking-wide;
+  }
+  .admin-badge-slate {
+    @apply admin-badge bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200/60 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700/60;
+  }
+  .admin-badge-green {
+    @apply admin-badge bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200/60 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20;
+  }
+  .admin-badge-amber {
+    @apply admin-badge bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200/60 dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-500/20;
+  }
+  .admin-badge-red {
+    @apply admin-badge bg-red-50 text-red-700 ring-1 ring-inset ring-red-200/60 dark:bg-red-500/10 dark:text-red-400 dark:ring-red-500/20;
+  }
+  .admin-badge-blue {
+    @apply admin-badge bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-200/60 dark:bg-blue-500/10 dark:text-blue-400 dark:ring-blue-500/20;
+  }
+  .admin-badge-purple {
+    @apply admin-badge bg-purple-50 text-purple-700 ring-1 ring-inset ring-purple-200/60 dark:bg-purple-500/10 dark:text-purple-400 dark:ring-purple-500/20;
+  }
+  .admin-badge-gold {
+    @apply admin-badge bg-[hsl(var(--gold)/0.1)] text-[hsl(var(--gold-dark))] ring-1 ring-inset ring-[hsl(var(--gold)/0.25)] dark:bg-[hsl(var(--gold)/0.15)] dark:text-[hsl(var(--gold-light))] dark:ring-[hsl(var(--gold)/0.25)];
+  }
+
+  /* Toolbar / filter card */
+  .admin-toolbar {
+    @apply admin-card px-4 sm:px-5 py-4 flex flex-col lg:flex-row lg:items-center gap-3.5 flex-wrap;
+  }
+
+  /* Search input with icon */
+  .admin-search {
+    @apply relative;
+  }
+  .admin-search-icon {
+    @apply absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none;
+  }
+  .admin-search-input {
+    @apply admin-input pl-10 min-w-[240px] flex-1;
+  }
+
+  /* Tables */
+  .admin-table-wrap {
+    @apply admin-card overflow-hidden;
+  }
+  .admin-table-scroll {
+    @apply overflow-x-auto max-h-[70vh] overflow-y-auto;
+  }
+  .admin-table {
+    @apply w-full text-sm min-w-max;
+  }
+  .admin-th {
+    @apply sticky top-0 z-10 bg-slate-50 dark:bg-slate-900/95 backdrop-blur px-4 py-3 text-left text-[10.5px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200/80 dark:border-slate-800 whitespace-nowrap;
+  }
+  .admin-td {
+    @apply px-4 py-3.5 align-middle text-[13.5px] text-slate-700 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800/60;
+  }
+  .admin-tr {
+    @apply transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/40;
+  }
+  .admin-th-sort {
+    @apply inline-flex items-center gap-1 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer select-none;
+  }
+
+  /* Icon-only action button */
+  .admin-icon-btn {
+    @apply inline-flex items-center justify-center w-8.5 h-8.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-40 disabled:pointer-events-none;
+  }
+
+  /* Pagination */
+  .admin-pagination {
+    @apply flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3.5 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400;
+  }
+  .admin-pagination-actions {
+    @apply flex items-center gap-1.5;
+  }
+  .admin-pagination-btn {
+    @apply admin-btn-secondary h-8 px-3 py-1.5 text-xs disabled:opacity-40;
+  }
+
+  /* Checkbox */
+  .admin-checkbox {
+    @apply w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100 focus:ring-slate-400 dark:focus:ring-slate-500 cursor-pointer accent-slate-900 dark:accent-slate-100;
+  }
+
+  /* Switch */
+  .admin-switch {
+    @apply relative inline-flex h-6 w-11 items-center rounded-full bg-slate-200 dark:bg-slate-700 transition-colors cursor-pointer;
+  }
+  .admin-switch-knob {
+    @apply inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform;
+  }
+
+  /* Stat card */
+  .admin-stat-card {
+    @apply admin-card admin-card-hover p-6 flex flex-col gap-1.5;
+  }
+
+  /* Skeleton */
+  .admin-skeleton {
+    @apply animate-pulse rounded-md bg-slate-200/80 dark:bg-slate-800;
+  }
+
+  /* Empty state */
+  .admin-empty {
+    @apply flex flex-col items-center justify-center text-center py-20 px-6;
+  }
+
+  /* Modal */
+  .admin-modal-overlay {
+    @apply fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4;
+  }
+  .admin-modal {
+    @apply bg-card text-card-foreground rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-lg max-h-[90vh] overflow-y-auto;
+  }
+  /* Wide, fixed-height modal (campaign banner editor): full-width, flex-column,
+     only the body scrolls so the header and footer stay pinned. */
+  .admin-modal-wide {
+    @apply flex flex-col w-[min(96vw,1700px)] max-w-none h-[92vh] max-h-[92vh] overflow-hidden;
+  }
+
+  /* Sticky save bar — docked premium bar */
+  .admin-sticky-save {
+    @apply fixed bottom-5 inset-x-0 z-[45] flex justify-center px-4 pointer-events-none;
+  }
+  .admin-sticky-save-inner {
+    @apply admin-card shadow-[0_12px_40px_rgba(16,24,40,0.18)] ring-1 ring-slate-900/10 dark:ring-white/10 backdrop-blur-xl bg-white/95 dark:bg-slate-900/95 flex items-center gap-3 px-4 py-3 rounded-2xl pointer-events-auto;
+  }
+
+  /* Kbd */
+  .admin-kbd {
+    @apply inline-flex items-center justify-center px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-[10px] font-mono text-slate-500 dark:text-slate-400;
+  }
+
+  /* Divider */
+  .admin-divider {
+    @apply h-px w-full bg-slate-200 dark:bg-slate-800;
+  }
+
+  /* Section heading inside cards */
+  .admin-section-title {
+    @apply text-[15px] font-semibold tracking-tight text-slate-900 dark:text-slate-100;
+  }
+
+  /* Form field wrapper */
+  .admin-field {
+    @apply space-y-2;
+  }
+  .admin-hint {
+    @apply text-xs text-slate-500 dark:text-slate-400;
+  }
+
+  /* Small textarea alias for admin-input reuse */
+  .admin-textarea {
+    @apply admin-input min-h-28 resize-y py-3 leading-relaxed;
   }
 }
 
 /* Scrollbar styling */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
@@ -101,17 +329,67 @@
 
 ::-webkit-scrollbar-thumb {
   background: #cbd5e1;
-  border-radius: 4px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+  background-clip: content-box;
+  border: 2px solid transparent;
 }
 
 .dark ::-webkit-scrollbar-thumb {
   background: #475569;
+  background-clip: content-box;
+  border: 2px solid transparent;
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
   background: #64748b;
+  background-clip: content-box;
+  border: 2px solid transparent;
+}
+
+/* Print styles: only the invoice block is printed */
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  .invoice-print,
+  .invoice-print * {
+    visibility: visible !important;
+  }
+  .invoice-print {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 24px;
+    font-size: 12px;
+    color: #000;
+  }
+  .invoice-print h1 {
+    font-size: 20px;
+    margin-bottom: 8px;
+  }
+  .invoice-print p {
+    margin: 4px 0;
+  }
+  .invoice-print table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+  }
+  .invoice-print th,
+  .invoice-print td {
+    border: 1px solid #000;
+    padding: 6px 8px;
+    text-align: left;
+  }
+  .invoice-print th {
+    background: #f1f5f9;
+  }
 }

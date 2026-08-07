@@ -1,0 +1,53 @@
+import { Router } from 'express';
+import { OrderController } from '../controllers/order.controller';
+import { OrderService } from '../services/order.service';
+import { OrderRepository } from '../repositories/order.repository';
+import { ProductRepository } from '../repositories/product.repository';
+import { CartRepository } from '../repositories/cart.repository';
+import { UserRepository } from '../repositories/user.repository';
+import { CouponRepository } from '../repositories/coupon.repository';
+import { InventoryItemRepository } from '../repositories/inventory-item.repository';
+import { SettingsRepository } from '../repositories/settings.repository';
+import { AdminRepository } from '../repositories/admin.repository';
+import { NotificationRepository } from '../repositories/notification.repository';
+import { NotificationService } from '../services/notification.service';
+import { EmailService } from '../services/email.service';
+import { protect, optionalAuth, authorize } from '../middleware/auth.middleware';
+import { auditLog } from '../middleware/audit.middleware';
+import { createOrderValidation, getOrderValidation, updateOrderStatusValidation, updatePaymentStatusValidation, updateNotesValidation, sendEmailValidation, cancelOrderValidation, addTrackingValidation } from '../validators/order.validators';
+import { validate } from '../validators/index';
+
+const orderRepo = new OrderRepository();
+const productRepo = new ProductRepository();
+const cartRepo = new CartRepository();
+const userRepo = new UserRepository();
+const couponRepo = new CouponRepository();
+const inventoryRepo = new InventoryItemRepository();
+const settingsRepo = new SettingsRepository();
+const adminRepo = new AdminRepository();
+const notificationRepo = new NotificationRepository();
+const notificationService = new NotificationService(notificationRepo);
+const emailService = new EmailService();
+const orderService = new OrderService(orderRepo, productRepo, cartRepo, userRepo, couponRepo, inventoryRepo, settingsRepo, adminRepo, notificationService, emailService);
+const orderController = new OrderController(orderService);
+
+const router = Router();
+
+router.post('/', optionalAuth, createOrderValidation, validate, orderController.createOrder);
+router.get('/', protect, orderController.getUserOrders);
+router.get('/stats', protect, authorize('admin'), orderController.getOrderStats);
+router.get('/sales-stats', protect, authorize('admin'), orderController.getSalesStats);
+router.get('/track/:orderNumber', orderController.getOrderForTracking);
+router.get('/all', protect, authorize('admin'), orderController.getAllOrders);
+router.get('/by-order-number/:orderNumber', protect, orderController.getOrderByNumber);
+router.get('/:id', protect, getOrderValidation, validate, orderController.getOrderById);
+router.get('/user/:userId', protect, authorize('admin'), orderController.getUserOrders);
+router.put('/:id/status', protect, authorize('admin'), auditLog('order', 'update'), updateOrderStatusValidation, validate, orderController.updateOrderStatus);
+router.put('/:id/payment-status', protect, authorize('admin'), auditLog('order', 'update'), updatePaymentStatusValidation, validate, orderController.updatePaymentStatus);
+router.put('/:id/notes', protect, authorize('admin'), auditLog('order', 'update'), updateNotesValidation, validate, orderController.updateNotes);
+router.put('/:id/refund', protect, authorize('admin'), auditLog('order', 'update'), orderController.refundOrder);
+router.post('/:id/send-email', protect, authorize('admin'), auditLog('order', 'update'), sendEmailValidation, validate, orderController.sendEmail);
+router.put('/:id/cancel', protect, cancelOrderValidation, validate, orderController.cancelOrder);
+router.put('/:id/tracking', protect, authorize('admin'), auditLog('order', 'update'), addTrackingValidation, validate, orderController.addTrackingInfo);
+
+export default router;

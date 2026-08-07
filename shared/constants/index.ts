@@ -1,4 +1,23 @@
 // Shared Constants
+
+// Slugs reserved by the legacy marketing-collection system. Marketing and
+// homepage sections are driven by independent product boolean flags (isNewArrival,
+// isBestSeller, ...), never by collections. These slugs must never appear in
+// the Collection model or on a product's `collections` array.
+export const MARKETING_COLLECTION_SLUGS = [
+  'new-arrival',
+  'best-seller',
+  'trending',
+  'sale',
+  'featured',
+  'recommended',
+  'exclusive',
+  'limited-edition',
+  'editor-choice',
+  'luxury-collection',
+  'customer-favorites',
+];
+
 export const ROUTES = {
   // Public routes
   HOME: '/',
@@ -173,6 +192,114 @@ export const API_ENDPOINTS = {
   ADMIN_ANALYTICS: '/api/admin/analytics',
 };
 
+// ============================================================
+// MEDIA SYSTEM
+// ============================================================
+
+export interface MediaRatio {
+  w: number;
+  h: number;
+  label: string;
+}
+
+/**
+ * Exact display ratios used by the storefront. These are read directly from
+ * the frontend components (never invented) so the admin ImagePicker can offer
+ * pixel-true presets for every surface.
+ */
+export const MEDIA_RATIOS: Record<string, MediaRatio> = {
+  hero: { w: 601, h: 751, label: 'Hero slide' },
+  product: { w: 3, h: 4, label: 'Product card' },
+  collection: { w: 4, h: 5, label: 'Collection card' },
+  category: { w: 4, h: 5, label: 'Category card' },
+  collectionBannerDesktop: { w: 21, h: 9, label: 'Collection banner (desktop)' },
+  collectionBannerTablet: { w: 16, h: 7, label: 'Collection banner (tablet)' },
+  collectionBannerMobile: { w: 4, h: 3, label: 'Collection banner (mobile)' },
+  categoryBanner: { w: 21, h: 9, label: 'Category banner' },
+  blogFeatured: { w: 21, h: 10, label: 'Blog featured' },
+  blogCard: { w: 4, h: 3, label: 'Blog card' },
+  journalFeatured: { w: 16, h: 10, label: 'Journal featured' },
+  journalCard: { w: 4, h: 3, label: 'Journal card' },
+  campaign: { w: 21, h: 9, label: 'Campaign banner' },
+  campaignMobile: { w: 16, h: 9, label: 'Campaign banner (mobile)' },
+  promotionDesktop: { w: 60, h: 7, label: 'Promotion banner (desktop)' },
+  promotionTablet: { w: 7, h: 1, label: 'Promotion banner (tablet)' },
+  promotionMobile: { w: 21, h: 5, label: 'Promotion banner (mobile)' },
+  editorial: { w: 21, h: 9, label: 'Editorial banner' },
+  instagram: { w: 1, h: 1, label: 'Instagram tile' },
+  favicon: { w: 1, h: 1, label: 'Favicon' },
+  seo: { w: 1200, h: 630, label: 'Social / OG image' },
+  square: { w: 1, h: 1, label: 'Square' },
+  landscape: { w: 16, h: 9, label: 'Landscape' },
+  portrait: { w: 4, h: 5, label: 'Portrait' },
+  blogBody: { w: 0, h: 0, label: 'Free (blog body)' },
+  logo: { w: 0, h: 0, label: 'Free (logo)' },
+};
+
+export const MEDIA_RATIO_KEYS = Object.keys(MEDIA_RATIOS);
+
+export function getMediaRatio(key: string): MediaRatio | null {
+  return MEDIA_RATIOS[key] ?? null;
+}
+
+export function ratioToCss(key: string): string | null {
+  const r = MEDIA_RATIOS[key];
+  if (!r || r.w === 0 || r.h === 0) return null;
+  return `${r.w} / ${r.h}`;
+}
+
+export interface CropPreset {
+  id: string;
+  label: string;
+  ratio: { w: number; h: number } | null;
+}
+
+export const CROP_PRESETS: CropPreset[] = [
+  { id: 'hero', label: 'Hero', ratio: { w: 601, h: 751 } },
+  { id: 'product', label: 'Product', ratio: { w: 3, h: 4 } },
+  { id: 'collection', label: 'Collection', ratio: { w: 4, h: 5 } },
+  { id: 'category', label: 'Category', ratio: { w: 4, h: 5 } },
+  { id: 'square', label: 'Square', ratio: { w: 1, h: 1 } },
+  { id: 'landscape', label: 'Landscape', ratio: { w: 16, h: 9 } },
+  { id: 'portrait', label: 'Portrait', ratio: { w: 4, h: 5 } },
+  { id: 'custom', label: 'Custom', ratio: null },
+];
+
+/** Default folders surfaced in the Media Library sidebar. */
+export const MEDIA_FOLDERS = [
+  'general',
+  'products',
+  'categories',
+  'collections',
+  'blogs',
+  'journal',
+  'hero',
+  'promotion',
+  'home',
+  'settings',
+  'pages',
+  'testimonials',
+  'faq',
+  'brand',
+];
+
+export const MEDIA_SCOPES = [
+  { id: 'products', label: 'Products' },
+  { id: 'collections', label: 'Collections' },
+  { id: 'categories', label: 'Categories' },
+  { id: 'hero', label: 'Hero' },
+  { id: 'promotion', label: 'Promotion banners' },
+  { id: 'blogs', label: 'Blog' },
+  { id: 'pages', label: 'CMS Pages' },
+  { id: 'settings', label: 'Site settings' },
+  { id: 'reviews', label: 'Reviews' },
+  { id: 'layouts', label: 'Layouts' },
+] as const;
+
+export type MediaSortKey = 'newest' | 'oldest' | 'name' | 'size' | 'used';
+
+export const MEDIA_ACCEPTED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'svg', 'gif', 'avif'];
+
 export const ROLE_PERMISSIONS = {
   SUPER_ADMIN: ['*'], // All permissions
   ADMIN: [
@@ -323,7 +450,7 @@ export const DEFAULT_SETTINGS = {
   brandName: 'BRISTI',
   logo: '/logo.png',
   favicon: '/favicon.svg',
-  slogan: 'Luxury Redefined',
+  slogan: '',
   colors: {
     primary: '#000000',
     secondary: '#FFFFFF',
@@ -341,18 +468,11 @@ export const DEFAULT_SETTINGS = {
     footerStyle: 'classic',
   },
   contactInfo: {
-    email: 'hello@bristi.com',
-    phone: '+1 (555) 123-4567',
-    address: '123 Luxury Avenue, Fashion District, New York, NY 10001',
+    email: '',
+    phone: '',
+    address: '',
   },
-  socialLinks: [
-    { platform: 'instagram', url: 'https://instagram.com/bristi', icon: 'instagram' },
-    { platform: 'facebook', url: 'https://facebook.com/bristi', icon: 'facebook' },
-    { platform: 'twitter', url: 'https://twitter.com/bristi', icon: 'twitter' },
-    { platform: 'pinterest', url: 'https://pinterest.com/bristi', icon: 'pinterest' },
-    { platform: 'tiktok', url: 'https://tiktok.com/@bristi', icon: 'tiktok' },
-    { platform: 'youtube', url: 'https://youtube.com/@bristi', icon: 'youtube' },
-  ],
+  socialLinks: [],
   policies: {
     privacy: '/privacy',
     terms: '/terms',
@@ -360,9 +480,9 @@ export const DEFAULT_SETTINGS = {
     shipping: '/shipping',
   },
   seo: {
-    defaultTitle: 'BRISTI - Luxury Clothing Brand',
-    defaultDescription: 'Discover timeless elegance and modern sophistication with BRISTI luxury clothing.',
-    defaultImage: '/og-image.jpg',
+    defaultTitle: 'BRISTI',
+    defaultDescription: '',
+    defaultImage: '',
   },
   currency: 'USD',
   taxRate: 0.1, // 10%

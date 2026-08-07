@@ -117,6 +117,7 @@ export interface Product {
   shortDescription: string;
   category: string;
   collection?: string;
+  collections?: string[]; // Merchandising collection slugs (summer-collection, ...). Marketing sections use the is* flags below.
   brand: string;
   sku: string;
   barcode?: string;
@@ -164,6 +165,18 @@ export interface Product {
   categoryPath?: string[];
   featured: boolean;
   featuredUntil?: Date;
+  // Independent marketing flags (Shopify-style). A product may belong to any
+  // number of these lists at once — none are mutually exclusive.
+  isNewArrival?: boolean;
+  isBestSeller?: boolean;
+  isTrending?: boolean;
+  isOnSale?: boolean;
+  isFeatured?: boolean;
+  isRecommended?: boolean;
+  isExclusive?: boolean;
+  isLimitedEdition?: boolean;
+  isEditorsPick?: boolean;
+  isPremiumCollection?: boolean;
   status: 'draft' | 'active' | 'archived';
   seo: {
     title?: string;
@@ -183,6 +196,7 @@ export interface Category {
   name: string;
   slug: string;
   description?: string;
+  subtitle?: string;
   image?: string;
   bannerImage?: string;
   parentId?: string;
@@ -199,6 +213,35 @@ export interface Category {
   toObject?: () => any;
 }
 
+export type PromotionBannerScope = 'all' | 'selected';
+
+export interface PromotionBanner {
+  _id: any;
+  name: string;
+  isActive: boolean;
+  scope: PromotionBannerScope;
+  categorySlugs: string[];
+  desktopImage?: string;
+  tabletImage?: string;
+  mobileImage?: string;
+  redirectUrl?: string;
+  openInNewTab: boolean;
+  startDate?: string;
+  endDate?: string;
+  backgroundColor?: string;
+  borderColor?: string;
+  borderWidth: number;
+  borderRadius: number;
+  padding: number;
+  marginTop: number;
+  marginBottom: number;
+  overlayColor?: string;
+  overlayOpacity: number;
+  bannerOrder: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export interface Collection {
   _id: any;
   name: string;
@@ -207,24 +250,133 @@ export interface Collection {
   shortDescription?: string;
   image?: string;
   bannerImage?: string;
+  bannerTablet?: string;
+  mobileBanner?: string;
+  icon?: string;
   video?: string;
-  products: string[]; // Product IDs
+  products: string[]; // Legacy Product IDs (new system derives products from Product.collections)
   featured: boolean;
+  sortOrder?: number;
   featuredUntil?: Date;
   startDate?: Date;
   endDate?: Date;
   isActive: boolean;
+  showOnHomepage?: boolean;
+  showInNavigation?: boolean;
+  themeColor?: string;
+  buttonColor?: string;
+  buttonText?: string;
+  productCount?: number;
   seo?: {
     title?: string;
     description?: string;
+    image?: string;
   };
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export type HeroLinkType = 'collection' | 'category' | 'product' | 'custom';
+export type HeroContentAlignment = 'left' | 'center' | 'right';
+export type HeroAnimationStyle = 'slide' | 'fade' | 'kenburns';
+export type HeroSlideAnimationType = 'fade' | 'zoom' | 'slide';
+export type HeroBlockStatus = 'draft' | 'published';
+
+export interface HeroButton {
+  label?: string;
+  linkType?: HeroLinkType;
+  link?: string;
+}
+
+export interface HeroVisibility {
+  desktop: boolean;
+  tablet: boolean;
+  mobile: boolean;
+}
+
+export interface HeroSlide {
+  _id?: any;
+  image?: string;
+  imageMobile?: string;
+  video?: string;
+  videoMobile?: string;
+  eyebrow?: string;
+  heading?: string;
+  headingColor?: string;
+  showEyebrow: boolean;
+  showCta: boolean;
+  ctaText?: string;
+  ctaLinkType?: HeroLinkType;
+  ctaLink?: string;
+  description?: string;
+  secondaryButtonText?: string;
+  secondaryButtonLink?: string;
+  backgroundColor?: string;
+  animationType?: HeroSlideAnimationType;
+  overlay?: boolean;
+  overlayOpacity?: number;
+  gradient?: boolean;
+  textAlign?: HeroContentAlignment;
+  buttonColor?: string;
+  animationSpeed?: number;
+  priority?: number;
+  visibility?: HeroVisibility;
+  status: HeroBlockStatus;
+  isActive: boolean;
+  scheduledStart?: Date;
+  scheduledEnd?: Date;
+  altText?: string;
+}
+
+export interface HeroPanel {
+  _id?: any;
+  label?: string;
+  slides: HeroSlide[];
+  status: HeroBlockStatus;
+  isActive: boolean;
+}
+
+export interface HeroBlock {
+  _id: any;
+  name: string;
+  slides: HeroSlide[];
+  animationSpeed: number;
+  priority: number;
+  status: HeroBlockStatus;
+  isActive: boolean;
+  /* Legacy panels structure — kept optional for one-time migration into slides */
+  panels?: HeroPanel[];
+  overlay: boolean;
+  overlayOpacity: number;
+  gradient: boolean;
+  /* Legacy flat fields — kept optional for one-time migration into panels */
+  title?: string;
+  subtitle?: string;
+  description?: string;
+  image?: string;
+  video?: string;
+  imageMobile?: string;
+  videoMobile?: string;
+  badge?: string;
+  primaryButton?: HeroButton;
+  secondaryButton?: HeroButton;
+  contentAlignment?: HeroContentAlignment;
+  textColor?: string;
+  buttonColor?: string;
+  accentColor?: string;
+  animationStyle?: HeroAnimationStyle;
+  visibility?: HeroVisibility;
+  seoLabel?: string;
+  altText?: string;
+  scheduledStart?: Date;
+  scheduledEnd?: Date;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
 export interface User {
   _id: any;
-  email: string;
+  email?: string;
   password?: string; // Hashed
   firstName: string;
   lastName: string;
@@ -235,6 +387,18 @@ export interface User {
   phoneVerified: boolean;
   role: 'customer' | 'admin' | 'moderator';
   status: 'active' | 'inactive' | 'suspended' | 'deleted';
+  /** How this account authenticates: password (email), Google, or phone OTP. */
+  authProvider?: 'email' | 'google' | 'phone';
+  /** Google subject identifier for accounts created via Google Sign-In. */
+  googleId?: string;
+  /** Profile image URL (Google picture, uploaded avatar, or CDN). */
+  avatar?: string;
+  /** Consecutive failed password attempts (drives temporary lockout). */
+  failedLoginAttempts?: number;
+  /** Timestamp until which the account is locked after too many failures. */
+  lockedUntil?: Date;
+  /** Loyalty balance accumulated from orders and referrals. */
+  rewardPoints?: number;
   addresses: Array<{
     id: string;
     type: 'billing' | 'shipping' | 'both';
@@ -259,6 +423,58 @@ export interface User {
   createdAt?: Date;
   updatedAt?: Date;
   lastLoginAt?: Date;
+  loginCount?: number;
+}
+
+export interface OtpCode {
+  _id: any;
+  phone: string;
+  /** sha256 hash of the 6-digit code (plaintext is never stored). */
+  otpHash: string;
+  purpose: 'login' | 'phone_verification';
+  /** Failed verification attempts for this code. */
+  attempts: number;
+  /** Last time a code was sent to this phone (30s resend guard). */
+  lastSentAt: Date;
+  consumedAt?: Date;
+  expiresAt: Date;
+  createdAt?: Date;
+}
+
+export interface LoginHistoryEntry {
+  _id: any;
+  userId?: any;
+  method: 'email' | 'google' | 'phone' | 'refresh';
+  success: boolean;
+  ip?: string;
+  userAgent?: string;
+  /** Phone or email used when the attempt did not resolve to a user. */
+  identifier?: string;
+  failedReason?: string;
+  createdAt?: Date;
+}
+
+export interface UserSession {
+  _id: any;
+  userId: any;
+  tokenHash: string;
+  device?: string;
+  ip?: string;
+  userAgent?: string;
+  lastActiveAt: Date;
+  revokedAt?: Date;
+  createdAt?: Date;
+}
+
+export interface AuthStats {
+  totalUsers: number;
+  byProvider: { email: number; google: number; phone: number };
+  verified: number;
+  unverified: number;
+  statusBreakdown: Record<string, number>;
+  failedLoginsLast30d: number;
+  recentLoginHistory: LoginHistoryEntry[];
+  activeSessions: number;
 }
 
 export interface Admin {
@@ -296,6 +512,19 @@ export interface OrderItem {
   price: number;
   total: number;
   sku: string;
+  image?: string;
+}
+
+export interface OrderStatusHistoryEntry {
+  status: string;
+  note?: string;
+  changedBy?: string;
+  changedAt: Date;
+}
+
+export interface OrderEmailHistoryEntry {
+  type: 'confirmation' | 'shipping' | 'delivered';
+  sentAt: Date;
 }
 
 export interface Order {
@@ -309,7 +538,7 @@ export interface Order {
   shipping: number;
   discount: number;
   total: number;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned' | 'refunded';
+  status: 'pending' | 'confirmed' | 'processing' | 'packed' | 'shipped' | 'delivered' | 'cancelled' | 'returned' | 'refunded';
   paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded' | 'partially_refunded';
   paymentMethod: 'credit_card' | 'debit_card' | 'paypal' | 'apple_pay' | 'google_pay' | 'razorpay' | 'stripe' | 'cod';
   paymentId?: string;
@@ -342,6 +571,9 @@ export interface Order {
   trackingUrl?: string;
   couponCode?: string;
   couponDiscount?: number;
+  stockRestored?: boolean;
+  statusHistory?: OrderStatusHistoryEntry[];
+  emailHistory?: OrderEmailHistoryEntry[];
   createdAt?: Date;
   updatedAt?: Date;
   deliveredAt?: Date;
@@ -482,6 +714,41 @@ export interface Payment {
   updatedAt?: Date;
 }
 
+export interface MediaVariant {
+  url: string;
+  width: number;
+  height: number;
+  size?: number;
+  format?: string;
+}
+
+export interface MediaDerived {
+  url: string;
+  width: number;
+  height: number;
+  ratio: string; // '3:4', '21:9', ...
+  source: 'auto' | 'manual';
+  createdAt: Date;
+}
+
+export interface MediaVersion {
+  _id?: any;
+  url: string;
+  thumbnailUrl?: string;
+  width?: number;
+  height?: number;
+  size?: number;
+  mimeType?: string;
+  note?: string;
+  createdAt: Date;
+}
+
+export interface MediaUsageEntry {
+  scope: string; // 'products' | 'collections' | ...
+  count: number;
+  items: Array<{ id: string; name?: string }>;
+}
+
 export interface MediaFile {
   _id: any;
   filename: string;
@@ -493,12 +760,45 @@ export interface MediaFile {
   width?: number;
   height?: number;
   duration?: number; // For video/audio
+  /** Auto-detected aspect ratio of the source image (e.g. '3:4', '21:9'). Null/absent = free ratio (SVG/video/unknown). */
+  ratio?: string;
   altText?: string;
   caption?: string;
+  title?: string;
   tags: string[];
   folder: string;
   uploadedBy: string; // User ID
   uploadedAt: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
+  /** Duplicate detection hash (md5 of the original bytes). */
+  checksum?: string;
+  /** True when this upload was detected as a duplicate of an existing file. */
+  duplicated?: boolean;
+  favorite?: boolean;
+  /** Auto-generated responsive variants (thumb / medium / large / avif). */
+  variants?: {
+    thumb?: MediaVariant;
+    medium?: MediaVariant;
+    large?: MediaVariant;
+    avif?: MediaVariant;
+    /** Ready-to-use `srcset` attribute value. */
+    srcset?: string;
+  };
+  /** Ratio-fitted / user-cropped derivations (never touch the original). */
+  derived?: MediaDerived[];
+  /** Version history created by Replace operations. */
+  versions?: MediaVersion[];
+  /** Compression report vs the original file. */
+  optimization?: {
+    originalSize: number;
+    optimizedSize: number;
+    savingsPercent: number;
+  };
+  /** Last time the file was found referenced by storefront content. */
+  lastUsedAt?: Date;
+  /** Populated on-demand by the usage tracker endpoint. */
+  usage?: MediaUsageEntry[] | null;
 }
 
 export interface Page {
@@ -538,29 +838,94 @@ export interface Layout {
   updatedAt?: Date;
 }
 
+export type ThemeTransform = 'none' | 'uppercase' | 'capitalize';
+
+export interface ThemeFontSizeSet {
+  desktop: number;
+  tablet: number;
+  mobile: number;
+}
+
+export interface ThemeTypography {
+  headingFont: string;
+  bodyFont: string;
+  baseSize: ThemeFontSizeSet;
+  headingSizes: {
+    h1: ThemeFontSizeSet;
+    h2: ThemeFontSizeSet;
+    h3: ThemeFontSizeSet;
+    h4: ThemeFontSizeSet;
+    h5: ThemeFontSizeSet;
+    small: ThemeFontSizeSet;
+    eyebrow: ThemeFontSizeSet;
+  };
+  headingWeight: number;
+  bodyWeight: number;
+  headingTransform: ThemeTransform;
+  headingLineHeight: number;
+  bodyLineHeight: number;
+  headingLetterSpacing: string;
+  eyebrowTransform: ThemeTransform;
+  eyebrowLetterSpacing: string;
+}
+
+export interface ThemeButtons {
+  borderRadius: string;
+  paddingX: string;
+  paddingY: string;
+  fontSize: string;
+  fontWeight: number;
+  textTransform: ThemeTransform;
+  letterSpacing: string;
+  primaryBg: string;
+  primaryText: string;
+  primaryHoverBg: string;
+  goldBg: string;
+  goldText: string;
+  goldHoverBg: string;
+  outlineText: string;
+  outlineBorder: string;
+  outlineHoverBg: string;
+  outlineHoverText: string;
+  ghostText: string;
+  whiteBg: string;
+  whiteText: string;
+  whiteHoverBg: string;
+}
+
+export interface ThemeHeaderConfig {
+  height: string;
+  sticky: boolean;
+  showAnnouncementBar: boolean;
+}
+
+export interface ThemeFooterConfig {
+  paddingY: string;
+}
+
+export interface ThemeEffects {
+  radiusSm: string;
+  radiusMd: string;
+  radiusLg: string;
+  shadowSm: string;
+  shadowMd: string;
+  shadowLg: string;
+  transition: string;
+  marqueeDuration: string;
+}
+
 export interface ThemeSettings {
   _id: any;
   name: string;
+  description?: string;
   isActive: boolean;
-  colors: {
-    primary: string;
-    secondary: string;
-    background: string;
-    text: string;
-    accent: string;
-    gold: string;
-    darkGray: string;
-    lightGray: string;
-  };
-  typography: {
-    headingFont: string;
-    bodyFont: string;
-    baseSize: string;
-    scale: number;
-  };
-  borderRadius: string;
-  boxShadow: string;
-  transition: string;
+  isDark: boolean;
+  colors: Record<string, string>;
+  typography: ThemeTypography;
+  buttons: ThemeButtons;
+  header: ThemeHeaderConfig;
+  footer: ThemeFooterConfig;
+  effects: ThemeEffects;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -654,7 +1019,7 @@ export interface ContactMessage {
 
 export interface AuditLog {
   _id: any;
-  action: 'create' | 'update' | 'delete' | 'view' | 'login' | 'logout';
+  action: 'create' | 'update' | 'delete' | 'view' | 'login' | 'logout' | 'reorder' | 'duplicate' | 'transfer';
   entityType: string;
   entityId: string;
   userId: string;

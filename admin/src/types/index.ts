@@ -44,6 +44,16 @@ export interface Product {
   categoryPath?: string[];
   featured: boolean;
   featuredUntil?: string;
+  isNewArrival?: boolean;
+  isBestSeller?: boolean;
+  isTrending?: boolean;
+  isOnSale?: boolean;
+  isFeatured?: boolean;
+  isRecommended?: boolean;
+  isExclusive?: boolean;
+  isLimitedEdition?: boolean;
+  isEditorsPick?: boolean;
+  isPremiumCollection?: boolean;
   status: 'draft' | 'active' | 'archived';
   seo?: {
     title?: string;
@@ -68,6 +78,7 @@ export interface Collection {
   bannerImage?: string;
   products: string[];
   featured: boolean;
+  sortOrder?: number;
   featuredUntil?: string;
   startDate?: string;
   endDate?: string;
@@ -76,6 +87,90 @@ export interface Collection {
     title?: string;
     description?: string;
   };
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type HeroLinkType = 'collection' | 'category' | 'product' | 'custom';
+export type HeroStatus = 'draft' | 'published';
+export type HeroSlideAnimationType = 'fade' | 'zoom' | 'slide';
+
+export interface HeroSlide {
+  _id?: string;
+  image?: string;
+  imageMobile?: string;
+  video?: string;
+  videoMobile?: string;
+  eyebrow?: string;
+  heading?: string;
+  headingColor?: string;
+  showEyebrow: boolean;
+  showCta: boolean;
+  ctaText?: string;
+  ctaLinkType?: HeroLinkType;
+  ctaLink?: string;
+  description?: string;
+  secondaryButtonText?: string;
+  secondaryButtonLink?: string;
+  backgroundColor?: string;
+  animationType?: HeroSlideAnimationType;
+  overlay?: boolean;
+  overlayOpacity?: number;
+  gradient?: boolean;
+  textAlign?: 'left' | 'center' | 'right';
+  buttonColor?: string;
+  animationSpeed?: number;
+  priority?: number;
+  visibility?: { desktop: boolean; tablet: boolean; mobile: boolean };
+  status: HeroStatus;
+  isActive: boolean;
+  scheduledStart?: string;
+  scheduledEnd?: string;
+  altText?: string;
+}
+
+export interface HeroPanel {
+  _id?: string;
+  label?: string;
+  slides: HeroSlide[];
+  status: HeroStatus;
+  isActive: boolean;
+}
+
+export interface HeroBlock {
+  _id: string;
+  name: string;
+  slides: HeroSlide[];
+  /* Legacy panels structure — kept optional for one-time migration into slides */
+  panels?: HeroPanel[];
+  overlay: boolean;
+  overlayOpacity: number;
+  gradient: boolean;
+  animationSpeed: number;
+  priority: number;
+  status: HeroStatus;
+  isActive: boolean;
+  /* Legacy flat fields — kept optional for one-time migration */
+  title?: string;
+  subtitle?: string;
+  description?: string;
+  image?: string;
+  video?: string;
+  imageMobile?: string;
+  videoMobile?: string;
+  badge?: string;
+  primaryButton?: { label?: string; linkType?: HeroLinkType; link?: string };
+  secondaryButton?: { label?: string; linkType?: HeroLinkType; link?: string };
+  contentAlignment?: 'left' | 'center' | 'right';
+  textColor?: string;
+  buttonColor?: string;
+  accentColor?: string;
+  animationStyle?: 'slide' | 'fade' | 'kenburns';
+  visibility?: { desktop: boolean; tablet: boolean; mobile: boolean };
+  seoLabel?: string;
+  altText?: string;
+  scheduledStart?: string;
+  scheduledEnd?: string;
   createdAt?: string;
   updatedAt?: string;
 }

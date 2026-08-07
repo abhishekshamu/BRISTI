@@ -1,9 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { ArrowLeft, Save } from 'lucide-react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
+import PageShell from '../../components/ui/PageShell';
+import FormSection from '../../components/ui/FormSection';
+import StickySaveBar from '../../components/ui/StickySaveBar';
+import PageSpinner from '../../components/ui/PageSpinner';
+import { useUnsavedChanges } from '../../lib/unsaved-context';
 
 interface CouponForm {
   code: string;
@@ -27,21 +31,20 @@ export default function CouponEdit() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const { dirty, setDirty } = useUnsavedChanges();
 
   const {
     register,
     handleSubmit,
     reset,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<CouponForm>();
 
   useEffect(() => {
-    if (id) {
-      fetchCoupon();
-    }
-  }, [id]);
+    setDirty(isDirty);
+  }, [isDirty, setDirty]);
 
-  const fetchCoupon = async () => {
+  const fetchCoupon = useCallback(async () => {
     try {
       const response = await api.get(`/coupons/${id}`);
       reset(response.data.data);
@@ -51,13 +54,20 @@ export default function CouponEdit() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, reset, navigate]);
+
+  useEffect(() => {
+    if (id) {
+      fetchCoupon();
+    }
+  }, [id, fetchCoupon]);
 
   const onSubmit = async (data: CouponForm) => {
     try {
       setSaving(true);
       await api.put(`/coupons/${id}`, data);
       toast.success('Coupon updated successfully');
+      reset(data);
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to update coupon');
     } finally {
@@ -66,74 +76,74 @@ export default function CouponEdit() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
-      </div>
-    );
+    return <PageSpinner label="Loading coupon" />;
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <button onClick={() => navigate('/coupons')} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md">
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Edit Coupon</h2>
-            <p className="text-slate-500 dark:text-slate-400">Update coupon information</p>
+    <PageShell
+      title="Edit Coupon"
+      subtitle="Update coupon information"
+      breadcrumbs={[{ label: 'Coupons', to: '/coupons' }]}
+      backTo="/coupons"
+    >
+      <form id="coupon-form" onSubmit={handleSubmit(onSubmit)} className="space-y-8 max-w-4xl">
+        <FormSection number={1} title="Details" description="How the coupon is identified at checkout.">
+          <div className="grid gap-6 sm:grid-cols-2">
+            <div className="admin-field">
+              <label className="admin-label">Coupon Code</label>
+              <input {...register('code', { required: 'Code is required' })} className="admin-input uppercase" />
+              {errors.code && <p className="text-xs text-red-600">{errors.code.message}</p>}
+            </div>
+            <div className="admin-field">
+              <label className="admin-label">Name</label>
+              <input {...register('name', { required: 'Name is required' })} className="admin-input" />
+              {errors.name && <p className="text-xs text-red-600">{errors.name.message}</p>}
+            </div>
+            <div className="sm:col-span-2 admin-field">
+              <label className="admin-label">Description</label>
+              <textarea {...register('description')} rows={2} className="admin-input" />
+            </div>
           </div>
-        </div>
-        <button type="submit" form="coupon-form" disabled={saving} className="admin-btn-primary py-2.5 px-4 flex items-center">
-          {saving ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Save className="w-4 h-4 mr-2" />Save Changes</>}
-        </button>
-      </div>
+        </FormSection>
 
-      <form id="coupon-form" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <div className="admin-card p-6 space-y-4">
-          <div>
-            <label className="admin-label">Coupon Code</label>
-            <input {...register('code', { required: 'Code is required' })} className="admin-input mt-1" />
-            {errors.code && <p className="mt-1 text-sm text-red-600">{errors.code.message}</p>}
+        <FormSection number={2} title="Discount" description="Type and value of the discount applied.">
+          <div className="grid gap-6 sm:grid-cols-2">
+            <div className="admin-field">
+              <label className="admin-label">Type</label>
+              <select {...register('type')} className="admin-input">
+                <option value="percentage">Percentage</option>
+                <option value="fixed_amount">Fixed Amount</option>
+                <option value="free_shipping">Free Shipping</option>
+                <option value="bogo">Buy One Get One</option>
+              </select>
+            </div>
+            <div className="admin-field">
+              <label className="admin-label">Value</label>
+              <input type="number" {...register('value', { required: 'Value is required', min: 0 })} className="admin-input" />
+              {errors.value && <p className="text-xs text-red-600">{errors.value.message}</p>}
+            </div>
+            <div className="admin-field">
+              <label className="admin-label">Minimum Purchase ($)</label>
+              <input type="number" {...register('minimumPurchase', { min: 0 })} className="admin-input" />
+            </div>
+            <div className="admin-field">
+              <label className="admin-label">Usage Limit</label>
+              <input type="number" {...register('usageLimit', { required: true, min: 1 })} className="admin-input" />
+            </div>
           </div>
-          <div>
-            <label className="admin-label">Name</label>
-            <input {...register('name', { required: 'Name is required' })} className="admin-input mt-1" />
-            {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>}
-          </div>
-          <div>
-            <label className="admin-label">Description</label>
-            <textarea {...register('description')} rows={2} className="admin-input mt-1" />
-          </div>
-          <div>
-            <label className="admin-label">Type</label>
-            <select {...register('type')} className="admin-input mt-1">
-              <option value="percentage">Percentage</option>
-              <option value="fixed_amount">Fixed Amount</option>
-              <option value="free_shipping">Free Shipping</option>
-              <option value="bogo">Buy One Get One</option>
-            </select>
-          </div>
-          <div>
-            <label className="admin-label">Value</label>
-            <input type="number" {...register('value', { required: 'Value is required', min: 0 })} className="admin-input mt-1" />
-            {errors.value && <p className="mt-1 text-sm text-red-600">{errors.value.message}</p>}
-          </div>
-          <div>
-            <label className="admin-label">Minimum Purchase ($)</label>
-            <input type="number" {...register('minimumPurchase', { min: 0 })} className="admin-input mt-1" />
-          </div>
-          <div>
-            <label className="admin-label">Usage Limit</label>
-            <input type="number" {...register('usageLimit', { required: true, min: 1 })} className="admin-input mt-1" />
-          </div>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between admin-card px-4 py-3.5 rounded-lg">
             <label className="admin-label">Active</label>
             <input type="checkbox" {...register('isActive')} className="w-4 h-4" />
           </div>
-        </div>
+        </FormSection>
       </form>
-    </div>
+      <StickySaveBar
+        dirty={dirty}
+        saving={saving}
+        onSave={() => handleSubmit(onSubmit)()}
+        onCancel={() => navigate('/coupons')}
+        saveLabel="Save Changes"
+      />
+    </PageShell>
   );
 }

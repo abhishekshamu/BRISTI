@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { ArrowLeft, Save } from 'lucide-react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
+import PageShell from '../../components/ui/PageShell';
+import StickySaveBar from '../../components/ui/StickySaveBar';
+import { useUnsavedChanges } from '../../lib/unsaved-context';
 
 interface CouponForm {
   code: string;
@@ -25,11 +27,12 @@ interface CouponForm {
 export default function CouponCreate() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const { dirty, setDirty } = useUnsavedChanges();
 
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<CouponForm>({
     defaultValues: {
       type: 'percentage',
@@ -40,10 +43,14 @@ export default function CouponCreate() {
     },
   });
 
+  useEffect(() => {
+    setDirty(isDirty);
+  }, [isDirty, setDirty]);
+
   const onSubmit = async (data: CouponForm) => {
     try {
       setLoading(true);
-      const response = await api.post('/coupons', data);
+      await api.post('/coupons', data);
       toast.success('Coupon created successfully');
       navigate('/coupons');
     } catch (error: any) {
@@ -54,22 +61,12 @@ export default function CouponCreate() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <button onClick={() => navigate('/coupons')} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md">
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Add Coupon</h2>
-            <p className="text-slate-500 dark:text-slate-400">Create a new discount coupon</p>
-          </div>
-        </div>
-        <button type="submit" form="coupon-form" disabled={loading} className="admin-btn-primary py-2.5 px-4 flex items-center">
-          {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Save className="w-4 h-4 mr-2" />Save</>}
-        </button>
-      </div>
-
+    <PageShell
+      title="Add Coupon"
+      subtitle="Create a new discount coupon"
+      breadcrumbs={[{ label: 'Coupons', to: '/coupons' }]}
+      backTo="/coupons"
+    >
       <form id="coupon-form" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div className="admin-card p-6 space-y-4">
           <div>
@@ -114,6 +111,13 @@ export default function CouponCreate() {
           </div>
         </div>
       </form>
-    </div>
+      <StickySaveBar
+        dirty={dirty}
+        saving={loading}
+        onSave={() => handleSubmit(onSubmit)()}
+        onCancel={() => navigate('/coupons')}
+        saveLabel="Save Coupon"
+      />
+    </PageShell>
   );
 }

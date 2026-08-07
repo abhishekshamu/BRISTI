@@ -415,3 +415,16 @@ export const isValidFileType = (file: File, allowedTypes: string[]): boolean => 
 export const isValidFileSize = (file: File, maxSizeInBytes: number): boolean => {
   return file.size <= maxSizeInBytes;
 };
+
+/**
+ * Detect the aspect ratio (as a simplified "w:h" string) from pixel dimensions.
+ * Never mutates the source; purely informational. Returns null when unknown
+ * (SVGs, videos, or missing dimensions) so callers can show "Free".
+ */
+export const detectRatio = (width?: number | null, height?: number | null): string | null => {
+  if (!width || !height || width <= 0 || height <= 0) return null;
+  const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
+  const g = gcd(Math.round(width), Math.round(height));
+  if (g === 0) return null;
+  return `${Math.round(width) / g}:${Math.round(height) / g}`;
+};

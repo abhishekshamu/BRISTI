@@ -1,46 +1,78 @@
-import { useState, useEffect } from 'react';
-import { Globe, Save } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Globe } from 'lucide-react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
+import MediaPicker from '../../components/media/MediaPicker';
+import PageShell from '../../components/ui/PageShell';
+import StickySaveBar from '../../components/ui/StickySaveBar';
+import PageSpinner from '../../components/ui/PageSpinner';
+import { useUnsavedChanges } from '../../lib/unsaved-context';
+
+interface SeoSettings {
+  defaultTitle: string;
+  defaultDescription: string;
+  defaultImage: string;
+  facebookAppId: string;
+  twitterHandle: string;
+  googleAnalyticsId: string;
+  googleTagManagerId: string;
+  robots: { index: boolean; follow: boolean };
+  structuredData: boolean;
+  openGraph: boolean;
+  twitterCards: boolean;
+}
+
+const DEFAULT_SETTINGS: SeoSettings = {
+  defaultTitle: 'BRISTI - Luxury Clothing Brand',
+  defaultDescription: 'Discover timeless elegance and modern sophistication with BRISTI luxury clothing.',
+  defaultImage: '/og-image.jpg',
+  facebookAppId: '',
+  twitterHandle: '',
+  googleAnalyticsId: '',
+  googleTagManagerId: '',
+  robots: { index: true, follow: true },
+  structuredData: true,
+  openGraph: true,
+  twitterCards: true,
+};
 
 export default function SeoManagement() {
-  const [settings, setSettings] = useState({
-    defaultTitle: 'BRISTI - Luxury Clothing Brand',
-    defaultDescription: 'Discover timeless elegance and modern sophistication with BRISTI luxury clothing.',
-    defaultImage: '/og-image.jpg',
-    facebookAppId: '',
-    twitterHandle: '',
-    googleAnalyticsId: '',
-    googleTagManagerId: '',
-    robots: { index: true, follow: true },
-    structuredData: true,
-    openGraph: true,
-    twitterCards: true,
-  });
+  const { dirty, setDirty } = useUnsavedChanges();
+  const [settings, setSettings] = useState<SeoSettings>(DEFAULT_SETTINGS);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const baselineRef = useRef<SeoSettings | null>(null);
 
-  useEffect(() => {
-    fetchSettings();
-  }, []);
-
-  const fetchSettings = async () => {
+  const fetchSettings = useCallback(async () => {
     try {
       const response = await api.get('/settings');
       if (response.data.data?.seo) {
-        setSettings({ ...settings, ...response.data.data.seo });
+        const merged = { ...DEFAULT_SETTINGS, ...response.data.data.seo };
+        setSettings(merged);
+        baselineRef.current = merged;
       }
     } catch (error) {
       console.error('Failed to fetch settings');
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
+
+  const updateSettings = (next: SeoSettings) => {
+    setSettings(next);
+    setDirty(true);
   };
 
   const handleSave = async () => {
     try {
       setSaving(true);
       await api.put('/settings/seo', settings);
+      setDirty(false);
+      baselineRef.current = settings;
       toast.success('SEO settings saved successfully');
     } catch (error) {
       toast.error('Failed to save SEO settings');
@@ -49,38 +81,19 @@ export default function SeoManagement() {
     }
   };
 
+  const handleCancel = () => {
+    if (baselineRef.current) {
+      setSettings(baselineRef.current);
+    }
+    setDirty(false);
+  };
+
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
-      </div>
-    );
+    return <PageSpinner label="Loading SEO settings…" />;
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">SEO Management</h2>
-          <p className="text-slate-500 dark:text-slate-400">Optimize your store for search engines</p>
-        </div>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="admin-btn-primary py-2.5 px-4 flex items-center"
-        >
-          {saving ? (
-            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          ) : (
-            <>
-              <Save className="w-4 h-4 mr-2" />
-              Save Settings
-            </>
-          )}
-        </button>
-      </div>
-
+    <PageShell title="SEO Management" subtitle="Optimize your store for search engines">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* General SEO */}
         <div className="admin-card p-6">
@@ -94,7 +107,7 @@ export default function SeoManagement() {
               <input
                 type="text"
                 value={settings.defaultTitle}
-                onChange={(e) => setSettings({ ...settings, defaultTitle: e.target.value })}
+                onChange={(e) => updateSettings({ ...settings, defaultTitle: e.target.value })}
                 className="admin-input mt-1"
               />
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -105,7 +118,7 @@ export default function SeoManagement() {
               <label className="admin-label">Default Description</label>
               <textarea
                 value={settings.defaultDescription}
-                onChange={(e) => setSettings({ ...settings, defaultDescription: e.target.value })}
+                onChange={(e) => updateSettings({ ...settings, defaultDescription: e.target.value })}
                 rows={3}
                 className="admin-input mt-1"
               />
@@ -113,15 +126,13 @@ export default function SeoManagement() {
                 {settings.defaultDescription.length}/160 characters
               </p>
             </div>
-            <div>
-              <label className="admin-label">Default Image URL</label>
-              <input
-                type="text"
-                value={settings.defaultImage}
-                onChange={(e) => setSettings({ ...settings, defaultImage: e.target.value })}
-                className="admin-input mt-1"
-              />
-            </div>
+            <MediaPicker
+              label="Default Image"
+              value={settings.defaultImage}
+              onChange={(url) => updateSettings({ ...settings, defaultImage: url })}
+              ratio="seo"
+              folder="seo"
+            />
           </div>
         </div>
 
@@ -134,7 +145,7 @@ export default function SeoManagement() {
               <input
                 type="text"
                 value={settings.facebookAppId}
-                onChange={(e) => setSettings({ ...settings, facebookAppId: e.target.value })}
+                onChange={(e) => updateSettings({ ...settings, facebookAppId: e.target.value })}
                 className="admin-input mt-1"
               />
             </div>
@@ -143,7 +154,7 @@ export default function SeoManagement() {
               <input
                 type="text"
                 value={settings.twitterHandle}
-                onChange={(e) => setSettings({ ...settings, twitterHandle: e.target.value })}
+                onChange={(e) => updateSettings({ ...settings, twitterHandle: e.target.value })}
                 className="admin-input mt-1"
               />
             </div>
@@ -159,7 +170,7 @@ export default function SeoManagement() {
               <input
                 type="text"
                 value={settings.googleAnalyticsId}
-                onChange={(e) => setSettings({ ...settings, googleAnalyticsId: e.target.value })}
+                onChange={(e) => updateSettings({ ...settings, googleAnalyticsId: e.target.value })}
                 className="admin-input mt-1"
               />
             </div>
@@ -168,7 +179,7 @@ export default function SeoManagement() {
               <input
                 type="text"
                 value={settings.googleTagManagerId}
-                onChange={(e) => setSettings({ ...settings, googleTagManagerId: e.target.value })}
+                onChange={(e) => updateSettings({ ...settings, googleTagManagerId: e.target.value })}
                 className="admin-input mt-1"
               />
             </div>
@@ -187,7 +198,7 @@ export default function SeoManagement() {
               <input
                 type="checkbox"
                 checked={settings.robots.index}
-                onChange={(e) => setSettings({
+                onChange={(e) => updateSettings({
                   ...settings,
                   robots: { ...settings.robots, index: e.target.checked }
                 })}
@@ -202,7 +213,7 @@ export default function SeoManagement() {
               <input
                 type="checkbox"
                 checked={settings.structuredData}
-                onChange={(e) => setSettings({ ...settings, structuredData: e.target.checked })}
+                onChange={(e) => updateSettings({ ...settings, structuredData: e.target.checked })}
                 className="w-4 h-4"
               />
             </div>
@@ -214,7 +225,7 @@ export default function SeoManagement() {
               <input
                 type="checkbox"
                 checked={settings.openGraph}
-                onChange={(e) => setSettings({ ...settings, openGraph: e.target.checked })}
+                onChange={(e) => updateSettings({ ...settings, openGraph: e.target.checked })}
                 className="w-4 h-4"
               />
             </div>
@@ -226,13 +237,21 @@ export default function SeoManagement() {
               <input
                 type="checkbox"
                 checked={settings.twitterCards}
-                onChange={(e) => setSettings({ ...settings, twitterCards: e.target.checked })}
+                onChange={(e) => updateSettings({ ...settings, twitterCards: e.target.checked })}
                 className="w-4 h-4"
               />
             </div>
           </div>
         </div>
       </div>
-    </div>
+
+      <StickySaveBar
+        dirty={dirty}
+        onSave={handleSave}
+        onCancel={handleCancel}
+        saving={saving}
+        saveLabel="Save Settings"
+      />
+    </PageShell>
   );
 }

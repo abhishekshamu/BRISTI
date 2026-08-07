@@ -1,8 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Edit, Trash2, Layers } from 'lucide-react';
+import { Plus, Edit, Trash2, Layers } from 'lucide-react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
+import PageShell from '../../components/ui/PageShell';
+import Toolbar from '../../components/ui/Toolbar';
+import IconBtn from '../../components/ui/IconBtn';
+import Badge from '../../components/ui/Badge';
+import EmptyState from '../../components/ui/EmptyState';
+import PageSpinner from '../../components/ui/PageSpinner';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 interface Collection {
   _id: string;
@@ -12,9 +19,16 @@ interface Collection {
   shortDescription?: string;
   image?: string;
   bannerImage?: string;
-  products: string[];
+  bannerTablet?: string;
+  mobileBanner?: string;
+  icon?: string;
+  productCount?: number;
   featured: boolean;
   isActive: boolean;
+  showOnHomepage: boolean;
+  showInNavigation: boolean;
+  sortOrder: number;
+  themeColor?: string;
   createdAt: string;
 }
 
@@ -22,6 +36,7 @@ export default function Collections() {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<Collection | null>(null);
 
   useEffect(() => {
     fetchCollections();
@@ -29,7 +44,7 @@ export default function Collections() {
 
   const fetchCollections = async () => {
     try {
-      const response = await api.get('/collections');
+      const response = await api.get('/collections?includeInactive=true');
       setCollections(response.data.data || []);
     } catch (error) {
       toast.error('Failed to fetch collections');
@@ -38,12 +53,13 @@ export default function Collections() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this collection?')) return;
-    
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+
     try {
-      await api.delete(`/collections/${id}`);
+      await api.delete(`/collections/${deleteTarget._id}`);
       toast.success('Collection deleted successfully');
+      setDeleteTarget(null);
       fetchCollections();
     } catch (error) {
       toast.error('Failed to delete collection');
@@ -55,41 +71,40 @@ export default function Collections() {
   );
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Collections</h2>
-          <p className="text-slate-500 dark:text-slate-400">Create and manage product collections</p>
-        </div>
-        <Link to="/collections/create" className="admin-btn-primary py-2.5 px-4 flex items-center">
-          <Plus className="w-4 h-4 mr-2" />
+    <PageShell
+      title="Collections"
+      subtitle="Create and manage product collections"
+      actions={
+        <Link to="/collections/create" className="admin-btn-primary h-10 px-4 text-sm flex items-center gap-1.5">
+          <Plus className="w-4 h-4" />
           Add Collection
         </Link>
-      </div>
+      }
+    >
+      <Toolbar
+        searchable
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Search collections..."
+      />
 
-      {/* Search */}
-      <div className="admin-card p-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search collections..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="admin-input pl-10"
-          />
-        </div>
-      </div>
-
-      {/* Collections grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {loading ? (
-          <div className="col-span-full flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
-          </div>
-        ) : (
-          filteredCollections.map((collection) => (
+      {loading ? (
+        <PageSpinner />
+      ) : filteredCollections.length === 0 ? (
+        <EmptyState
+          title="No collections found"
+          body="Create your first collection to start grouping products."
+          icon={<Layers className="w-6 h-6" />}
+          action={
+            <Link to="/collections/create" className="admin-btn-primary h-10 px-4 text-sm inline-flex items-center gap-1.5">
+              <Plus className="w-4 h-4" />
+              Create your first collection
+            </Link>
+          }
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredCollections.map((collection) => (
             <div key={collection._id} className="admin-card overflow-hidden group">
               {collection.bannerImage || collection.image ? (
                 <img
@@ -111,37 +126,41 @@ export default function Collections() {
                     </p>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Link
-                      to={`/collections/${collection._id}/edit`}
-                      className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md"
-                    >
-                      <Edit className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                    <Link to={`/collections/${collection._id}/edit`} className="admin-icon-btn">
+                      <Edit className="w-4 h-4" />
                     </Link>
-                    <button
-                      onClick={() => handleDelete(collection._id)}
-                      className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md"
-                    >
+                    <IconBtn title="Delete" onClick={() => setDeleteTarget(collection)}>
                       <Trash2 className="w-4 h-4 text-red-600" />
-                    </button>
+                    </IconBtn>
                   </div>
                 </div>
                 <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
                   <span className="text-sm text-slate-500 dark:text-slate-400">
-                    {collection.products.length} products
+                    {collection.productCount ?? 0} products
                   </span>
-                  <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                    collection.isActive
-                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                      : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400'
-                  }`}>
-                    {collection.isActive ? 'Active' : 'Inactive'}
-                  </span>
+                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                    {collection.showOnHomepage && <Badge tone="blue">Homepage</Badge>}
+                    {collection.showInNavigation && <Badge tone="purple">Nav</Badge>}
+                    {collection.featured && <Badge tone="amber">Featured</Badge>}
+                    <Badge tone={collection.isActive ? 'green' : 'slate'}>
+                      {collection.isActive ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </div>
                 </div>
               </div>
             </div>
-          ))
-        )}
-      </div>
-    </div>
+          ))}
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Delete collection"
+        body={`Are you sure you want to delete "${deleteTarget?.name}"?`}
+        confirmLabel="Delete"
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
+    </PageShell>
   );
 }

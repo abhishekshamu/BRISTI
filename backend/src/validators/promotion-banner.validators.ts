@@ -1,0 +1,56 @@
+import { body, param } from 'express-validator';
+
+export const createPromotionBannerValidation = [
+  body('name').notEmpty().withMessage('Banner name is required').trim(),
+  body('isActive').optional().isBoolean().withMessage('isActive must be a boolean'),
+  body('scope').optional().isIn(['all', 'selected']).withMessage('Scope must be all or selected'),
+  body('categorySlugs').optional().isArray().withMessage('categorySlugs must be an array'),
+  body('categorySlugs.*').optional().isString().trim(),
+  body('desktopImage').optional().isString().trim(),
+  body('tabletImage').optional().isString().trim(),
+  body('mobileImage').optional().isString().trim(),
+  body('redirectUrl').optional().isString().trim(),
+  body('openInNewTab').optional().isBoolean().withMessage('openInNewTab must be a boolean'),
+  body('startDate').optional().isISO8601().withMessage('Invalid start date'),
+  body('endDate').optional().isISO8601().withMessage('Invalid end date'),
+  body('backgroundColor').optional().isString().trim(),
+  body('borderColor').optional().isString().trim(),
+  body('borderWidth').optional().isInt({ min: 0 }).withMessage('borderWidth must be a non-negative integer'),
+  body('borderRadius').optional().isInt({ min: 0 }).withMessage('borderRadius must be a non-negative integer'),
+  body('padding').optional().isInt({ min: 0 }).withMessage('padding must be a non-negative integer'),
+  body('marginTop').optional().isInt({ min: 0 }).withMessage('marginTop must be a non-negative integer'),
+  body('marginBottom').optional().isInt({ min: 0 }).withMessage('marginBottom must be a non-negative integer'),
+  body('overlayColor').optional().isString().trim(),
+  body('overlayOpacity').optional().isInt({ min: 0, max: 100 }).withMessage('overlayOpacity must be between 0 and 100'),
+  body('bannerOrder').optional().isInt({ min: 0 }).withMessage('bannerOrder must be a non-negative integer'),
+];
+
+export const updatePromotionBannerValidation = [
+  param('id').isMongoId().withMessage('Invalid banner ID'),
+  body('name').optional().trim(),
+  body('isActive').optional().isBoolean().withMessage('isActive must be a boolean'),
+  body('scope').optional().isIn(['all', 'selected']).withMessage('Scope must be all or selected'),
+  body('categorySlugs').optional().isArray().withMessage('categorySlugs must be an array'),
+  body('categorySlugs.*').optional().isString().trim(),
+  body('desktopImage').optional().isString().trim(),
+  body('tabletImage').optional().isString().trim(),
+  body('mobileImage').optional().isString().trim(),
+  body('redirectUrl').optional().isString().trim(),
+  body('openInNewTab').optional().isBoolean().withMessage('openInNewTab must be a boolean'),
+  body('startDate').optional().isISO8601().withMessage('Invalid start date'),
+  body('endDate').optional().isISO8601().withMessage('Invalid end date'),
+  body('backgroundColor').optional().isString().trim(),
+  body('borderColor').optional().isString().trim(),
+  body('borderWidth').optional().isInt({ min: 0 }).withMessage('borderWidth must be a non-negative integer'),
+  body('borderRadius').optional().isInt({ min: 0 }).withMessage('borderRadius must be a non-negative integer'),
+  body('padding').optional().isInt({ min: 0 }).withMessage('padding must be a non-negative integer'),
+  body('marginTop').optional().isInt({ min: 0 }).withMessage('marginTop must be a non-negative integer'),
+  body('marginBottom').optional().isInt({ min: 0 }).withMessage('marginBottom must be a non-negative integer'),
+  body('overlayColor').optional().isString().trim(),
+  body('overlayOpacity').optional().isInt({ min: 0, max: 100 }).withMessage('overlayOpacity must be between 0 and 100'),
+  body('bannerOrder').optional().isInt({ min: 0 }).withMessage('bannerOrder must be a non-negative integer'),
+];
+
+export const promotionBannerIdValidation = [
+  param('id').isMongoId().withMessage('Invalid banner ID'),
+];
