@@ -62,7 +62,7 @@ export function FeaturedCollections() {
                       src={image}
                       alt={collection.name}
                       loading="lazy"
-                      className="h-full w-full object-cover transition-transform duration-[1.2s] ease-out group-hover:scale-105"
+                      className="h-full w-full object-cover transition-transform duration-1000 ease-out group-hover:scale-105"
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center">

@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import { MongoMemoryServer } from 'mongodb-memory-server';
+import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import dns from 'node:dns';
 
 dotenv.config();
@@ -14,14 +15,37 @@ const RESOLVER_SETS: string[][] = [
 
 const SYSTEM_SERVERS: string[] = dns.getServers();
 
-let memMongo: MongoMemoryServer | null = null;
+let memMongo: MongoMemoryServer | MongoMemoryReplSet | null = null;
+
+// An ephemeral in-memory database is a development-only convenience. In
+// production it would silently discard all data on restart, so fail fast.
+const refuseInMemoryInProduction = (): void => {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('Refusing to start an in-memory MongoDB fallback in production. Set a valid MONGODB_URI.');
+    process.exit(1);
+  }
+};
+
+const startMemoryMongo = async (): Promise<MongoMemoryServer | MongoMemoryReplSet> => {
+  refuseInMemoryInProduction();
+  console.log('MONGODB_URI not set — starting in-memory MongoDB (development fallback)');
+  // MEMORY_REPLSET=1 starts a single-node replica set so transactional code
+  // (e.g. order placement) works against the in-memory database.
+  if (process.env.MEMORY_REPLSET === '1') {
+    return MongoMemoryReplSet.create({ replSet: { count: 1 } });
+  }
+  return MongoMemoryServer.create();
+};
 
 export const getMongoUri = async (): Promise<string> => {
   const configured = process.env.MONGODB_URI?.trim();
   if (configured) return configured;
 
-  console.log('MONGODB_URI not set — starting in-memory MongoDB (development fallback)');
-  memMongo = await MongoMemoryServer.create();
+  // Reuse an existing in-memory instance so scripts can share the same database
+  // within one process.
+  if (memMongo) return memMongo.getUri('bristi');
+
+  memMongo = await startMemoryMongo();
   return memMongo.getUri('bristi');
 };
 
@@ -69,7 +93,7 @@ const connectDB = async () => {
   }
 
   try {
-    memMongo = await MongoMemoryServer.create();
+    memMongo = await startMemoryMongo();
     const uri = memMongo.getUri('bristi');
     const conn = await mongoose.connect(uri);
     console.log(`MongoDB Connected (in-memory fallback): ${conn.connection.host}`);

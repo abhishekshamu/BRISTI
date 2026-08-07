@@ -45,9 +45,4 @@ export const catalogService = {
     const response = await api.get(`/collections/slug/${slug}`);
     return response.data.data as Collection;
   },
-
-  async collectionProducts(collectionId: string, params: { page?: number; limit?: number; sort?: string; order?: string } = {}): Promise<PaginatedResponse<Product>> {
-    const response = await api.get(`/collections/${collectionId}/products`, { params });
-    return response.data as PaginatedResponse<Product>;
-  },
 };

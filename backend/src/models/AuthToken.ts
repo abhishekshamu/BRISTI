@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IAuthToken {
   userId: string;
+  ownerType: 'user' | 'admin';
   tokenHash: string;
   type: 'access' | 'refresh';
   expiresAt: Date;
@@ -14,8 +15,12 @@ export interface IAuthTokenDoc extends Omit<IAuthToken, '_id'>, Document {}
 const AuthTokenSchema: Schema = new Schema({
   userId: {
     type: Schema.Types.ObjectId,
-    ref: 'User',
     required: true,
+  },
+  ownerType: {
+    type: String,
+    enum: ['user', 'admin'],
+    default: 'user',
   },
   tokenHash: {
     type: String,
@@ -35,11 +40,11 @@ const AuthTokenSchema: Schema = new Schema({
 });
 
 // Indexes
-AuthTokenSchema.index({ userId: 1 });
+AuthTokenSchema.index({ userId: 1, ownerType: 1 });
 AuthTokenSchema.index({ tokenHash: 1 }, { unique: true });
-AuthTokenSchema.index({ expiresAt: 1 });
 
-// TTL index to auto-delete expired tokens
+// TTL index to auto-delete expired tokens (single expiresAt index: no plain
+// duplicate, otherwise MongoDB rejects the TTL options)
 AuthTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 // Static methods

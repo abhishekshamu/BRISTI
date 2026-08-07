@@ -44,18 +44,26 @@ export class BlogRepository extends BaseRepository<IBlogPost> {
     );
   }
 
+  async findByCategory(category: string, options: any = {}): Promise<IBlogPost[]> {
+    return this.findMany(
+      { category, status: 'published' },
+      options
+    );
+  }
+
   async search(query: string, options: any = {}): Promise<IBlogPost[]> {
-    const searchRegex = new RegExp(query, 'i');
+    // Use the title/content text index instead of a collection scan regex.
+    const escaped = String(query)
+      .replace(/"/g, ' ')
+      .trim()
+      .slice(0, 100);
+    if (!escaped) return [];
     return this.findMany(
       {
-        $or: [
-          { title: { $regex: searchRegex } },
-          { content: { $regex: searchRegex } },
-          { excerpt: { $regex: searchRegex } }
-        ],
+        $text: { $search: escaped },
         status: 'published'
       },
-      options
+      { score: { $meta: 'textScore' }, ...options }
     );
   }
 

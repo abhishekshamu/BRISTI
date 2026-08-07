@@ -1,5 +1,6 @@
 import { CouponRepository } from '../repositories/coupon.repository';
 import { ICoupon } from 'shared/types';
+import { Types } from 'mongoose';
 import { ValidationError, NotFoundError, BadRequestError } from '../utils/exceptions';
 
 export class CouponService {
@@ -18,8 +19,10 @@ export class CouponService {
     return this.couponRepo.create(couponData);
   }
 
-  async getCouponByCode(code: string): Promise<ICoupon> {
-    const coupon = await this.couponRepo.findByCode(code);
+async getCouponByCode(code: string): Promise<ICoupon> {
+    // Accept either a Mongo _id (used by the admin edit screen) or a coupon code.
+    const byId = Types.ObjectId.isValid(code) ? await this.couponRepo.findById(code) : null;
+    const coupon = byId ?? await this.couponRepo.findByCode(code);
     if (!coupon) {
       throw new NotFoundError('Coupon not found');
     }
@@ -27,7 +30,10 @@ export class CouponService {
   }
 
   async getAllCoupons(options: any = {}): Promise<any> {
-    return this.couponRepo.paginate({}, options);
+    const { isActive, ...paginateOptions } = options;
+    const filter: any = {};
+    if (isActive !== undefined) filter.isActive = Boolean(isActive);
+    return this.couponRepo.paginate(filter, paginateOptions);
   }
 
   async updateCoupon(couponId: string, updateData: Partial<ICoupon>): Promise<ICoupon> {
@@ -92,7 +98,23 @@ export class CouponService {
 
     const discount = coupon.calculateDiscount(subtotal, options.shipping ?? 0);
 
-    return { valid: true, discount, coupon: coupon.toObject() };
+    return { valid: true, discount, coupon: this.sanitizeCoupon(coupon) };
+  }
+
+  /** Public-safe projection: never expose usage counters, customer lists or
+   * internal settings through the storefront validation endpoint. */
+  private sanitizeCoupon(coupon: any): any {
+    const doc = typeof coupon.toObject === 'function' ? coupon.toObject() : coupon;
+    return {
+      _id: doc._id,
+      code: doc.code,
+      description: doc.description ?? undefined,
+      discountType: doc.discountType,
+      discountValue: doc.discountValue,
+      minimumPurchase: doc.minimumPurchase ?? undefined,
+      startsAt: doc.startsAt ?? undefined,
+      expiresAt: doc.expiresAt ?? undefined
+    };
   }
 }
 

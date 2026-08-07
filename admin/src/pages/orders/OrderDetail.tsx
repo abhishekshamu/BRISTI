@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Package, Truck, CheckCircle, XCircle, Clock, Printer, Mail, CreditCard, FileText, Send, MapPin, History } from 'lucide-react';
+import { Package, Truck, CheckCircle, XCircle, Clock, Printer, Mail, CreditCard, Send, MapPin, History } from 'lucide-react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
+import PageShell from '../../components/ui/PageShell';
+import PageSpinner from '../../components/ui/PageSpinner';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 interface OrderItem {
   productId: string;
@@ -76,6 +79,8 @@ export default function OrderDetail() {
   const [trackingUrl, setTrackingUrl] = useState('');
   const [notes, setNotes] = useState('');
   const [customerEmail, setCustomerEmail] = useState<string | null>(null);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [confirmRefund, setConfirmRefund] = useState(false);
 
   const fetchOrder = useCallback(async () => {
     if (!id) return;
@@ -177,7 +182,6 @@ export default function OrderDetail() {
 
   const cancelOrder = async () => {
     if (!order) return;
-    if (!window.confirm(`Cancel order ${order.orderNumber}? Inventory will be restored automatically.`)) return;
     try {
       setUpdating(true);
       await api.put(`/orders/${id}/cancel`, { reason: 'Cancelled by administrator' });
@@ -192,7 +196,6 @@ export default function OrderDetail() {
 
   const refundOrder = async () => {
     if (!order) return;
-    if (!window.confirm(`Refund order ${order.orderNumber}? Inventory will be restored and payment marked as refunded.`)) return;
     try {
       setUpdating(true);
       await api.put(`/orders/${id}/refund`, { reason: 'Refunded by administrator' });
@@ -249,58 +252,35 @@ export default function OrderDetail() {
   })();
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
-      </div>
-    );
+    return <PageSpinner label="Loading order…" />;
   }
 
   if (!order) {
     return (
-      <div className="text-center py-12">
-        <p className="text-slate-500 dark:text-slate-400">Order not found</p>
-        <Link to="/orders" className="admin-btn-primary mt-4 py-2 px-4 inline-flex items-center">
-          Back to Orders
-        </Link>
-      </div>
+      <PageShell title="Order Not Found" backTo="/orders">
+        <div className="admin-card p-10 text-center">
+          <p className="text-slate-500 dark:text-slate-400">Order not found</p>
+          <Link to="/orders" className="admin-btn-primary mt-4 py-2 px-4 inline-flex items-center">
+            Back to Orders
+          </Link>
+        </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Link
-            to="/orders"
-            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Link>
-          <div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-              Order #{order.orderNumber}
-            </h2>
-            <p className="text-slate-500 dark:text-slate-400">
-              Placed on {new Date(order.createdAt).toLocaleString()}
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
+    <PageShell
+      title={`Order #${order.orderNumber}`}
+      subtitle={`Placed on ${new Date(order.createdAt).toLocaleString()}`}
+      backTo="/orders"
+      actions={
+        <>
           <button
             onClick={() => window.print()}
             className="admin-btn-secondary py-2.5 px-4 flex items-center"
           >
             <Printer className="w-4 h-4 mr-2" />
             Print Invoice
-          </button>
-          <button
-            onClick={() => window.print()}
-            className="admin-btn-secondary py-2.5 px-4 flex items-center"
-          >
-            <FileText className="w-4 h-4 mr-2" />
-            Download PDF
           </button>
           <select
             value={newStatus}
@@ -321,7 +301,7 @@ export default function OrderDetail() {
           </button>
           {canCancel && (
             <button
-              onClick={cancelOrder}
+              onClick={() => setConfirmCancel(true)}
               disabled={updating}
               className="admin-btn-danger py-2.5 px-4"
             >
@@ -330,16 +310,16 @@ export default function OrderDetail() {
           )}
           {canRefund && (
             <button
-              onClick={refundOrder}
+              onClick={() => setConfirmRefund(true)}
               disabled={updating}
               className="admin-btn-danger py-2.5 px-4"
             >
               Refund Order
             </button>
           )}
-        </div>
-      </div>
-
+        </>
+      }
+    >
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Order items */}
         <div className="lg:col-span-2 space-y-6">
@@ -677,6 +657,31 @@ export default function OrderDetail() {
         {order.trackingNumber && <p>Tracking: {order.trackingNumber}</p>}
         <p>Generated: {new Date().toLocaleString()}</p>
       </div>
-    </div>
+
+      <ConfirmDialog
+        open={confirmCancel}
+        title="Cancel order"
+        body={`Cancel ${order.orderNumber}? Inventory will be restored automatically.`}
+        confirmLabel="Cancel order"
+        tone="danger"
+        onConfirm={async () => {
+          await cancelOrder();
+          setConfirmCancel(false);
+        }}
+        onCancel={() => setConfirmCancel(false)}
+      />
+      <ConfirmDialog
+        open={confirmRefund}
+        title="Refund order"
+        body={`Refund ${order.orderNumber}? Inventory will be restored and payment marked as refunded.`}
+        confirmLabel="Refund order"
+        tone="danger"
+        onConfirm={async () => {
+          await refundOrder();
+          setConfirmRefund(false);
+        }}
+        onCancel={() => setConfirmRefund(false)}
+      />
+    </PageShell>
   );
 }

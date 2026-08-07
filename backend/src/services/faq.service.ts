@@ -4,16 +4,20 @@ import { IFAQ } from 'shared/types';
 export class FAQService {
   constructor(private faqRepo: FAQRepository) {}
 
-  async getAllFaqs(options: any = {}) {
-    return this.faqRepo.paginate({}, options);
+  async getAllFaqs(filter: any = {}, options: any = {}) {
+    return this.faqRepo.paginate(filter, options);
   }
 
-  async getFaqById(id: string) {
-    return this.faqRepo.findById(id);
+  async getFaqById(id: string, activeOnly = true) {
+    const faq = await this.faqRepo.findById(id);
+    if (!faq) return null;
+    if (activeOnly && faq.isActive === false) return null;
+    return faq;
   }
 
   async getFaqsByCategory(category: string) {
-    return this.faqRepo.findByCategory(category);
+    // Storefront-facing: only serve active FAQs.
+    return this.faqRepo.findMany({ category, isActive: true }, { sort: { sortOrder: 1 } });
   }
 
   async createFaq(data: Partial<IFAQ>) {

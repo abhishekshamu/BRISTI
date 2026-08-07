@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Package, Truck, PackageCheck, XCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -23,18 +23,11 @@ export default function OrderDetailPage() {
   const { orderNumber = '' } = useParams<{ orderNumber: string }>();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const [cancelling, setCancelling] = useState(false);
 
-  const { data: order, isLoading, error } = useQuery({
+  const { data: order, isLoading, error, refetch } = useQuery({
     queryKey: ['orders', 'detail', orderNumber],
-    queryFn: async () => {
-      const page = await orderService.myOrders(String(user?.id), { limit: 50 });
-      const match = page.data.find((item) => item.orderNumber === orderNumber);
-      if (match) return match;
-      if (!match) throw new Error('Order not found');
-      return match;
-    },
+    queryFn: () => orderService.getByOrderNumber(orderNumber),
     enabled: Boolean(user),
     retry: false,
   });
@@ -63,7 +56,7 @@ export default function OrderDetailPage() {
   }
 
   if (error || !order) {
-    return <ErrorState message="This order could not be found in your account." onRetry={() => navigate('/account/orders')} />;
+    return <ErrorState message="This order could not be found in your account." onRetry={() => refetch()} />;
   }
 
   const statusIndex = STEPS.findIndex((step) => step.status === order.status);

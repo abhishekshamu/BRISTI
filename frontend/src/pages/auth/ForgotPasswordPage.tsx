@@ -9,9 +9,11 @@ import { Label } from '@/components/ui/label';
 import { usePageMeta } from '@/lib/seo';
 import { getErrorMessage, isValidEmailAddress } from '@/lib/utils';
 import { AuthShell } from '@/components/shared/AuthShell';
+import { useBrandName } from '@/context/SettingsContext';
 
 export default function ForgotPasswordPage() {
-  usePageMeta({ title: 'Forgot Password — BRISTI' });
+  const brandName = useBrandName();
+  usePageMeta({ title: `Forgot Password — ${brandName}` });
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);

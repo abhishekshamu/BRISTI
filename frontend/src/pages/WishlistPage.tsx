@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Heart, ShoppingBag } from 'lucide-react';
 import { toast } from 'sonner';
@@ -10,16 +11,20 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { productGridClass } from '@/components/product/ProductGrid';
 import { usePageMeta } from '@/lib/seo';
-import { formatPrice, getImageUrl, getDefaultVariant } from '@/lib/utils';
+import { formatPrice, getDefaultVariant } from '@/lib/utils';
+import { SafeImage } from '@/components/shared/SafeImage';
+import { useBrandName } from '@/context/SettingsContext';
 import type { Product } from '@shared/types';
 
 export default function WishlistPage() {
   const { productIds, remove } = useWishlist();
   const { addItem } = useCart();
   const { isAuthenticated } = useAuth();
+  const brandName = useBrandName();
 
-  usePageMeta({ title: 'Wishlist — BRISTI' });
+  usePageMeta({ title: `Wishlist — ${brandName}` });
 
   const { data: products, isLoading } = useQuery({
     queryKey: ['wishlist', 'products', productIds.join(',')],
@@ -61,41 +66,43 @@ export default function WishlistPage() {
 
       <section className="bg-background pb-24">
         <div className="container-lux">
-          {!isAuthenticated ? (
-            <EmptyState
-              icon={<Heart className="h-7 w-7" />}
-              title="Saved for later — locally"
-              description="Sign in to keep your wishlist synced across every device, forever."
-              action={{ label: 'Sign in', to: '/login' }}
-            />
-          ) : isLoading ? (
-            <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4">
+          {!isAuthenticated && productIds.length > 0 && (
+            <div className="mb-8 flex flex-wrap items-center justify-between gap-3 border border-border p-5">
+              <p className="text-sm text-muted-foreground">These pieces are saved on this device. Sign in to keep your wishlist synced across every device.</p>
+              <Link to="/login" className="btn-lux-outline shrink-0">Sign in</Link>
+            </div>
+          )}
+
+          {isLoading ? (
+            <div className="grid grid-cols-2 gap-6 sm:gap-x-8 lg:grid-cols-4">
               {[0, 1, 2, 3].map((i) => (
                 <Skeleton key={i} className="aspect-[3/4] w-full" />
               ))}
             </div>
-          ) : grouped.length === 0 ? (
+          ) : productIds.length === 0 ? (
             <EmptyState
               icon={<Heart className="h-7 w-7" />}
-              title="Nothing saved yet"
-              description="Tap the heart on any piece to keep it here — your personal edit of the collection."
-              action={{ label: 'Discover pieces', to: '/shop' }}
+              title={isAuthenticated ? 'Nothing saved yet' : 'Saved for later — locally'}
+              description={
+                isAuthenticated
+                  ? 'Tap the heart on any piece to keep it here — your personal edit of the collection.'
+                  : 'Tap the heart on any piece to keep it here, saved on this device. Sign in to keep it synced across every device, forever.'
+              }
+              action={{ label: isAuthenticated ? 'Discover pieces' : 'Sign in', to: isAuthenticated ? '/shop' : '/login' }}
             />
           ) : (
-            <div className="grid grid-cols-2 gap-x-5 gap-y-10 sm:gap-x-8 lg:grid-cols-4">
+            <div className={productGridClass(4)}>
               {grouped.map((product) => {
-                const image = getImageUrl(product.images?.find((image) => image.isFeatured)?.url ?? product.images?.[0]?.url);
                 const isSale = Boolean(product.compareAtPrice && product.compareAtPrice > product.price);
                 return (
                   <div key={String(product._id)} className="group flex flex-col">
                     <a href={`/product/${product.slug}`} className="relative block aspect-[3/4] overflow-hidden bg-secondary">
-                      {image ? (
-                        <img src={image} alt={product.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center">
-                          <span className="font-display text-lg tracking-[0.3em] text-muted-foreground">BRISTI</span>
-                        </div>
-                      )}
+                      <SafeImage
+                        src={product.images?.find((image) => image.isFeatured)?.url ?? product.images?.[0]?.url}
+                        alt={product.name}
+                        loading="lazy"
+                        className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                      />
                       <button
                         type="button"
                         aria-label="Remove from wishlist"

@@ -42,3 +42,27 @@ export const changePasswordValidation = [
     .matches(/[A-Z]/).withMessage('New password must contain at least one uppercase letter')
     .matches(/[0-9]/).withMessage('New password must contain at least one number'),
 ];
+
+export const updateProfileValidation = [
+  body('firstName').optional().trim().isLength({ min: 1, max: 80 }),
+  body('lastName').optional().trim().isLength({ min: 1, max: 80 }),
+  body('phone').optional().trim().isLength({ max: 32 }),
+  body('gender').optional().isIn(['male', 'female', 'other', 'prefer_not_to_say']),
+  body('dateOfBirth').optional().isISO8601().toDate(),
+];
+
+const phoneValidation = body('phone')
+  .trim()
+  .matches(/^\+?[1-9]\d{9,14}$/)
+  .withMessage('Please provide a valid phone number in international format (e.g. +8801712345678)');
+
+export const googleLoginValidation = [
+  body('credential').isString().notEmpty().withMessage('Google credential is required'),
+];
+
+export const requestOtpValidation = [phoneValidation];
+
+export const verifyOtpValidation = [
+  phoneValidation,
+  body('otp').isString().matches(/^\d{6}$/).withMessage('Code must be exactly 6 digits'),
+];

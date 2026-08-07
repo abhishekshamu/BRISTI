@@ -90,8 +90,10 @@ export abstract class BaseRepository<T> {
   }> {
     const filter = stripUndefined(filterRaw);
 
-    const page = options.page ?? 1;
-    const limit = options.limit ?? 10;
+    // Clamp page/limit to sane ranges (negative or zero values would produce
+    // invalid skip/limit values downstream).
+    const page = Math.max(1, Number(options.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(options.limit) || 10));
     const skip = (page - 1) * limit;
     
     const sort = options.sort || { createdAt: -1 };

@@ -8,10 +8,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { usePageMeta } from '@/lib/seo';
 import { getImageUrl } from '@/lib/utils';
+import { useBrandName } from '@/context/SettingsContext';
 import type { Collection } from '@shared/types';
 
 export default function CollectionsPage() {
-  usePageMeta({ title: 'Collections — BRISTI', description: 'Explore the world of BRISTI through our seasonal collections.' });
+  const brandName = useBrandName();
+  usePageMeta({ title: `Collections — ${brandName}`, description: `Explore the world of ${brandName} through our seasonal collections.` });
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['collections', 'all'],
@@ -60,7 +62,7 @@ export default function CollectionsPage() {
                           src={image}
                           alt={collection.name}
                           loading="lazy"
-                          className="h-full w-full object-cover transition-transform duration-[1.2s] group-hover:scale-105"
+                          className="h-full w-full object-cover transition-transform duration-1000 group-hover:scale-105"
                         />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-secondary to-muted">

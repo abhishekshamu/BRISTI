@@ -16,16 +16,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { getInitials, cn } from '@/lib/utils';
 
-const FALLBACK_NAV_LINKS = [
-  { label: 'Shop', to: '/shop' },
-  { label: 'Collections', to: '/collections' },
-  { label: 'New Arrivals', to: '/new-arrivals' },
-  { label: 'Sale', to: '/sale' },
-  { label: 'Journal', to: '/journal' },
-  { label: 'About', to: '/about' },
-  { label: 'Contact', to: '/contact' },
-];
-
 export function Navbar() {
   const { isAuthenticated, user, logout } = useAuth();
   const { settings } = useSiteSettings();
@@ -39,15 +29,13 @@ export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const brandName = settings?.brandName || 'BRISTI';
-  const tagline = settings?.slogan || 'Luxury redefined';
+  const tagline = settings?.slogan;
   const showLogoImage = !!settings?.logo && settings.logo !== '/logo.png' && settings.logo !== '/favicon.svg';
 
-  const navLinks = settings?.navbar?.items?.length
-    ? settings.navbar.items
-        .filter((item) => item.isActive !== false)
-        .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
-        .map((item) => ({ label: item.label, to: item.url }))
-    : FALLBACK_NAV_LINKS;
+  const navLinks = (settings?.navbar?.items ?? [])
+    .filter((item) => item.isActive !== false)
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+    .map((item) => ({ label: item.label, to: item.url }));
 
   const { data: categories } = useQuery({
     queryKey: ['categories', 'tree'],
@@ -99,86 +87,88 @@ export function Navbar() {
               ) : (
                 <span className="truncate font-display text-xl font-semibold tracking-[0.22em] text-[var(--header-text)] sm:text-2xl sm:tracking-[0.3em]">{brandName}</span>
               )}
-              <span className="mt-1 hidden text-[9px] uppercase tracking-lux text-muted-foreground sm:block">{tagline}</span>
+              {tagline && (
+                <span className="mt-1 hidden text-[9px] uppercase tracking-lux text-muted-foreground sm:block">{tagline}</span>
+              )}
             </Link>
           </div>
 
-          <nav className="hidden items-center gap-4 xl:gap-8 lg:flex" aria-label="Primary">
-            {navLinks.slice(0, 2).map((link) => (
-              <Link key={link.to} to={link.to} className="text-[11px] font-medium uppercase tracking-lux-sm text-[var(--header-text)] transition-colors hover:text-[var(--header-text-hover)]">
-                {link.label}
-              </Link>
-            ))}
-            <div className="relative" onMouseEnter={() => setMenuOpen(true)} onMouseLeave={() => setMenuOpen(false)}>
-              <NavLink to="/shop" className={cn(activeLink, '')} end>
-                Shop all
-              </NavLink>
-              <AnimatePresence>
-                {menuOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 8 }}
-                    transition={{ duration: 0.2 }}
-                    className="absolute left-1/2 top-full w-[640px] -translate-x-1/2 border border-[var(--header-border)] bg-[var(--header-dropdown-bg)] p-8 shadow-2xl"
-                  >
-                    <div className="grid grid-cols-3 gap-8">
-                      <div>
-                        <p className="mb-4 text-[10px] font-medium uppercase tracking-lux-sm text-muted-foreground">Categories</p>
-                        <ul className="space-y-3">
-                          {(categories ?? []).slice(0, 6).map((category) => (
-                            <li key={String(category._id)}>
-                              <Link to={`/shop?category=${category.slug}`} className="text-sm text-[var(--header-dropdown-text)] transition-colors hover:text-[var(--header-text-hover)]">
-                                {category.name}
-                              </Link>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                      <div>
-                        <p className="mb-4 text-[10px] font-medium uppercase tracking-lux-sm text-muted-foreground">Collections</p>
-                        <ul className="space-y-3">
-                          {navLinks.filter((l) => ['/collections', '/new-arrivals', '/sale'].includes(l.to)).map((link) => (
-                            <li key={link.to}>
-                              <Link to={link.to} className="text-sm text-[var(--header-dropdown-text)] transition-colors hover:text-[var(--header-text-hover)]">{link.label}</Link>
-                            </li>
-                          ))}
-                          {!navLinks.some((l) => l.to === '/collections') && (
-                            <li><Link to="/collections" className="text-sm text-[var(--header-dropdown-text)] transition-colors hover:text-[var(--header-text-hover)]">All Collections</Link></li>
-                          )}
-                        </ul>
-                        <p className="mb-4 mt-8 text-[10px] font-medium uppercase tracking-lux-sm text-muted-foreground">Explore</p>
-                        <ul className="space-y-3">
-                          {navLinks.filter((l) => ['/journal', '/about', '/contact'].includes(l.to)).map((link) => (
-                            <li key={link.to}>
-                              <Link to={link.to} className="text-sm text-[var(--header-dropdown-text)] transition-colors hover:text-[var(--header-text-hover)]">{link.label}</Link>
-                            </li>
-                          ))}
-                          {!navLinks.some((l) => l.to === '/journal') && (
-                            <li><Link to="/journal" className="text-sm text-[var(--header-dropdown-text)] transition-colors hover:text-[var(--header-text-hover)]">The Journal</Link></li>
-                          )}
-                          {!navLinks.some((l) => l.to === '/about') && (
-                            <li><Link to="/about" className="text-sm text-[var(--header-dropdown-text)] transition-colors hover:text-[var(--header-text-hover)]">Our Maison</Link></li>
-                          )}
-                        </ul>
-                      </div>
-                      <div className="flex flex-col justify-between gap-4 bg-secondary p-6">
-                        <p className="font-display text-2xl font-medium leading-snug">The New Season has arrived.</p>
-                        <Link to="/collections" className="text-[11px] font-medium uppercase tracking-lux-sm text-accent">
-                          Discover →
-                        </Link>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-            {navLinks.slice(2).map((link) => (
-              <Link key={link.to} to={link.to} className="text-[11px] font-medium uppercase tracking-lux-sm text-[var(--header-text)] transition-colors hover:text-[var(--header-text-hover)]">
-                {link.label}
-              </Link>
-            ))}
-          </nav>
+          {navLinks.length > 0 && (
+            <nav className="hidden items-center gap-4 xl:gap-8 lg:flex" aria-label="Primary">
+              {navLinks.slice(0, 2).map((link) => (
+                <Link key={link.to} to={link.to} className="text-[11px] font-medium uppercase tracking-lux-sm text-[var(--header-text)] transition-colors hover:text-[var(--header-text-hover)]">
+                  {link.label}
+                </Link>
+              ))}
+              {navLinks.some((l) => l.to === '/shop') && (
+                <div className="relative" onMouseEnter={() => setMenuOpen(true)} onMouseLeave={() => setMenuOpen(false)}>
+                  <NavLink to="/shop" className={cn(activeLink, '')} end>
+                    Shop all
+                  </NavLink>
+                  <AnimatePresence>
+                    {menuOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 8 }}
+                        transition={{ duration: 0.2 }}
+                        className="absolute left-1/2 top-full w-[640px] -translate-x-1/2 border border-[var(--header-border)] bg-[var(--header-dropdown-bg)] p-8 shadow-2xl"
+                      >
+                        <div className="grid grid-cols-3 gap-8">
+                          <div>
+                            <p className="mb-4 text-[10px] font-medium uppercase tracking-lux-sm text-muted-foreground">Categories</p>
+                            <ul className="space-y-3">
+                              {(categories ?? []).slice(0, 6).map((category) => (
+                                <li key={String(category._id)}>
+                                  <Link to={`/shop?category=${category.slug}`} className="text-sm text-[var(--header-dropdown-text)] transition-colors hover:text-[var(--header-text-hover)]">
+                                    {category.name}
+                                  </Link>
+                                </li>
+                              ))}
+                              {(categories ?? []).length === 0 && (
+                                <li className="text-sm text-muted-foreground">No categories yet</li>
+                              )}
+                            </ul>
+                          </div>
+                          <div>
+                            {navLinks.filter((l) => ['/collections', '/new-arrivals', '/sale'].includes(l.to)).length > 0 && (
+                              <>
+                                <p className="mb-4 text-[10px] font-medium uppercase tracking-lux-sm text-muted-foreground">Collections</p>
+                                <ul className="space-y-3">
+                                  {navLinks.filter((l) => ['/collections', '/new-arrivals', '/sale'].includes(l.to)).map((link) => (
+                                    <li key={link.to}>
+                                      <Link to={link.to} className="text-sm text-[var(--header-dropdown-text)] transition-colors hover:text-[var(--header-text-hover)]">{link.label}</Link>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </>
+                            )}
+                            {navLinks.filter((l) => ['/journal', '/about', '/contact'].includes(l.to)).length > 0 && (
+                              <>
+                                <p className="mb-4 mt-8 text-[10px] font-medium uppercase tracking-lux-sm text-muted-foreground">Explore</p>
+                                <ul className="space-y-3">
+                                  {navLinks.filter((l) => ['/journal', '/about', '/contact'].includes(l.to)).map((link) => (
+                                    <li key={link.to}>
+                                      <Link to={link.to} className="text-sm text-[var(--header-dropdown-text)] transition-colors hover:text-[var(--header-text-hover)]">{link.label}</Link>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
+              {navLinks.slice(2).map((link) => (
+                <Link key={link.to} to={link.to} className="text-[11px] font-medium uppercase tracking-lux-sm text-[var(--header-text)] transition-colors hover:text-[var(--header-text-hover)]">
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
+          )}
 
           <div className="flex flex-1 items-center justify-end gap-1 lg:flex-none">
             <button type="button" aria-label="Search" onClick={openSearch} className="flex h-10 w-10 items-center justify-center transition-colors hover:text-accent">

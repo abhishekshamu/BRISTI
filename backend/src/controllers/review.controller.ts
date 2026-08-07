@@ -9,11 +9,11 @@ export class ReviewController {
   createReview = asyncHandler(async (req: Request, res: Response) => {
     const { productId, rating, title, comment, images } = req.body;
     const userId = req.user?.id;
-    
+
     if (!userId || !productId || !rating || !comment) {
       throw new ValidationError('Please provide productId, rating, title, and comment');
     }
-    
+
     const review = await this.reviewService.createReview({
       productId,
       userId,
@@ -22,7 +22,7 @@ export class ReviewController {
       comment,
       images
     });
-    
+
     res.status(201).json({
       success: true,
       data: review
@@ -32,12 +32,12 @@ export class ReviewController {
   getProductReviews = asyncHandler(async (req: Request, res: Response) => {
     const { productId } = req.params;
     const { page = 1, limit = 10 } = req.query;
-    
+
     const reviews = await this.reviewService.getProductReviews(productId, {
       page: parseInt(page as string),
       limit: parseInt(limit as string)
     });
-    
+
     res.status(200).json({
       success: true,
       data: reviews
@@ -56,9 +56,13 @@ export class ReviewController {
   updateReview = asyncHandler(async (req: Request, res: Response) => {
     const { reviewId } = req.params;
     const reviewData = req.body;
-    
-    const updatedReview = await this.reviewService.updateReview(reviewId, reviewData);
-    
+
+    const updatedReview = await this.reviewService.updateReview(reviewId, reviewData, {
+      userId: req.user?.id,
+      authType: req.authType,
+      role: req.user?.role
+    });
+
     res.status(200).json({
       success: true,
       data: updatedReview
@@ -67,11 +71,51 @@ export class ReviewController {
 
   deleteReview = asyncHandler(async (req: Request, res: Response) => {
     const { reviewId } = req.params;
-    const deleted = await this.reviewService.deleteReview(reviewId);
-    
+    const deleted = await this.reviewService.deleteReview(reviewId, {
+      userId: req.user?.id,
+      authType: req.authType,
+      role: req.user?.role
+    });
+
     res.status(200).json({
       success: true,
       data: deleted
+    });
+  });
+
+  listReviews = asyncHandler(async (req: Request, res: Response) => {
+    const { page = 1, limit = 20, status } = req.query;
+    const result = await this.reviewService.listReviews({
+      page: parseInt(page as string),
+      limit: parseInt(limit as string),
+      sort: { createdAt: -1 },
+      status
+    });
+
+    res.status(200).json({
+      success: true,
+      data: result.data,
+      pagination: {
+        page: result.page,
+        limit: result.limit,
+        total: result.total,
+        pages: result.pages
+      }
+    });
+  });
+
+  updateReviewStatus = asyncHandler(async (req: Request, res: Response) => {
+    const { reviewId } = req.params;
+    const { status } = req.body;
+
+    if (!status) {
+      throw new ValidationError('Please provide a status');
+    }
+
+    const review = await this.reviewService.updateReviewStatus(reviewId, status);
+    res.status(200).json({
+      success: true,
+      data: review
     });
   });
 }

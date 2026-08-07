@@ -9,10 +9,12 @@ import { Label } from '@/components/ui/label';
 import { usePageMeta } from '@/lib/seo';
 import { getErrorMessage } from '@/lib/utils';
 import { AuthShell } from '@/components/shared/AuthShell';
+import { useBrandName } from '@/context/SettingsContext';
 
 export default function ResetPasswordPage() {
   const { token = '' } = useParams<{ token: string }>();
-  usePageMeta({ title: 'Reset Password — BRISTI' });
+  const brandName = useBrandName();
+  usePageMeta({ title: `Reset Password — ${brandName}` });
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);

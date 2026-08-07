@@ -7,12 +7,15 @@ export class FAQController {
 
   getFaqs = asyncHandler(async (req: Request, res: Response) => {
     const { page = 1, limit = 20, category } = req.query;
+    const isAdmin = req.authType === 'admin';
     let result;
     if (category) {
       const data = await this.faqService.getFaqsByCategory(category as string);
       result = { data, total: data.length, page: 1, limit: data.length, pages: 1 };
     } else {
-      result = await this.faqService.getAllFaqs({
+      // The public only sees active FAQs; admins get everything.
+      const filter: any = isAdmin ? {} : { isActive: true };
+      result = await this.faqService.getAllFaqs(filter, {
         page: parseInt(page as string),
         limit: parseInt(limit as string),
         sort: { sortOrder: 1 }
@@ -22,7 +25,10 @@ export class FAQController {
   });
 
   getFaqById = asyncHandler(async (req: Request, res: Response) => {
-    const faq = await this.faqService.getFaqById(req.params.id);
+    const faq = await this.faqService.getFaqById(req.params.id, req.authType !== 'admin');
+    if (!faq) {
+      return res.status(404).json({ success: false, message: 'FAQ not found' });
+    }
     res.status(200).json({ success: true, data: faq });
   });
 

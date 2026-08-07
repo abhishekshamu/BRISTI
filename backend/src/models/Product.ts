@@ -33,6 +33,15 @@ const ProductSchema: Schema = new Schema({
     type: Schema.Types.ObjectId,
     ref: 'Collection',
   },
+  // Merchandising collection slugs (summer-collection, winter-collection, ...).
+  // A product may belong to any number of collections.
+  // NOTE: marketing slugs (new-arrival, sale, trending, ...) must never appear
+  // here — marketing sections are driven by the independent is* flag fields.
+  collections: [{
+    type: String,
+    lowercase: true,
+    trim: true,
+  }],
   brand: {
     type: String,
     trim: true,
@@ -178,6 +187,48 @@ const ProductSchema: Schema = new Schema({
   featuredUntil: {
     type: Date,
   },
+  // Independent marketing flags (Shopify-style). One product may belong to
+  // any number of these lists at once — none are mutually exclusive.
+  isNewArrival: {
+    type: Boolean,
+    default: false,
+  },
+  isBestSeller: {
+    type: Boolean,
+    default: false,
+  },
+  isTrending: {
+    type: Boolean,
+    default: false,
+  },
+  isOnSale: {
+    type: Boolean,
+    default: false,
+  },
+  isFeatured: {
+    type: Boolean,
+    default: false,
+  },
+  isRecommended: {
+    type: Boolean,
+    default: false,
+  },
+  isExclusive: {
+    type: Boolean,
+    default: false,
+  },
+  isLimitedEdition: {
+    type: Boolean,
+    default: false,
+  },
+  isEditorsPick: {
+    type: Boolean,
+    default: false,
+  },
+  isPremiumCollection: {
+    type: Boolean,
+    default: false,
+  },
   status: {
     type: String,
     enum: ['draft', 'active', 'archived'],
@@ -218,9 +269,20 @@ ProductSchema.index({ sku: 1 });
 ProductSchema.index({ barcode: 1 });
 ProductSchema.index({ category: 1 });
 ProductSchema.index({ collection: 1 });
+ProductSchema.index({ collections: 1 });
 ProductSchema.index({ brand: 1 });
 ProductSchema.index({ status: 1 });
 ProductSchema.index({ featured: 1 });
+ProductSchema.index({ isNewArrival: 1 });
+ProductSchema.index({ isBestSeller: 1 });
+ProductSchema.index({ isTrending: 1 });
+ProductSchema.index({ isOnSale: 1 });
+ProductSchema.index({ isFeatured: 1 });
+ProductSchema.index({ isRecommended: 1 });
+ProductSchema.index({ isExclusive: 1 });
+ProductSchema.index({ isLimitedEdition: 1 });
+ProductSchema.index({ isEditorsPick: 1 });
+ProductSchema.index({ isPremiumCollection: 1 });
 ProductSchema.index({ 'rating.average': -1 });
 
 // Pre-save hook to generate slug if not provided

@@ -6,7 +6,7 @@ export class CategoryController {
   constructor(private categoryService: CategoryService) {}
 
   getCategories = asyncHandler(async (req: Request, res: Response) => {
-    const { page = 1, limit = 20, parentId } = req.query;
+    const { page = 1, limit = 20, parentId, includeInactive } = req.query;
 
     const options: any = {
       page: parseInt(page as string),
@@ -14,7 +14,9 @@ export class CategoryController {
       sort: { sortOrder: 1, name: 1 }
     };
 
-    const filter: any = { isActive: true };
+    // Public default: active only. The admin CMS passes includeInactive=true
+    // so draft/hidden categories remain manageable.
+    const filter: any = includeInactive === 'true' ? {} : { isActive: true };
     if (parentId !== undefined) {
       if (parentId === 'null') {
         filter.parentId = null;
@@ -50,6 +52,10 @@ export class CategoryController {
   getCategoryBySlug = asyncHandler(async (req: Request, res: Response) => {
     const { slug } = req.params;
     const category = await this.categoryService.getCategoryBySlug(slug);
+
+    if (!category) {
+      return res.status(404).json({ success: false, message: 'Category not found' });
+    }
 
     res.status(200).json({
       success: true,

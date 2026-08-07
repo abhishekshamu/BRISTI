@@ -2,13 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { siteService } from '@/services/site.service';
 
-const DEFAULT_MESSAGES = [
-  'Complimentary shipping on orders over $100',
-  'New season, new silhouettes',
-  'Luxury redefined',
-  'Free returns within 30 days',
-];
-
 export function AnnouncementMarquee({ className }: { className?: string }) {
   const { data: settings } = useQuery({
     queryKey: ['settings'],
@@ -16,10 +9,10 @@ export function AnnouncementMarquee({ className }: { className?: string }) {
     staleTime: 1000 * 60 * 5,
   });
 
-  const enabled = settings?.announcement?.enabled ?? true;
-  const messages = settings?.announcement?.messages?.length ? settings.announcement.messages : DEFAULT_MESSAGES;
+  const enabled = settings?.announcement?.enabled ?? false;
+  const messages = settings?.announcement?.messages?.filter(Boolean) ?? [];
 
-  if (!enabled) return null;
+  if (!enabled || messages.length === 0) return null;
 
   const items = [...messages, ...messages];
   return (

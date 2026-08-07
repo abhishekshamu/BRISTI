@@ -44,6 +44,16 @@ export interface Product {
   categoryPath?: string[];
   featured: boolean;
   featuredUntil?: string;
+  isNewArrival?: boolean;
+  isBestSeller?: boolean;
+  isTrending?: boolean;
+  isOnSale?: boolean;
+  isFeatured?: boolean;
+  isRecommended?: boolean;
+  isExclusive?: boolean;
+  isLimitedEdition?: boolean;
+  isEditorsPick?: boolean;
+  isPremiumCollection?: boolean;
   status: 'draft' | 'active' | 'archived';
   seo?: {
     title?: string;

@@ -1,21 +1,14 @@
-import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
-import { ArrowRight, Compass, Hand, Scissors, Gem } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/PageHeader';
-import { SectionHeading } from '@/components/shared/SectionHeading';
+import { Skeleton } from '@/components/ui/skeleton';
 import { pageService } from '@/services/page.service';
 import { usePageMeta } from '@/lib/seo';
-
-const VALUES = [
-  { icon: Compass, title: 'Heritage', description: 'Founded on the conviction that true luxury is timeless — not seasonal.' },
-  { icon: Scissors, title: 'Craft', description: 'Two hundred artisan hands shape every piece, from first sketch to final seam.' },
-  { icon: Gem, title: 'Rare materials', description: 'Mongolian cashmere, mulberry silk and heritage wool, sourced with respect.' },
-  { icon: Hand, title: 'Responsibility', description: 'Conscious production, honest pricing and packaging designed to be kept.' },
-];
+import { sanitizeRichText } from '@/lib/sanitize';
+import { useBrandName } from '@/context/SettingsContext';
 
 export default function AboutPage() {
-  const { data: cmsPage } = useQuery({
+  const brandName = useBrandName();
+  const { data: cmsPage, isLoading } = useQuery({
     queryKey: ['page', 'slug', 'about'],
     queryFn: () => pageService.getBySlug('about'),
     retry: false,
@@ -23,109 +16,39 @@ export default function AboutPage() {
   });
 
   usePageMeta({
-    title: cmsPage?.seo?.title ?? 'About BRISTI — Luxury Redefined',
-    description: cmsPage?.seo?.description ?? 'The story of BRISTI — a luxury clothing maison devoted to timeless elegance, masterful tailoring and quiet sophistication.',
+    title: cmsPage?.seo?.title ?? `About — ${brandName}`,
+    description: cmsPage?.seo?.description,
   });
 
   return (
     <>
       <PageHeader
-        eyebrow="The Maison"
-        title={cmsPage?.title ?? 'About BRISTI'}
-        description={cmsPage?.excerpt ?? 'We believe luxury should be felt, not shouted. BRISTI is a study in restraint — silhouettes, fabrics and finishes that speak softly and last decades.'}
+        eyebrow={cmsPage?.seo?.title ?? 'The Maison'}
+        title={cmsPage?.title ?? 'About'}
+        description={cmsPage?.excerpt ?? ''}
         breadcrumb={[{ label: 'About' }]}
       />
 
-      {cmsPage ? (
-        <section className="bg-background pb-24">
-          <div className="container-lux">
-            <div className="mx-auto max-w-3xl prose-lux" dangerouslySetInnerHTML={{ __html: cmsPage.content }} />
-          </div>
-        </section>
-      ) : (
-        <section className="bg-background py-16 sm:py-24">
+      <section className="bg-background pb-24">
         <div className="container-lux">
-          <div className="grid items-center gap-14 lg:grid-cols-2">
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true, margin: '-80px' }}
-              transition={{ duration: 0.8 }}
-              className="relative aspect-[4/5] overflow-hidden bg-secondary"
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-[var(--ink-soft)] via-[var(--ink-muted)] to-[var(--ink)]" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="font-display text-6xl tracking-[0.35em] text-[var(--on-ink-faint)]">BRISTI</span>
+          <div className="mx-auto max-w-3xl">
+            {isLoading ? (
+              <div className="flex flex-col gap-6">
+                <Skeleton className="h-6 w-1/3" />
+                <Skeleton className="h-40 w-full" />
+                <Skeleton className="h-6 w-1/2" />
+                <Skeleton className="h-32 w-full" />
               </div>
-              <div className="absolute bottom-8 left-8 right-8 flex items-center gap-4 border border-[var(--on-ink)]/15 bg-[var(--ink)]/40 p-6 backdrop-blur">
-                <span className="flex h-12 w-12 items-center justify-center border border-accent/50 text-accent">
-                  <Gem className="h-5 w-5" />
-                </span>
-                <p className="text-sm leading-6 text-[var(--on-ink-dim)]">
-                  "Elegance is refusal." — <span className="text-[var(--on-ink)]">The founding principle of the maison.</span>
+            ) : cmsPage ? (
+              <div className="prose-lux" dangerouslySetInnerHTML={{ __html: sanitizeRichText(cmsPage.content) }} />
+            ) : (
+              <div className="border border-border p-10 text-center">
+                <h2 className="font-display text-2xl font-medium">This page is not published yet</h2>
+                <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                  The story of the maison is being written. Please check back soon.
                 </p>
               </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true, margin: '-80px' }}
-              transition={{ duration: 0.8 }}
-              className="flex flex-col gap-8"
-            >
-              <span className="text-[11px] font-medium uppercase tracking-lux-sm text-accent">Our story</span>
-              <h2 className="font-display text-4xl font-medium leading-tight lg:text-5xl">
-                Born of a quiet rebellion against <em className="text-gradient-gold not-italic">loud luxury</em>
-              </h2>
-              <div className="flex flex-col gap-5 text-sm leading-7 text-muted-foreground sm:text-base sm:leading-8">
-                <p>
-                  BRISTI began in a single atelier with a simple question: what if luxury focused on the wearer instead of the label? What if a garment's worth was measured in how it feels — against skin, through a day, across a decade?
-                </p>
-                <p>
-                  Our collections are designed slowly and made deliberately. Fabrics are sourced from mills that have perfected their craft for generations. Patterns are cut by hand, seams are finished by hand, and every piece is inspected as if it were the only one.
-                </p>
-                <p>
-                  The result is a wardrobe without seasons — pieces that outlive trends and become part of the person wearing them.
-                </p>
-              </div>
-              <Link to="/collections" className="group inline-flex items-center gap-2 text-xs font-medium uppercase tracking-lux-sm text-foreground transition-colors hover:text-accent">
-                Explore the collections <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </Link>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-      )}
-
-      <section className="bg-[var(--ink)] py-16 sm:py-24">
-        <div className="container-lux">
-          <SectionHeading dark eyebrow="What we stand for" title="The values of the maison" />
-          <div className="mt-14 grid gap-px bg-[var(--on-ink)]/10 sm:grid-cols-2 lg:grid-cols-4">
-            {VALUES.map(({ icon: Icon, title, description }, index) => (
-              <motion.div
-                key={title}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-40px' }}
-                transition={{ duration: 0.6, delay: index * 0.1 }}
-                className="flex flex-col gap-5 bg-[var(--ink)] p-8"
-              >
-                <Icon className="h-7 w-7 text-accent" />
-                <h3 className="font-display text-2xl font-medium text-[var(--on-ink)]">{title}</h3>
-                <p className="text-sm leading-7 text-[var(--on-ink-dim)]">{description}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-background py-16 sm:py-24">
-        <div className="container-lux text-center">
-          <SectionHeading eyebrow="Join us" title="Become part of the story" description="First access to collections, atelier stories and invitations reserved for members." />
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-            <Link to="/register" className="btn-lux-primary">Create your account</Link>
-            <Link to="/contact" className="btn-lux-outline">Contact the maison</Link>
+            )}
           </div>
         </div>
       </section>

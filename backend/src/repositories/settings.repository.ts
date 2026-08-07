@@ -102,10 +102,9 @@ export class SettingsRepository extends BaseRepository<ISiteSettings> {
     taxRate?: number;
     freeShippingThreshold?: number;
   }): Promise<ISiteSettings | null> {
-    return this.updateSettings({ 
-      ...(await this.getSettings()),
-      ...storeSettings
-    });
+    // currency / taxRate / freeShippingThreshold are top-level Settings
+    // fields; merge with current values and persist only those three.
+    return this.updateSettings({ ...storeSettings });
   }
 
   async incrementSetting(section: string, field: string, increment: number = 1): Promise<ISiteSettings | null> {

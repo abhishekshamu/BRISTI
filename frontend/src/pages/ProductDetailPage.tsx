@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, lazy, Suspense } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Heart, Minus, Plus, Ruler, Rotate3d, ShieldCheck, ShoppingBag, Truck, ZoomIn } from 'lucide-react';
+import { Heart, Minus, Plus, Ruler, ShieldCheck, ShoppingBag, Truck } from 'lucide-react';
 import { toast } from 'sonner';
 import { productService } from '@/services/product.service';
 import { reviewService } from '@/services/review.service';
@@ -16,22 +16,29 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RatingStars } from '@/components/shared/RatingStars';
 import { ProductCard } from '@/components/product/ProductCard';
-import { ProductViewer } from '@/components/three/ProductViewer';
+import { ProductGallery, type GalleryImage } from '@/components/product/ProductGallery';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { usePageMeta, useJsonLd } from '@/lib/seo';
-import { formatPrice, getImageUrl } from '@/lib/utils';
+import { formatPrice } from '@/lib/utils';
 import { getRecentlyViewedIds, trackRecentlyViewed } from '@/lib/recently-viewed';
+import { useBrandName } from '@/context/SettingsContext';
+
+// three.js (r3f + drei) only loads when the user actually opens the 3D viewer,
+// keeping the ~1.1MB WebGL chunk out of the product page's initial load.
+const ProductViewer = lazy(() =>
+  import('@/components/three/ProductViewer').then((m) => ({ default: m.ProductViewer }))
+);
 
 export default function ProductDetailPage() {
   const { slug = '' } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const brandName = useBrandName();
   const { addItem } = useCart();
   const { isInWishlist, toggle } = useWishlist();
   const { isAuthenticated } = useAuth();
 
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [quantity, setQuantity] = useState(1);
-  const [activeImage, setActiveImage] = useState(0);
   const [viewMode, setViewMode] = useState<'gallery' | '3d'>('gallery');
 
   const { data: product, isLoading, error } = useQuery({
@@ -39,6 +46,14 @@ export default function ProductDetailPage() {
     queryFn: () => productService.getBySlug(slug),
     enabled: Boolean(slug),
   });
+
+  const selectedVariant = useMemo(() => {
+    if (!product) return undefined;
+    return product.variants?.find((variant) => {
+      const variantOptions = variant.options ?? {};
+      return Object.entries(selectedOptions).every(([key, value]) => variantOptions[key] === value);
+    });
+  }, [product, selectedOptions]);
 
   const { data: reviews } = useQuery({
     queryKey: ['reviews', 'product', product?._id],
@@ -67,7 +82,7 @@ export default function ProductDetailPage() {
   }, [product]);
 
   usePageMeta({
-    title: product ? `${product.name} — BRISTI` : 'Product — BRISTI',
+    title: product ? `${product.name} — ${brandName}` : `Product — ${brandName}`,
     description: product?.seo?.description ?? product?.shortDescription ?? product?.description,
     image: product?.images?.find((image) => image.isFeatured)?.url ?? product?.images?.[0]?.url,
     keywords: product?.seo?.keywords,
@@ -83,12 +98,12 @@ export default function ProductDetailPage() {
             description: product.seo?.description ?? product.shortDescription ?? product.description,
             sku: product.sku,
             image: product.images?.map((image) => image.url),
-            brand: { '@type': 'Brand', name: 'BRISTI' },
+            brand: { '@type': 'Brand', name: product.brand || brandName },
             offers: {
               '@type': 'Offer',
-              price: product.price,
+              price: product.price + (selectedVariant?.priceAdjustment ?? 0),
               priceCurrency: 'USD',
-              availability: product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+              availability: (selectedVariant ? (selectedVariant.stock ?? 0) > 0 : product.stock > 0) ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
             },
             ...(product.rating?.average ? { aggregateRating: { '@type': 'AggregateRating', ratingValue: product.rating.average, reviewCount: product.rating.count ?? 0 } } : {}),
           },
@@ -97,7 +112,7 @@ export default function ProductDetailPage() {
             '@type': 'BreadcrumbList',
             itemListElement: [
               { '@type': 'ListItem', position: 1, name: 'Home', item: window.location.origin },
-              { '@type': 'ListItem', position: 2, name: 'Products', item: `${window.location.origin}/products` },
+              { '@type': 'ListItem', position: 2, name: 'Shop', item: `${window.location.origin}/shop` },
               { '@type': 'ListItem', position: 3, name: product.name },
             ],
           },
@@ -113,26 +128,45 @@ export default function ProductDetailPage() {
       }
       setSelectedOptions(initial);
       setQuantity(1);
-      setActiveImage(0);
-      setViewMode(product.models?.length ? 'gallery' : 'gallery');
+      setViewMode('gallery');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product?._id]);
 
   const images = useMemo(() => product?.images?.filter((image) => image.url) ?? [], [product]);
   const has3D = Boolean(product?.models?.length);
-  const selectedVariant = useMemo(() => {
-    if (!product) return undefined;
-    return product.variants?.find((variant) => {
-      const variantOptions = variant.options ?? {};
-      return Object.entries(selectedOptions).every(([key, value]) => variantOptions[key] === value);
-    });
-  }, [product, selectedOptions]);
 
   const unitPrice = product ? product.price + (selectedVariant?.priceAdjustment ?? 0) : 0;
+  const availableStock = product ? (selectedVariant ? (selectedVariant.stock ?? 0) : product.stock) : 0;
+  const canOverorder = Boolean(product?.allowBackorder);
   const inWishlist = product ? isInWishlist(String(product._id)) : false;
   const isSale = Boolean(product?.compareAtPrice && product.compareAtPrice > unitPrice);
   const isSoldOut = Boolean(selectedVariant ? (selectedVariant.stock ?? 0) <= 0 : product && product.stock <= 0 && !product.allowBackorder);
+
+  const galleryImages: GalleryImage[] = useMemo(
+    () => images.map((image) => ({ url: image.url, alt: image.alt })),
+    [images]
+  );
+
+  const threeViewer = product ? (
+    <Suspense
+      fallback={
+        <div className="flex h-full w-full items-center justify-center bg-secondary">
+          <span className="animate-spin h-8 w-8 border-2 border-foreground/20 border-t-foreground rounded-full" />
+        </div>
+      }
+    >
+      <ProductViewer product={product} className="h-full w-full" />
+    </Suspense>
+  ) : null;
+
+  if (!slug) {
+    return (
+      <div className="container-lux py-40">
+        <ErrorState message="This product could not be found." onRetry={() => navigate('/shop')} />
+      </div>
+    );
+  }
 
   if (error) {
     return (
@@ -181,8 +215,6 @@ export default function ProductDetailPage() {
     await toggle(String(product._id));
   };
 
-  const currentImage = images[activeImage];
-
   return (
     <>
       <section className="bg-background pb-20 pt-28 lg:pt-36">
@@ -198,66 +230,24 @@ export default function ProductDetailPage() {
 
           <div className="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-16">
             <div>
-              <div className="relative aspect-[3/4] overflow-hidden bg-secondary">
-                {viewMode === '3d' ? (
-                  <ProductViewer product={product} className="h-full w-full" />
-                ) : currentImage ? (
-                  <>
-                    <img
-                      src={getImageUrl(currentImage.url) ?? undefined}
-                      alt={currentImage.alt ?? product.name}
-                      className="h-full w-full object-cover transition-transform duration-700 hover:scale-[1.03]"
-                    />
-                    <span className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--ice)]/90 text-foreground/70 shadow-sm">
-                      <ZoomIn className="h-4 w-4" />
-                    </span>
-                  </>
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-secondary">
-                    <span className="font-display text-2xl tracking-[0.3em] text-muted-foreground">BRISTI</span>
-                  </div>
-                )}
-
-                <div className="absolute left-4 top-4 flex flex-col gap-2">
-                  {isSale && <Badge variant="sale">Sale</Badge>}
-                  {product.featured && !isSale && <Badge variant="gold">New</Badge>}
-                  {isSoldOut && <Badge variant="muted">Sold out</Badge>}
-                </div>
-
-                {has3D && (
-                  <button
-                    type="button"
-                    onClick={() => setViewMode((mode) => (mode === '3d' ? 'gallery' : '3d'))}
-                    className="absolute bottom-4 left-4 flex items-center gap-2 bg-foreground/90 px-4 py-2.5 text-[10px] font-medium uppercase tracking-lux-sm text-background backdrop-blur transition-colors hover:bg-accent hover:text-accent-foreground"
-                  >
-                    <Rotate3d className="h-4 w-4" />
-                    {viewMode === '3d' ? 'Back to photos' : 'View in 3D'}
-                  </button>
-                )}
-              </div>
-
-              {images.length > 1 && (
-                <div className="mt-4 grid grid-cols-5 gap-3">
-                  {images.map((image, index) => (
-                    <button
-                      key={index}
-                      type="button"
-                      onClick={() => {
-                        setActiveImage(index);
-                        setViewMode('gallery');
-                      }}
-                      className={`aspect-[3/4] overflow-hidden bg-secondary transition-all ${index === activeImage && viewMode === 'gallery' ? 'ring-1 ring-accent' : 'opacity-70 hover:opacity-100'}`}
-                    >
-                      <img src={getImageUrl(image.url) ?? undefined} alt={image.alt ?? product.name} loading="lazy" className="h-full w-full object-cover" />
-                    </button>
-                  ))}
-                </div>
-              )}
+              <ProductGallery
+                images={galleryImages}
+                productId={String(product._id)}
+                productName={product.name}
+                isSale={isSale}
+                isNew={Boolean(product.featured) && !isSale}
+                isSoldOut={isSoldOut}
+                has3D={has3D}
+                viewMode={viewMode}
+                onToggle3D={() => setViewMode((mode) => (mode === '3d' ? 'gallery' : '3d'))}
+                onRequestGallery={() => setViewMode('gallery')}
+                threeViewer={threeViewer}
+              />
             </div>
 
             <div className="flex flex-col gap-7 lg:py-2">
               <div className="flex flex-col gap-3">
-                <p className="text-[11px] font-medium uppercase tracking-lux-sm text-muted-foreground">{product.brand || 'BRISTI'}</p>
+                <p className="text-[11px] font-medium uppercase tracking-lux-sm text-muted-foreground">{product.brand || brandName}</p>
                 <h1 className="font-display text-3xl font-medium leading-tight sm:text-4xl lg:text-5xl">{product.name}</h1>
                 <div className="flex items-center gap-4">
                   <RatingStars rating={product.rating?.average} count={product.rating?.count} />
@@ -315,7 +305,7 @@ export default function ProductDetailPage() {
                     <Minus className="h-4 w-4" />
                   </button>
                   <span className="flex h-12 w-12 items-center justify-center text-sm font-medium">{quantity}</span>
-                  <button type="button" aria-label="Increase quantity" onClick={() => setQuantity((q) => q + 1)} className="flex h-12 w-12 items-center justify-center transition-colors hover:bg-secondary">
+                  <button type="button" aria-label="Increase quantity" onClick={() => setQuantity((q) => Math.min(q + 1, Math.max(1, availableStock)))} disabled={!canOverorder && quantity >= availableStock} className="flex h-12 w-12 items-center justify-center transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40">
                     <Plus className="h-4 w-4" />
                   </button>
                 </div>

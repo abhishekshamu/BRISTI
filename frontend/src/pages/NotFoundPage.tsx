@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { usePageMeta } from '@/lib/seo';
+import { useBrandName } from '@/context/SettingsContext';
 
 export default function NotFoundPage() {
-  usePageMeta({ title: 'Page Not Found — BRISTI' });
+  const brandName = useBrandName();
+  usePageMeta({ title: `Page Not Found — ${brandName}` });
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-8 bg-background px-4 text-center">

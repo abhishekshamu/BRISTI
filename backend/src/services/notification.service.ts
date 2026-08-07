@@ -16,8 +16,11 @@ export class NotificationService {
     return this.notificationRepo.findMany({ userId, isRead: false }, { sort: { createdAt: -1 } });
   }
 
-  async markAsRead(notificationId: string): Promise<INotification | null> {
-    return this.notificationRepo.updateById(notificationId, { isRead: true, readAt: new Date() });
+  async markAsRead(userId: string, notificationId: string): Promise<INotification | null> {
+    return this.notificationRepo.updateOne(
+      { _id: notificationId, userId },
+      { isRead: true, readAt: new Date() }
+    );
   }
 
   async markAllAsRead(userId: string): Promise<void> {
@@ -27,8 +30,8 @@ export class NotificationService {
     }
   }
 
-  async deleteNotification(notificationId: string): Promise<boolean> {
-    return this.notificationRepo.deleteById(notificationId);
+  async deleteNotification(userId: string, notificationId: string): Promise<boolean> {
+    return this.notificationRepo.deleteOne({ _id: notificationId, userId });
   }
 
   async getNotificationCount(userId: string): Promise<{ total: number; unread: number }> {

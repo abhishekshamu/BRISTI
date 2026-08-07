@@ -13,6 +13,15 @@ export class AdminRepository extends BaseRepository<IAdmin> {
     return this.findOne({ email: email.toLowerCase().trim() });
   }
 
+  async findByCredentials(email: string): Promise<IAdmin | null> {
+    if (typeof email !== 'string' || !email.trim()) return null;
+    return this.model.findOne({ email: email.toLowerCase().trim() }).select('+password').exec();
+  }
+
+  async findByIdWithPassword(id: string): Promise<IAdmin | null> {
+    return this.model.findById(id).select('+password').exec();
+  }
+
   async updateLastLogin(id: string): Promise<IAdmin | null> {
     return this.findByIdAndUpdate(id, { lastLoginAt: new Date() }, { new: true });
   }

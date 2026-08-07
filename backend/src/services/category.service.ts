@@ -93,6 +93,7 @@ export class CategoryService {
     if (!data.name) {
       throw new BadRequestException('Category name is required');
     }
+    if (data.parentId === '') delete data.parentId;
 
     if (!data.slug) {
       data.slug = slugify(data.name);
@@ -112,6 +113,7 @@ export class CategoryService {
   }
 
   async updateCategory(id: string, updateData: Partial<ICategory>): Promise<ICategory> {
+    if (updateData.parentId === '') delete updateData.parentId;
     if (updateData.name && !updateData.slug) {
       updateData.slug = slugify(updateData.name);
     }
@@ -153,8 +155,8 @@ export class CategoryService {
 
     // Pull this category out of any coupon category scopes
     await this.couponRepo.updateMany(
-      { categories: id },
-      { $pull: { categories: id } }
+      { categoryIds: id },
+      { $pull: { categoryIds: id } }
     );
 
     return this.categoryRepo.deleteById(id);

@@ -269,6 +269,12 @@
     @apply mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-10;
   }
 
+  /* Wider container used only by the Featured Categories section so more
+     compact cards fit naturally per row. */
+  .container-lux-wide {
+    @apply mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-10;
+  }
+
   .font-display {
     font-family: var(--font-heading, 'Cormorant Garamond', serif);
     font-weight: var(--heading-weight, 500);
@@ -397,58 +403,110 @@
     background-color: var(--btn-white-hover-bg, rgba(255, 255, 255, 0.85));
   }
 
-  /* Featured Categories responsive grid:
-     Mobile (<=768px): 2x2 grid. Tablet (768-1023px): single column (unchanged).
-     Desktop (>=1024px): 3 columns (unchanged). */
+  /* Featured Categories — flat Snitch-style grid.
+     Flex-wrap + justify-content: center is used deliberately instead of CSS
+     Grid: Grid cannot center a partial final row without placeholder cells
+     or manual placement, while flex lines re-center automatically. Every tile
+     is exactly 1/N of the row width, full rows fill the container, and any
+     incomplete row centres itself. No nth-child hacks, no invisible cards.
+     Mobile (<768px): 2 columns. Tablet 768-1199px: 4 columns.
+     Desktop (>=1200px): always 6 equal columns, never more. */
   .lux-cats-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 24px;
+    --lux-cats-gap: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    justify-content: center;
+    gap: var(--lux-cats-gap);
   }
 
-  @media (max-width: 768px) {
+  .lux-cats-grid > * {
+    flex: 0 0 auto;
+    width: calc((100% - var(--lux-cats-gap) - 0.1px) / 2);
+    max-width: calc((100% - var(--lux-cats-gap) - 0.1px) / 2);
+  }
+
+  @media (min-width: 768px) {
     .lux-cats-grid {
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
+      --lux-cats-gap: 12px;
+    }
+
+    .lux-cats-grid > * {
+      width: calc((100% - (3 * var(--lux-cats-gap)) - 0.1px) / 4);
+      max-width: calc((100% - (3 * var(--lux-cats-gap)) - 0.1px) / 4);
     }
   }
 
-  @media (min-width: 1024px) {
+  @media (min-width: 1200px) {
     .lux-cats-grid {
-      grid-template-columns: repeat(3, 1fr);
-      gap: 24px;
+      --lux-cats-gap: 14px;
+    }
+
+    .lux-cats-grid > * {
+      width: calc((100% - (5 * var(--lux-cats-gap)) - 0.1px) / 6);
+      max-width: calc((100% - (5 * var(--lux-cats-gap)) - 0.1px) / 6);
     }
   }
 
-  /* Only the first 4 categories show on mobile; the 4th card is hidden on
-     tablet and desktop so their existing counts stay untouched. */
-  .lux-cat-mobile-only {
-    display: block;
-  }
-
-  @media (min-width: 769px) {
-    .lux-cat-mobile-only {
-      display: none;
-    }
-  }
-
-  /* "View All Categories" button — visible only on mobile when more than 4
-     categories exist. */
-  .lux-cats-view-all {
-    display: none;
-  }
-
-  @media (max-width: 768px) {
-    .lux-cats-view-all {
-      display: flex;
-    }
-  }
-
-  /* Premium 1px border around every Featured Category card. Color is driven by
-     the admin-controllable --featured-category-border token (default #E5E5E5)
-     and updates live on the homepage when changed in the theme editor. */
+  /* Flat layout — no card frame, background, shadow or rounded corners.
+     Categories read as images placed directly on the page. */
   .lux-cat-card {
-    border: 1px solid var(--featured-category-border, #E5E5E5);
+    background-color: transparent;
+    border: none;
+  }
+
+  /* Fixed 4:5 image area, identical for every category. */
+  .lux-cat-media {
+    position: relative;
+    aspect-ratio: 4 / 5;
+    overflow: hidden;
+  }
+
+  /* Cover + center keeps the composition beautiful without distortion. */
+  .lux-cat-img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    transition: transform 300ms ease;
+  }
+
+  .lux-cat-card:hover .lux-cat-img {
+    transform: scale(1.03);
+  }
+
+  /* Snitch-style title: bold sans-serif, uppercase, positioned top-left
+     INSIDE the image tile with a small internal padding. No serif font,
+     no letter spacing, no decorations. */
+  .lux-cat-name {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 1;
+    margin: 0;
+    padding: 0;
+    max-width: calc(100% - 24px);
+    overflow: hidden;
+    text-align: left;
+    font-family: var(--font-body, 'Inter', sans-serif);
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: normal;
+    text-transform: uppercase;
+    color: #111111;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  @media (min-width: 1200px) {
+    .lux-cat-name {
+      top: 16px;
+      left: 16px;
+      max-width: calc(100% - 32px);
+      font-size: 18px;
+    }
   }
 }
 
@@ -826,5 +884,14 @@
   .hx-card__media,
   .hx-card__video {
     transition: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

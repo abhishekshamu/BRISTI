@@ -4,8 +4,6 @@ import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import { siteService } from '@/services/site.service';
 
-const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=1920&auto=format&fit=crop';
-
 export function CampaignBanner() {
   const { data: settings } = useQuery({
     queryKey: ['settings'],
@@ -17,7 +15,8 @@ export function CampaignBanner() {
   if (!section) return null;
 
   const props = section.props ?? {};
-  const image = props.image || FALLBACK_IMAGE;
+  const image = props.image;
+  if (!image) return null;
 
   return (
     <section className="bg-background py-10 sm:py-14">

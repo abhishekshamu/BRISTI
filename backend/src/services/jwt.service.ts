@@ -1,8 +1,15 @@
 import jwt, { SignOptions } from 'jsonwebtoken';
+import { randomUUID, randomBytes } from 'crypto';
 import { IUser } from 'shared/types';
 import dotenv from 'dotenv';
 
 dotenv.config();
+
+const devEphemeralSecret = (label: string): string => {
+  const secret = randomBytes(48).toString('hex');
+  console.warn(`[jwt] ${label} not configured: using an ephemeral random secret. Sessions will be invalidated on restart (development only).`);
+  return secret;
+};
 
 class JwtService {
   private jwtSecret: string;
@@ -11,10 +18,10 @@ class JwtService {
   private jwtRefreshExpiry: string;
 
   constructor() {
-    this.jwtSecret = process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? '' : 'development-only-access-secret-change-me');
-    this.jwtRefreshSecret = process.env.JWT_REFRESH_SECRET || (process.env.NODE_ENV === 'production' ? '' : 'development-only-refresh-secret-change-me');
-    this.jwtExpiry = process.env.JWT_EXPIRE || '30d';
-    this.jwtRefreshExpiry = process.env.JWT_REFRESH_EXPIRE || '60d';
+    this.jwtSecret = process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? '' : devEphemeralSecret('JWT_SECRET'));
+    this.jwtRefreshSecret = process.env.JWT_REFRESH_SECRET || (process.env.NODE_ENV === 'production' ? '' : devEphemeralSecret('JWT_REFRESH_SECRET'));
+    this.jwtExpiry = process.env.JWT_EXPIRE || '15m';
+    this.jwtRefreshExpiry = process.env.JWT_REFRESH_EXPIRE || '30d';
     if (!this.jwtSecret || !this.jwtRefreshSecret) {
       throw new Error('JWT_SECRET and JWT_REFRESH_SECRET must be configured in production');
     }
@@ -30,7 +37,7 @@ class JwtService {
 
   generateRefreshToken(user: IUser): string {
     return jwt.sign(
-      { id: user._id },
+      { id: user._id, jti: randomUUID() },
       this.jwtRefreshSecret,
       { expiresIn: this.jwtRefreshExpiry as SignOptions['expiresIn'] }
     );

@@ -6,22 +6,39 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { GoogleButton } from '@/components/auth/GoogleButton';
 import { usePageMeta } from '@/lib/seo';
 import { getErrorMessage, isValidEmailAddress } from '@/lib/utils';
 import { AuthShell } from '@/components/shared/AuthShell';
+import { useBrandName } from '@/context/SettingsContext';
 
 export default function RegisterPage() {
-  usePageMeta({ title: 'Create Account — BRISTI' });
-  const { register } = useAuth();
+  const brandName = useBrandName();
+  usePageMeta({ title: `Create Account — ${brandName}` });
+  const { register, googleLogin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [form, setForm] = useState({ firstName: '', lastName: '', email: '', password: '', confirmPassword: '' });
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const redirect = new URLSearchParams(location.search).get('redirect') ?? '/account';
 
   const setField = (field: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [field]: event.target.value }));
+  };
+
+  const handleGoogleCredential = async (credential: string) => {
+    setGoogleLoading(true);
+    try {
+      await googleLogin(credential);
+      toast.success('Welcome to BRISTI');
+      navigate(redirect, { replace: true });
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setGoogleLoading(false);
+    }
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -56,6 +73,19 @@ export default function RegisterPage() {
 
   return (
     <AuthShell title="Create your account" subtitle="Join the maison for early access and private previews">
+      <div className="mb-8">
+        <GoogleButton onCredential={handleGoogleCredential} label="Continue with Google" />
+        {googleLoading && (
+          <p className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Creating your account…
+          </p>
+        )}
+        <div className="my-6 flex items-center gap-4">
+          <span className="h-px flex-1 bg-border" />
+          <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">or</span>
+          <span className="h-px flex-1 bg-border" />
+        </div>
+      </div>
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         <div className="grid gap-6 sm:grid-cols-2">
           <div className="flex flex-col gap-2">

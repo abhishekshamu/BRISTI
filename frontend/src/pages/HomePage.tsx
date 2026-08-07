@@ -1,4 +1,3 @@
-import { useQuery } from '@tanstack/react-query';
 import { useSiteSettings } from '@/context/SettingsContext';
 import { HeroEngine } from '@/components/hero/HeroEngine';
 import { LuxuryCategories } from '@/components/home/LuxuryCategories';
@@ -13,7 +12,6 @@ import { EditorialBanner } from '@/components/home/EditorialBanner';
 import { JournalPreview } from '@/components/home/JournalPreview';
 import { NewsletterCTA } from '@/components/home/NewsletterCTA';
 import { HomeSkeleton } from '@/components/home/HomeSkeleton';
-import { productService } from '@/services/product.service';
 import { usePageMeta } from '@/lib/seo';
 
 // Canonical rendering order when a section has no admin configuration
@@ -24,15 +22,17 @@ const STATIC_ORDER = [
   'newArrivals',
   'bestSellers',
   'trending',
-  'campaignBanner',
   'customerReviews',
-  'instagram',
-  'editorial',
   'journal',
-  'newsletter',
 ] as const;
 
-type SectionKey = (typeof STATIC_ORDER)[number];
+// Content sections are rendered only when explicitly configured in the CMS.
+// Every other section pulls live data from the API and shows an empty state.
+// `campaign-banner` is the slug the admin persists; `campaignBanner` is kept
+// for backward compatibility.
+const CONFIGURED_ONLY: readonly string[] = ['campaign-banner', 'campaignBanner', 'instagram', 'editorial', 'newsletter'];
+
+type SectionKey = (typeof STATIC_ORDER)[number] | (typeof CONFIGURED_ONLY)[number];
 
 function Section({ type, props }: { type: SectionKey; props?: Record<string, any> }) {
   switch (type) {
@@ -42,7 +42,9 @@ function Section({ type, props }: { type: SectionKey; props?: Record<string, any
     case 'newArrivals': return <NewArrivals />;
     case 'bestSellers': return <BestSellers />;
     case 'trending': return <TrendingProducts />;
-    case 'campaignBanner': return <CampaignBanner />;
+    case 'campaignBanner':
+    case 'campaign-banner':
+      return <CampaignBanner />;
     case 'customerReviews': return <CustomerReviews />;
     case 'instagram': return <InstagramGallery props={props} />;
     case 'editorial': return <EditorialBanner props={props} />;
@@ -54,12 +56,10 @@ function Section({ type, props }: { type: SectionKey; props?: Record<string, any
 
 export default function HomePage() {
   const { settings, loading } = useSiteSettings();
-  usePageMeta();
-
-  useQuery({
-    queryKey: ['products', 'featured'],
-    queryFn: () => productService.featured(8),
-    staleTime: 1000 * 60 * 5,
+  usePageMeta({
+    title: settings?.seo?.defaultTitle ?? settings?.brandName,
+    description: settings?.seo?.defaultDescription,
+    image: settings?.seo?.defaultImage,
   });
 
   // Never mount homepage sections before the latest homepage configuration has
@@ -70,9 +70,12 @@ export default function HomePage() {
   const configured = (settings?.homepageSections ?? [])
     .filter((section) => section.isActive !== false)
     .map((section) => section.type as SectionKey)
-    .filter((type) => (STATIC_ORDER as readonly string[]).includes(type));
+    .filter((type) => [...STATIC_ORDER, ...CONFIGURED_ONLY].includes(type as string));
 
-  const order: SectionKey[] = [...configured, ...STATIC_ORDER.filter((type) => !configured.includes(type))];
+  const order: SectionKey[] = [
+    ...configured,
+    ...STATIC_ORDER.filter((type) => !configured.includes(type as string)),
+  ];
 
   const sectionProps = (type: SectionKey) => {
     const section = (settings?.homepageSections ?? []).find((s) => s.type === type && s.isActive !== false);

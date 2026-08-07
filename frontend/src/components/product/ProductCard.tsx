@@ -1,18 +1,21 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, ShoppingBag } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { RatingStars } from '@/components/shared/RatingStars';
+import { SafeImage } from '@/components/shared/SafeImage';
 import { useWishlist } from '@/context/WishlistContext';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
-import { formatPrice, getImageUrl, getDefaultVariant } from '@/lib/utils';
+import { useBrandName } from '@/context/SettingsContext';
+import { formatPrice, getDefaultVariant } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { Product } from '@shared/types';
 
-export function ProductCard({ product, className, eager = false }: { product: Product; className?: string; eager?: boolean }) {
+export const ProductCard = memo(function ProductCard({ product, className, eager = false }: { product: Product; className?: string; eager?: boolean }) {
+  const brandName = useBrandName();
   const { isInWishlist, toggle } = useWishlist();
   const { addItem } = useCart();
   const { isAuthenticated } = useAuth();
@@ -69,8 +72,8 @@ export function ProductCard({ product, className, eager = false }: { product: Pr
       <Link to={`/product/${product.slug}`} className="block">
         <div className="relative aspect-[3/4] overflow-hidden bg-secondary">
           {effectiveImage?.url ? (
-            <img
-              src={getImageUrl(effectiveImage.url) ?? undefined}
+            <SafeImage
+              src={effectiveImage.url}
               alt={effectiveImage.alt ?? product.name}
               loading={eager ? 'eager' : 'lazy'}
               className={cn(
@@ -126,18 +129,24 @@ export function ProductCard({ product, className, eager = false }: { product: Pr
             </div>
           </div>
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">{product.brand || 'BRISTI'}</span>
+            <span className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">{product.brand || brandName}</span>
             {product.rating?.count > 0 && <RatingStars rating={product.rating.average} size={12} />}
           </div>
         </div>
       </Link>
     </motion.div>
   );
-}
+});
 
-export function ProductGridSkeleton({ count = 8, className }: { count?: number; className?: string }) {
+export function ProductGridSkeleton({ count = 8, className, columns }: { count?: number; className?: string; columns?: 3 | 4 }) {
+  const gridClasses =
+    columns === 4
+      ? 'grid grid-cols-2 gap-x-6 gap-y-10 sm:gap-x-8 lg:grid-cols-4'
+      : columns === 3
+        ? 'grid grid-cols-2 gap-x-6 gap-y-10 sm:gap-x-8 lg:grid-cols-3'
+        : 'grid grid-cols-2 gap-x-6 gap-y-10 sm:gap-x-8 lg:grid-cols-3 xl:grid-cols-4';
   return (
-    <div className={cn('grid grid-cols-2 gap-x-6 gap-y-10 sm:gap-x-8 lg:grid-cols-3 xl:grid-cols-4', className)}>
+    <div className={cn(gridClasses, className)}>
       {Array.from({ length: count }).map((_, index) => (
         <div key={index} className="flex flex-col">
           <div className="aspect-[3/4] animate-pulse bg-secondary" />

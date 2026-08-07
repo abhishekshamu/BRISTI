@@ -31,22 +31,22 @@ export class CartRepository extends BaseRepository<ICart> {
     return this.deleteMany({ sessionId });
   }
 
-  async updateItemQuantity(itemId: string, quantity: number): Promise<ICart | null> {
+  async updateItemQuantity(cartId: string, itemId: string, quantity: number): Promise<ICart | null> {
     if (quantity <= 0) {
       return this.findOneAndUpdate(
-        { 'items._id': itemId },
+        { _id: cartId, 'items._id': itemId },
         { $pull: { items: { _id: itemId } } }
       );
     }
     return this.findOneAndUpdate(
-      { 'items._id': itemId },
+      { _id: cartId, 'items._id': itemId },
       { $set: { 'items.$.quantity': quantity } }
     );
   }
 
-  async removeItem(itemId: string): Promise<ICart | null> {
+  async removeItem(cartId: string, itemId: string): Promise<ICart | null> {
     return this.findOneAndUpdate(
-      { 'items._id': itemId },
+      { _id: cartId, 'items._id': itemId },
       { $pull: { items: { _id: itemId } } }
     );
   }

@@ -68,6 +68,8 @@ export class CartController {
   updateCartItem = asyncHandler(async (req: Request, res: Response) => {
     const { itemId } = req.params;
     const { quantity } = req.body;
+    const userId = req.user?.id;
+    const sessionId = req.headers['x-session-id'] as string;
     
     if (!itemId) {
       throw new ValidationError('Please provide itemId');
@@ -80,7 +82,9 @@ export class CartController {
     try {
       const updatedItem = await this.cartService.updateCartItemQuantity(
         itemId, 
-        parseInt(quantity as string)
+        parseInt(quantity as string),
+        userId,
+        sessionId
       );
       
       res.status(200).json({
@@ -94,12 +98,14 @@ export class CartController {
 
   removeFromCart = asyncHandler(async (req: Request, res: Response) => {
     const { itemId } = req.params;
+    const userId = req.user?.id;
+    const sessionId = req.headers['x-session-id'] as string;
     
     if (!itemId) {
       throw new ValidationError('Please provide itemId');
     }
     
-    await this.cartService.removeFromCart(itemId);
+    await this.cartService.removeFromCart(itemId, userId, sessionId);
     
     res.status(200).json({
       success: true,

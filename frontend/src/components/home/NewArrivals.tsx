@@ -11,6 +11,8 @@ export function NewArrivals() {
     staleTime: 1000 * 60 * 5,
   });
 
+  const list = products ?? [];
+
   return (
     <section className="bg-secondary/40 pt-12 pb-12 sm:pb-20">
       <div className="container-lux">
@@ -23,9 +25,14 @@ export function NewArrivals() {
         <div className="mt-10">
           {isLoading ? (
             <ProductGridSkeleton count={4} />
+          ) : list.length === 0 ? (
+            <p className="mx-auto max-w-md py-12 text-center text-sm leading-6 text-muted-foreground">
+              New pieces are on the way from the atelier. Toggle the New Arrival flag on products in the CMS
+              and they will appear here instantly.
+            </p>
           ) : (
             <div className="grid grid-cols-2 gap-x-5 gap-y-10 sm:gap-x-8 lg:grid-cols-4">
-              {(products ?? []).map((product, index) => (
+              {list.map((product, index) => (
                 <motion.div
                   key={String(product._id)}
                   initial={{ opacity: 0, y: 30 }}

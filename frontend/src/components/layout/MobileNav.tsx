@@ -3,25 +3,24 @@ import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { catalogService } from '@/services/catalog.service';
+import { useSiteSettings } from '@/context/SettingsContext';
 import { useUIStore } from '@/store/useUIStore';
-
-const NAV_LINKS = [
-  { label: 'Shop', to: '/shop' },
-  { label: 'Collections', to: '/collections' },
-  { label: 'New Arrivals', to: '/new-arrivals' },
-  { label: 'Sale', to: '/sale' },
-  { label: 'Journal', to: '/journal' },
-  { label: 'About', to: '/about' },
-  { label: 'Contact', to: '/contact' },
-];
 
 export function MobileNav() {
   const { isMobileNavOpen, closeMobileNav } = useUIStore();
+  const { settings } = useSiteSettings();
   const { data: categories } = useQuery({
     queryKey: ['categories', 'tree'],
     queryFn: catalogService.categoryTree,
     staleTime: 1000 * 60 * 30,
   });
+
+  const navLinks = (settings?.navbar?.items ?? [])
+    .filter((item) => item.isActive !== false)
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+    .map((item) => ({ label: item.label, to: item.url }));
+
+  const brandName = settings?.brandName || 'BRISTI';
 
   return (
     <AnimatePresence>
@@ -43,7 +42,7 @@ export function MobileNav() {
           >
             <div className="flex h-16 items-center justify-between border-b border-[var(--mobile-nav-border)] px-6">
               <Link to="/" onClick={closeMobileNav} className="font-display text-xl font-semibold tracking-[0.3em] text-[var(--mobile-drawer-text)]">
-                BRISTI
+                {brandName}
               </Link>
               <button type="button" aria-label="Close menu" onClick={closeMobileNav} className="flex h-10 w-10 items-center justify-center">
                 <X className="h-5 w-5" />
@@ -51,40 +50,44 @@ export function MobileNav() {
             </div>
 
             <nav className="flex-1 overflow-y-auto px-6 py-8">
-              <ul className="space-y-1">
-                {NAV_LINKS.map((link, index) => (
-                  <motion.li
-                    key={link.to}
-                    initial={{ opacity: 0, x: -16 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.05 * index }}
-                  >
-                    <Link
-                      to={link.to}
-                      onClick={closeMobileNav}
-                      className="flex items-center justify-between border-b border-[var(--mobile-nav-border)] py-4 font-display text-2xl font-medium tracking-wide text-[var(--mobile-drawer-text)]"
+              {navLinks.length > 0 && (
+                <ul className="space-y-1">
+                  {navLinks.map((link, index) => (
+                    <motion.li
+                      key={link.to}
+                      initial={{ opacity: 0, x: -16 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.05 * index }}
                     >
-                      {link.label}
-                    </Link>
-                  </motion.li>
-                ))}
-              </ul>
-
-              <div className="mt-8">
-                <p className="mb-3 text-[10px] font-medium uppercase tracking-lux-sm text-muted-foreground">Categories</p>
-                <div className="flex flex-wrap gap-2">
-                  {(categories ?? []).slice(0, 8).map((category) => (
-                    <Link
-                      key={String(category._id)}
-                      to={`/shop?category=${category.slug}`}
-                      onClick={closeMobileNav}
-                      className="border border-[var(--mobile-nav-border)] px-4 py-2 text-xs uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:border-accent hover:text-accent"
-                    >
-                      {category.name}
-                    </Link>
+                      <Link
+                        to={link.to}
+                        onClick={closeMobileNav}
+                        className="flex items-center justify-between border-b border-[var(--mobile-nav-border)] py-4 font-display text-2xl font-medium tracking-wide text-[var(--mobile-drawer-text)]"
+                      >
+                        {link.label}
+                      </Link>
+                    </motion.li>
                   ))}
+                </ul>
+              )}
+
+              {(categories ?? []).length > 0 && (
+                <div className="mt-8">
+                  <p className="mb-3 text-[10px] font-medium uppercase tracking-lux-sm text-muted-foreground">Categories</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(categories ?? []).slice(0, 8).map((category) => (
+                      <Link
+                        key={String(category._id)}
+                        to={`/shop?category=${category.slug}`}
+                        onClick={closeMobileNav}
+                        className="border border-[var(--mobile-nav-border)] px-4 py-2 text-xs uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:border-accent hover:text-accent"
+                      >
+                        {category.name}
+                      </Link>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </nav>
 
             <div className="flex items-center justify-between border-t border-[var(--mobile-nav-border)] px-6 py-5">

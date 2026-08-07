@@ -8,14 +8,16 @@ import { ProductGridSkeleton } from '@/components/product/ProductCard';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { usePageMeta } from '@/lib/seo';
+import { useBrandName } from '@/context/SettingsContext';
 
 export default function SearchPage() {
   const [searchParams] = useSearchParams();
   const query = searchParams.get('q')?.trim() ?? '';
+  const brandName = useBrandName();
 
   usePageMeta({
-    title: query ? `Search: ${query} — BRISTI` : 'Search — BRISTI',
-    description: `Search results for "${query}" in the BRISTI collection.`,
+    title: query ? `Search: ${query} — ${brandName}` : `Search — ${brandName}`,
+    description: `Search results for "${query}" in the ${brandName} collection.`,
   });
 
   const { items, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, error, refetch } = useProductListing({
@@ -61,8 +63,8 @@ export default function SearchPage() {
               action={{ label: 'Shop all pieces', to: '/shop' }}
             />
           ) : isLoading ? (
-            <ProductGridSkeleton count={6} />
-          ) : error ? (
+            <ProductGridSkeleton count={6} columns={4} />
+          ) : error && items.length === 0 ? (
             <ErrorState message={(error as Error)?.message ?? 'Search failed'} onRetry={() => refetch()} />
           ) : items.length === 0 ? (
             <EmptyState
@@ -76,11 +78,15 @@ export default function SearchPage() {
               <p className="mb-10 border-y border-border py-4 text-xs uppercase tracking-lux-sm text-muted-foreground">
                 {items.length} result{items.length === 1 ? '' : 's'} for “{query}”
               </p>
-              <ProductGrid products={items} columns={3} />
+              <ProductGrid products={items} columns={4} />
               <div id="search-sentinel" className="h-px" aria-hidden="true" />
-              {isFetchingNextPage && (
+              {error ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  Couldn't load more results. <button type="button" className="underline underline-offset-4" onClick={() => fetchNextPage()}>Try again</button>
+                </p>
+              ) : isFetchingNextPage ? (
                 <p className="py-8 text-center text-xs uppercase tracking-lux-sm text-muted-foreground">Loading more…</p>
-              )}
+              ) : null}
             </>
           )}
         </div>

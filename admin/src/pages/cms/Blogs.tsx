@@ -1,8 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Edit, Trash2, BookOpen } from 'lucide-react';
+import { Plus, Edit, Trash2, BookOpen } from 'lucide-react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
+import PageShell from '../../components/ui/PageShell';
+import DataTable, { type Column } from '../../components/ui/DataTable';
+import IconBtn from '../../components/ui/IconBtn';
+import Badge from '../../components/ui/Badge';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 interface BlogPost {
   _id: string;
@@ -19,15 +24,19 @@ interface BlogPost {
   createdAt: string;
 }
 
+const getStatusTone = (status: string) =>
+  status === 'published' ? 'green' : status === 'draft' ? 'amber' : 'slate';
+
 export default function Blogs() {
   const [blogs, setBlogs] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [deleteTarget, setDeleteTarget] = useState<BlogPost | null>(null);
 
   const fetchBlogs = useCallback(async () => {
     try {
-      const response = await api.get(`/blogs${statusFilter !== 'all' ? `?status=${statusFilter}` : ''}`);
+      const response = await api.get(`/blogs/all${statusFilter !== 'all' ? `?status=${statusFilter}` : ''}`);
       setBlogs(response.data.data || []);
     } catch (error) {
       toast.error('Failed to fetch blogs');
@@ -40,28 +49,16 @@ export default function Blogs() {
     fetchBlogs();
   }, [fetchBlogs]);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this blog post?')) return;
-    
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+
     try {
-      await api.delete(`/blogs/${id}`);
+      await api.delete(`/blogs/${deleteTarget._id}`);
       toast.success('Blog post deleted successfully');
+      setDeleteTarget(null);
       fetchBlogs();
     } catch (error) {
       toast.error('Failed to delete blog post');
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'published':
-        return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
-      case 'draft':
-        return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400';
-      case 'archived':
-        return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400';
-      default:
-        return 'bg-slate-100 text-slate-700';
     }
   };
 
@@ -70,33 +67,97 @@ export default function Blogs() {
     blog.author.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Blog Posts</h2>
-          <p className="text-slate-500 dark:text-slate-400">Create and manage blog content</p>
+  const columns: Column<BlogPost>[] = [
+    {
+      key: 'title',
+      header: 'Title',
+      sortKey: 'title',
+      render: (blog) => (
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-md flex items-center justify-center overflow-hidden">
+            {blog.featuredImage ? (
+              <img src={blog.featuredImage} alt="" className="w-10 h-10 object-cover" />
+            ) : (
+              <BookOpen className="w-5 h-5 text-slate-400" />
+            )}
+          </div>
+          <div>
+            <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{blog.title}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">/{blog.slug}</p>
+          </div>
         </div>
-        <Link to="/blogs/create" className="admin-btn-primary py-2.5 px-4 flex items-center">
-          <Plus className="w-4 h-4 mr-2" />
+      ),
+    },
+    {
+      key: 'author',
+      header: 'Author',
+      sortKey: 'author',
+      render: (blog) => <span className="text-sm text-slate-600 dark:text-slate-400">{blog.author}</span>,
+    },
+    {
+      key: 'category',
+      header: 'Category',
+      sortKey: 'category',
+      render: (blog) => <Badge tone="slate">{blog.category || '-'}</Badge>,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      sortKey: 'status',
+      render: (blog) => <Badge tone={getStatusTone(blog.status)}>{blog.status}</Badge>,
+    },
+    {
+      key: 'featured',
+      header: 'Featured',
+      render: (blog) => <Badge tone={blog.featured ? 'green' : 'slate'}>{blog.featured ? 'Yes' : 'No'}</Badge>,
+    },
+    {
+      key: 'publishedAt',
+      header: 'Published',
+      sortKey: 'publishedAt',
+      render: (blog) => (
+        <span className="text-sm text-slate-500 dark:text-slate-400">
+          {blog.publishedAt ? new Date(blog.publishedAt).toLocaleDateString() : '-'}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (blog) => (
+        <div className="flex items-center space-x-1">
+          <Link to={`/blogs/${blog._id}/edit`} className="admin-icon-btn" title="Edit">
+            <Edit className="w-4 h-4" />
+          </Link>
+          <IconBtn title="Delete" onClick={() => setDeleteTarget(blog)}>
+            <Trash2 className="w-4 h-4 text-red-600" />
+          </IconBtn>
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <PageShell
+      title="Blog Posts"
+      subtitle="Create and manage blog content"
+      actions={
+        <Link to="/blogs/create" className="admin-btn-primary h-10 px-4 text-sm flex items-center gap-1.5">
+          <Plus className="w-4 h-4" />
           Add Post
         </Link>
-      </div>
-
-      {/* Filters */}
-      <div className="admin-card p-4">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search blog posts..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="admin-input pl-10"
-            />
-          </div>
+      }
+    >
+      <DataTable
+        columns={columns}
+        rows={filteredBlogs}
+        rowKey={(blog) => blog._id}
+        loading={loading}
+        searchable
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Search blog posts..."
+        filters={
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -107,106 +168,27 @@ export default function Blogs() {
             <option value="draft">Draft</option>
             <option value="archived">Archived</option>
           </select>
-        </div>
-      </div>
+        }
+        clientPagination
+        pageSize={10}
+        emptyTitle="No blog posts found"
+        emptyBody="Create your first post to get started."
+        emptyAction={
+          <Link to="/blogs/create" className="admin-btn-primary h-10 px-4 text-sm inline-flex items-center gap-1.5">
+            <Plus className="w-4 h-4" />
+            Create your first post
+          </Link>
+        }
+      />
 
-      {/* Blogs table */}
-      <div className="admin-card overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
-          </div>
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-700">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-500 dark:text-slate-400">Title</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-500 dark:text-slate-400">Author</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-500 dark:text-slate-400">Category</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-500 dark:text-slate-400">Status</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-500 dark:text-slate-400">Featured</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-500 dark:text-slate-400">Published</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-500 dark:text-slate-400">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredBlogs.map((blog) => (
-                    <tr key={blog._id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                      <td className="py-3 px-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-md flex items-center justify-center">
-                            {blog.featuredImage ? (
-                              <img src={blog.featuredImage} alt="" className="w-10 h-10 object-cover rounded-md" />
-                            ) : (
-                              <BookOpen className="w-5 h-5 text-slate-400" />
-                            )}
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{blog.title}</p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">/{blog.slug}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">
-                        {blog.author}
-                      </td>
-                      <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">
-                        {blog.category || '-'}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(blog.status)}`}>
-                          {blog.status}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                          blog.featured
-                            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                            : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400'
-                        }`}>
-                          {blog.featured ? 'Yes' : 'No'}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-sm text-slate-500 dark:text-slate-400">
-                        {blog.publishedAt ? new Date(blog.publishedAt).toLocaleDateString() : '-'}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center space-x-2">
-                          <Link
-                            to={`/blogs/${blog._id}/edit`}
-                            className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md"
-                          >
-                            <Edit className="w-4 h-4 text-slate-600 dark:text-slate-400" />
-                          </Link>
-                          <button
-                            onClick={() => handleDelete(blog._id)}
-                            className="p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md"
-                          >
-                            <Trash2 className="w-4 h-4 text-red-600" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {filteredBlogs.length === 0 && (
-              <div className="text-center py-12">
-                <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                <p className="text-slate-500 dark:text-slate-400">No blog posts found</p>
-                <Link to="/blogs/create" className="admin-btn-primary mt-4 py-2 px-4 inline-flex items-center">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create your first post
-                </Link>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </div>
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Delete blog post"
+        body={`Are you sure you want to delete "${deleteTarget?.title}"?`}
+        confirmLabel="Delete"
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
+    </PageShell>
   );
 }

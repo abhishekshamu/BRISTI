@@ -2,12 +2,15 @@ import { Request, Response } from 'express';
 import { AuthService } from '../services/auth.service';
 import { asyncHandler } from '../middleware/async';
 import { ValidationError } from '../utils/exceptions';
+import { clearAuthCookies, REFRESH_TOKEN_COOKIE, setAuthCookies } from '../config/cookies';
 
 export class AuthController {
   constructor(private authService: AuthService) {}
 
   register = asyncHandler(async (req: Request, res: Response) => {
     const { user, accessToken, refreshToken } = await this.authService.register(req.body);
+
+    setAuthCookies(res, accessToken, refreshToken);
 
     res.status(201).json({
       success: true,
@@ -32,7 +35,12 @@ export class AuthController {
       throw new ValidationError('Please provide email and password');
     }
 
-    const { user, accessToken, refreshToken } = await this.authService.login(email, password);
+    const { user, accessToken, refreshToken } = await this.authService.login(email, password, {
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
+
+    setAuthCookies(res, accessToken, refreshToken);
 
     res.status(200).json({
       success: true,
@@ -50,14 +58,100 @@ export class AuthController {
     });
   });
 
-  refreshToken = asyncHandler(async (req: Request, res: Response) => {
-    const { refreshToken } = req.body;
+  googleLogin = asyncHandler(async (req: Request, res: Response) => {
+    const { credential } = req.body;
 
-    if (!refreshToken) {
+    if (!credential) {
+      throw new ValidationError('Please provide Google credential');
+    }
+
+    const { user, accessToken, refreshToken } = await this.authService.googleLogin(credential, {
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
+
+    setAuthCookies(res, accessToken, refreshToken);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        user: {
+          id: user._id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          avatar: user.avatar,
+          authProvider: user.authProvider
+        },
+        accessToken,
+        refreshToken
+      }
+    });
+  });
+
+  requestOtp = asyncHandler(async (req: Request, res: Response) => {
+    const { phone } = req.body;
+
+    if (!phone) {
+      throw new ValidationError('Please provide phone number');
+    }
+
+    const result = await this.authService.requestOtp(phone);
+
+    res.status(200).json({
+      success: true,
+      data: result
+    });
+  });
+
+  verifyOtp = asyncHandler(async (req: Request, res: Response) => {
+    const { phone, otp } = req.body;
+
+    if (!phone || !otp) {
+      throw new ValidationError('Please provide phone number and code');
+    }
+
+    const { user, accessToken, refreshToken } = await this.authService.verifyOtpAndLogin(phone, otp, {
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
+
+    setAuthCookies(res, accessToken, refreshToken);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        user: {
+          id: user._id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          phone: user.phone,
+          authProvider: user.authProvider
+        },
+        accessToken,
+        refreshToken
+      }
+    });
+  });
+
+  refreshToken = asyncHandler(async (req: Request, res: Response) => {
+    const cookieRefresh = (req.cookies as Record<string, unknown>)?.[REFRESH_TOKEN_COOKIE];
+    const { refreshToken } = req.body;
+    const token = typeof cookieRefresh === 'string' && cookieRefresh.length > 0 ? cookieRefresh : refreshToken;
+
+    if (!token) {
       throw new ValidationError('Please provide refresh token');
     }
 
-    const { accessToken, refreshToken: nextRefreshToken, user } = await this.authService.refreshToken(refreshToken);
+    const { accessToken, refreshToken: nextRefreshToken, user } = await this.authService.refreshToken(token, {
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
+
+    setAuthCookies(res, accessToken, nextRefreshToken);
 
     res.status(200).json({
       success: true,
@@ -76,18 +170,20 @@ export class AuthController {
   });
 
   logout = asyncHandler(async (req: Request, res: Response) => {
+    const cookieRefresh = (req.cookies as Record<string, unknown>)?.[REFRESH_TOKEN_COOKIE];
     const { refreshToken } = req.body;
+    const token = typeof cookieRefresh === 'string' && cookieRefresh.length > 0 ? cookieRefresh : refreshToken;
     const userId = req.user ? req.user.id : null;
 
-    if (!refreshToken) {
-      throw new ValidationError('Please provide refresh token');
+    if (token && userId) {
+      await this.authService.logout(userId, token);
     }
 
-    const result = await this.authService.logout(userId!, refreshToken);
+    clearAuthCookies(res);
 
     res.status(200).json({
       success: true,
-      message: result.message
+      message: 'Logged out successfully'
     });
   });
 

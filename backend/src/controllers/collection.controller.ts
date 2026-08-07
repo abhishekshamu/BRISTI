@@ -6,7 +6,7 @@ export class CollectionController {
   constructor(private collectionService: CollectionService) {}
 
   getCollections = asyncHandler(async (req: Request, res: Response) => {
-    const { page = 1, limit = 20, featured } = req.query;
+    const { page = 1, limit = 20, featured, includeInactive } = req.query;
     
     const options: any = {
       page: parseInt(page as string),
@@ -14,16 +14,19 @@ export class CollectionController {
       sort: { createdAt: -1 }
     };
     
-    const filter: any = { isActive: true };
+    // Public default: active only. The admin CMS passes includeInactive=true
+    // so draft/hidden collections remain manageable.
+    const filter: any = includeInactive === 'true' ? {} : { isActive: true };
     if (featured !== undefined) {
       filter.featured = featured === 'true';
     }
     
     const result = await this.collectionService.getCollections(filter, options);
+    const data = await this.collectionService.attachProductCounts(result.data);
     
     res.status(200).json({
       success: true,
-      data: result.data,
+      data,
       pagination: {
         page: result.page,
         limit: result.limit,
@@ -46,7 +49,11 @@ export class CollectionController {
   getCollectionBySlug = asyncHandler(async (req: Request, res: Response) => {
     const { slug } = req.params;
     const collection = await this.collectionService.getCollectionBySlug(slug);
-    
+
+    if (!collection) {
+      return res.status(404).json({ success: false, message: 'Collection not found' });
+    }
+
     res.status(200).json({
       success: true,
       data: collection
@@ -63,7 +70,33 @@ export class CollectionController {
       sort: { [sort as string]: order === 'desc' ? -1 : 1 }
     };
     
+    // Accepts either a Mongo id or a collection slug; products are matched
+    // through the collections array (OR semantics).
     const products = await this.collectionService.getCollectionProducts(collectionId, options);
+    
+    res.status(200).json({
+      success: true,
+      data: products.data,
+      pagination: {
+        page: products.page,
+        limit: products.limit,
+        total: products.total,
+        pages: products.pages
+      }
+    });
+  });
+
+  getCollectionProductsBySlug = asyncHandler(async (req: Request, res: Response) => {
+    const { slug } = req.params;
+    const { page = 1, limit = 20, sort = 'createdAt', order = 'desc' } = req.query;
+    
+    const options: any = {
+      page: parseInt(page as string),
+      limit: parseInt(limit as string),
+      sort: { [sort as string]: order === 'desc' ? -1 : 1 }
+    };
+    
+    const products = await this.collectionService.getCollectionProducts(slug, options);
     
     res.status(200).json({
       success: true,

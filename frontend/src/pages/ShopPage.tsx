@@ -1,15 +1,15 @@
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useQuery, useQueries } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { SlidersHorizontal, X } from 'lucide-react';
 import { catalogService } from '@/services/catalog.service';
-import { productService } from '@/services/product.service';
 import { useProductListing } from '@/hooks/useProductListing';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
-import { PageHeader } from '@/components/shared/PageHeader';
+import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { ProductGrid } from '@/components/product/ProductGrid';
 import { ProductGridSkeleton } from '@/components/product/ProductCard';
 import { ErrorState } from '@/components/shared/ErrorState';
+import { PromotionBanner, useActivePromotionBanner } from '@/components/promotion/PromotionBanner';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
@@ -18,7 +18,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Button } from '@/components/ui/button';
 import { usePageMeta } from '@/lib/seo';
 import { formatPrice, getImageUrl } from '@/lib/utils';
-import type { Product } from '@shared/types';
+import { useBrandName } from '@/context/SettingsContext';
 
 const SORT_OPTIONS = [
   { value: 'newest', label: 'Newest', sort: 'createdAt', order: 'desc' },
@@ -30,6 +30,7 @@ const SORT_OPTIONS = [
 
 export default function ShopPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const brandName = useBrandName();
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   const selectedSlugs = useMemo(() => {
@@ -58,11 +59,12 @@ export default function ShopPage() {
   });
 
   const categoryBanner = isCategoryLanding ? getImageUrl(selectedCategory?.bannerImage ?? selectedCategory?.image) : null;
+  const promoBanner = useActivePromotionBanner(singleCategorySlug);
 
   usePageMeta({
     title: isCategoryLanding
-      ? `BRISTI | ${selectedCategory?.name ?? singleCategorySlug}`
-      : 'Shop All — BRISTI',
+      ? `${brandName} | ${selectedCategory?.name ?? singleCategorySlug}`
+      : `Shop All — ${brandName}`,
     description: selectedCategory?.subtitle ?? selectedCategory?.seo?.description ?? selectedCategory?.description,
     image: categoryBanner ?? undefined,
   });
@@ -78,47 +80,18 @@ export default function ShopPage() {
     return flatten((categories ?? []) as never);
   }, [categories]);
 
-  const selectedCategoryIds = useMemo(
-    () => flatCategories.filter((category) => selectedSlugs.includes(category.slug)).map((category) => String(category._id)),
-    [flatCategories, selectedSlugs],
-  );
-
   const sortConfig = SORT_OPTIONS.find((option) => option.value === sortValue) ?? SORT_OPTIONS[0];
 
-  const multiCategory = selectedCategoryIds.length > 1;
-
+  // All selected categories are sent together as repeated `categories`
+  // params (OR filter); the backend applies a single $in query, so the
+  // result is the UNION of every selected category's products.
   const { items, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, error, refetch } = useProductListing({
-    categoryIds: multiCategory ? undefined : selectedCategoryIds,
+    categorySlugs: selectedSlugs,
     sort: sortConfig.sort,
     order: sortConfig.order,
     minPrice: Number.isNaN(minPrice) ? undefined : minPrice,
     maxPrice: Number.isNaN(maxPrice) ? undefined : maxPrice,
-    enabled: !multiCategory,
   });
-
-  const categoryQueries = useQueries({
-    queries: selectedCategoryIds.map((id) => ({
-      queryKey: ['products', 'byCategory', id, sortConfig.sort, sortConfig.order],
-      queryFn: () => productService.byCategory(id, { page: 1, limit: 20, sort: sortConfig.sort, order: sortConfig.order }),
-      enabled: multiCategory,
-    })),
-  });
-
-  const multiItems = useMemo(() => {
-    if (!multiCategory) return [];
-    const seen = new Set<string>();
-    const merged: Product[] = [];
-    for (const query of categoryQueries) {
-      for (const product of query.data ?? []) {
-        const key = String(product._id);
-        if (!seen.has(key)) {
-          seen.add(key);
-          merged.push(product);
-        }
-      }
-    }
-    return merged;
-  }, [multiCategory, categoryQueries]);
 
   const sentinelRef = useInfiniteScroll({
     hasMore: hasNextPage,
@@ -196,7 +169,7 @@ export default function ShopPage() {
 
   const categoryName = isCategoryLanding ? selectedCategory?.name ?? 'Loading…' : undefined;
 
-  const loadedCount = multiCategory ? multiItems.length : items.length;
+  const loadedCount = items.length;
   const productCount = isCategoryLanding
     ? selectedCategory?.productCount ?? (isLoading ? undefined : loadedCount)
     : loadedCount;
@@ -204,55 +177,51 @@ export default function ShopPage() {
     productCount === undefined
       ? 'Curating…'
       : `${productCount} Product${productCount === 1 ? '' : 's'}`;
+  const isCurating = isLoading;
 
   return (
     <>
-      <PageHeader
-        eyebrow={isCategoryLanding ? undefined : 'The Collection'}
-        title={categoryName ?? 'Shop All'}
-        description={
-          isCategoryLanding
-            ? selectedCategory?.subtitle ?? selectedCategory?.description
-            : 'Every piece, every silhouette — the complete BRISTI wardrobe, presented without compromise.'
-        }
-        image={categoryBanner ?? undefined}
-        breadcrumb={
-          isCategoryLanding
-            ? [
-                { label: 'Shop', to: '/shop' },
-                { label: selectedCategory?.name ?? singleCategorySlug as string },
-              ]
-            : [{ label: 'Shop' }]
-        }
-      />
-
-      <section className="bg-background pb-24">
-        <div className="container-lux">
-          <div className="flex flex-col gap-3 border-y border-border py-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs uppercase tracking-lux-sm text-muted-foreground">
-              {isLoading || (multiCategory && categoryQueries.some((query) => query.isPending))
-                ? 'Curating…'
-                : productCountLabel}
-            </p>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
-              <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
-                <SheetTrigger asChild>
-                  <Button variant="outline" className="w-full lg:hidden sm:w-auto">
-                    <SlidersHorizontal className="h-4 w-4" /> Filters
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="overflow-y-auto">
-                  <SheetHeader>
-                    <SheetTitle>Filters</SheetTitle>
-                  </SheetHeader>
-                  <div className="px-6 pb-8">{FiltersPanel}</div>
-                </SheetContent>
-              </Sheet>
-
+      <section className="border-b border-border bg-background pt-[90px] lg:pt-[106px]">
+        <div className="container-lux py-5 sm:py-6">
+          <div className="flex items-start justify-between gap-8">
+            <div className="flex min-w-0 flex-col gap-3">
+              <Breadcrumb
+                items={
+                  isCategoryLanding
+                    ? [
+                        { label: 'Home', to: '/' },
+                        { label: 'Shop', to: '/shop' },
+                        { label: selectedCategory?.name ?? (singleCategorySlug as string) },
+                      ]
+                    : [
+                        { label: 'Home', to: '/' },
+                        { label: 'Shop' },
+                      ]
+                }
+              />
+              <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                <h1 className="font-display text-2xl font-medium tracking-wide sm:text-3xl">
+                  {categoryName ?? 'Shop All'}
+                </h1>
+                <p className="text-xs uppercase tracking-lux-sm text-muted-foreground">
+                  {isCurating ? 'Curating…' : productCountLabel}
+                </p>
+              </div>
+              {(isCategoryLanding
+                ? selectedCategory?.subtitle ?? selectedCategory?.description
+                : 'Every piece, every silhouette — the complete BRISTI wardrobe, presented without compromise.') && (
+                <p className="line-clamp-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                  {isCategoryLanding
+                    ? selectedCategory?.subtitle ?? selectedCategory?.description
+                    : 'Every piece, every silhouette — the complete BRISTI wardrobe, presented without compromise.'}
+                </p>
+              )}
+            </div>
+            <div className="hidden shrink-0 lg:block">
               <div className="flex items-center gap-3">
-                <Label className="hidden sm:block">Sort</Label>
+                <Label className="hidden xl:block">Sort</Label>
                 <Select value={sortValue} onValueChange={(value) => updateSearchParams({ sort: value })}>
-                  <SelectTrigger className="h-10 flex-1 text-xs sm:w-[180px] sm:flex-none">
+                  <SelectTrigger className="h-10 w-[180px] text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -266,23 +235,58 @@ export default function ShopPage() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
 
-          <div className="mt-10 grid gap-12 lg:grid-cols-[240px_1fr]">
+      {promoBanner && <PromotionBanner banner={promoBanner} />}
+
+      <div className="sticky top-[90px] z-30 border-y border-border bg-background lg:hidden">
+        <div className="container-lux flex items-center gap-3 py-3">
+          <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" className="flex-1">
+                <SlidersHorizontal className="h-4 w-4" /> Filters
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="overflow-y-auto">
+              <SheetHeader>
+                <SheetTitle>Filters</SheetTitle>
+              </SheetHeader>
+              <div className="px-6 pb-8">{FiltersPanel}</div>
+            </SheetContent>
+          </Sheet>
+
+          <Select value={sortValue} onValueChange={(value) => updateSearchParams({ sort: value })}>
+            <SelectTrigger className="h-10 flex-1 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {SORT_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <section className="bg-background pb-24">
+        <div className="container-lux">
+          <div className="mt-8 grid gap-12 lg:grid-cols-[240px_1fr]">
             <aside className="hidden lg:block">{FiltersPanel}</aside>
 
             <div>
-              {isLoading || (multiCategory && categoryQueries.some((query) => query.isPending)) ? (
-                <ProductGridSkeleton count={8} />
-              ) : (multiCategory ? categoryQueries.find((query) => query.isError)?.error : error) ? (
+              {isCurating ? (
+                <ProductGridSkeleton count={8} columns={3} />
+              ) : error ? (
                 <ErrorState
-                  message={(multiCategory ? categoryQueries.find((query) => query.isError)?.error : error) instanceof Error
-                    ? ((multiCategory ? categoryQueries.find((query) => query.isError)?.error : error) as Error).message
-                    : 'Failed to load products'}
-                  onRetry={() => (multiCategory ? categoryQueries.forEach((query) => query.refetch()) : refetch())}
+                  message={error instanceof Error ? error.message : 'Failed to load products'}
+                  onRetry={() => refetch()}
                 />
-              ) : (multiCategory ? multiItems : items).length === 0 ? (
+              ) : items.length === 0 ? (
                 <div className="py-24 text-center">
-                  <p className="font-display text-3xl font-medium">No pieces found</p>
+                  <p className="font-display text-3xl font-medium">No products found</p>
                   <p className="mt-3 text-sm text-muted-foreground">Try adjusting your filters to see more of the collection.</p>
                   <Button
                     variant="outline"
@@ -297,14 +301,10 @@ export default function ShopPage() {
                 </div>
               ) : (
                 <>
-                  <ProductGrid products={multiCategory ? multiItems : items} columns={3} />
-                  {!multiCategory && (
-                    <>
-                      <div ref={sentinelRef} className="h-px" aria-hidden="true" />
-                      {isFetchingNextPage && (
-                        <p className="py-8 text-center text-xs uppercase tracking-lux-sm text-muted-foreground">Loading more…</p>
-                      )}
-                    </>
+                  <ProductGrid products={items} columns={3} />
+                  <div ref={sentinelRef} className="h-px" aria-hidden="true" />
+                  {isFetchingNextPage && (
+                    <p className="py-8 text-center text-xs uppercase tracking-lux-sm text-muted-foreground">Loading more…</p>
                   )}
                 </>
               )}

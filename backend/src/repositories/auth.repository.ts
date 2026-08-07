@@ -7,9 +7,10 @@ export class AuthRepository extends BaseRepository<any> {
     super(AuthTokenModel);
   }
 
-  async createRefreshToken(userId: string, token: string, expiresAt: Date): Promise<any> {
+  async createRefreshToken(userId: string, token: string, expiresAt: Date, ownerType: 'user' | 'admin' = 'user'): Promise<any> {
     return this.create({
       userId,
+      ownerType,
       tokenHash: this.hashToken(token),
       type: 'refresh',
       expiresAt
@@ -27,6 +28,10 @@ export class AuthRepository extends BaseRepository<any> {
 
   async deleteUserTokens(userId: string): Promise<void> {
     await this.model.deleteMany({ userId });
+  }
+
+  async deleteOwnerTokens(userId: string, ownerType: 'user' | 'admin' = 'user'): Promise<void> {
+    await this.model.deleteMany({ userId, ownerType });
   }
 
   async deleteExpiredTokens(): Promise<void> {

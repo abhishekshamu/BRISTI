@@ -51,7 +51,11 @@ export class NotificationController {
 
   markAsRead = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const notification = await this.notificationService.markAsRead(id);
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'User not authenticated' });
+    }
+    const notification = await this.notificationService.markAsRead(userId, id);
     res.status(200).json({
       success: true,
       data: notification
@@ -72,7 +76,11 @@ export class NotificationController {
 
   deleteNotification = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    await this.notificationService.deleteNotification(id);
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'User not authenticated' });
+    }
+    await this.notificationService.deleteNotification(userId, id);
     res.status(200).json({
       success: true,
       message: 'Notification deleted successfully'

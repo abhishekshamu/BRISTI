@@ -64,8 +64,22 @@ export class OrderController {
     });
   });
 
+  getOrderByNumber = asyncHandler(async (req: Request, res: Response) => {
+    const { orderNumber } = req.params;
+    const order = await this.orderService.getOrderByOrderNumber(orderNumber);
+    const isAdmin = isAdminUser((req.user as any));
+    if (!isAdmin && String(order.userId) !== String((req.user as any)?.id ?? (req.user as any)?._id)) {
+      throw new BadRequestException('Not authorized to view this order');
+    }
+
+    res.status(200).json({
+      success: true,
+      data: order
+    });
+  });
+
   getUserOrders = asyncHandler(async (req: Request, res: Response) => {
-    const userId = (req.user as any)?.id ?? (req.user as any)?._id;
+    const userId = (req.params.userId as string) ?? (req.user as any)?.id ?? (req.user as any)?._id;
     const { page = 1, limit = 20 } = req.query;
     const options: any = {
       page: parseInt(page as string),
@@ -231,15 +245,19 @@ export class OrderController {
   });
 
   getSalesStats = asyncHandler(async (req: Request, res: Response) => {
-    const { startDate, endDate } = req.query;
-    const stats = await this.orderService.getSalesStats(
+    const { startDate, endDate, days } = req.query;
+    const summary = await this.orderService.getSalesStats(
       startDate ? new Date(startDate as string) : undefined,
       endDate ? new Date(endDate as string) : undefined
     );
+    const daily = await this.orderService.getDailySales(Number.parseInt(days as string) || 30);
 
     res.status(200).json({
       success: true,
-      data: stats
+      data: {
+        summary: summary[0] ?? null,
+        daily,
+      }
     });
   });
 }

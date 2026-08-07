@@ -3,24 +3,69 @@ import { productService, type ProductQueryParams } from '@/services/product.serv
 import type { Product } from '@shared/types';
 
 export interface ProductListingOptions {
-  categoryIds?: string[];
+  categorySlugs?: string[];
   collectionId?: string;
+  collectionSlugs?: string[];
   search?: string;
   sort?: string;
   order?: 'asc' | 'desc';
   minPrice?: number;
   maxPrice?: number;
+  // Independent marketing flags — combinable (AND).
+  newArrival?: boolean;
+  bestSeller?: boolean;
+  trending?: boolean;
+  sale?: boolean;
+  featured?: boolean;
+  recommended?: boolean;
+  exclusive?: boolean;
+  limitedEdition?: boolean;
+  editorsPick?: boolean;
+  premiumCollection?: boolean;
   enabled?: boolean;
 }
 
-export function useProductListing({ categoryIds, collectionId, search, sort, order, minPrice, maxPrice, enabled = true }: ProductListingOptions) {
+export function useProductListing({
+  categorySlugs,
+  collectionId,
+  collectionSlugs,
+  search,
+  sort,
+  order,
+  minPrice,
+  maxPrice,
+  newArrival,
+  bestSeller,
+  trending,
+  sale,
+  featured,
+  recommended,
+  exclusive,
+  limitedEdition,
+  editorsPick,
+  premiumCollection,
+  enabled = true,
+}: ProductListingOptions) {
   const params = (page: number): ProductQueryParams => ({
     page,
     limit: 20,
-    category: categoryIds && categoryIds.length > 0 ? categoryIds.join(',') : undefined,
+    // Category slugs are sent as repeated `categories` params (OR filter).
+    // The backend resolves slugs to ids and applies a single $in query.
+    categories: categorySlugs && categorySlugs.length > 0 ? categorySlugs : undefined,
     collection: collectionId,
+    collections: collectionSlugs && collectionSlugs.length > 0 ? collectionSlugs.join(',') : undefined,
     sort,
     order,
+    newArrival,
+    bestSeller,
+    trending,
+    sale,
+    featured,
+    recommended,
+    exclusive,
+    limitedEdition,
+    editorsPick,
+    premiumCollection,
     minPrice: minPrice && minPrice > 0 ? minPrice : undefined,
     maxPrice: maxPrice && maxPrice > 0 ? maxPrice : undefined,
   });
@@ -28,7 +73,26 @@ export function useProductListing({ categoryIds, collectionId, search, sort, ord
   const baseKey = search !== undefined ? ['products', 'search', search] : ['products', 'list'];
 
   const searchQuery = useInfiniteQuery({
-    queryKey: [...baseKey, categoryIds?.join(','), collectionId, sort, order, minPrice, maxPrice],
+    queryKey: [
+      ...baseKey,
+      categorySlugs?.join(','),
+      collectionId,
+      collectionSlugs?.join(','),
+      sort,
+      order,
+      newArrival,
+      bestSeller,
+      trending,
+      sale,
+      featured,
+      recommended,
+      exclusive,
+      limitedEdition,
+      editorsPick,
+      premiumCollection,
+      minPrice,
+      maxPrice,
+    ],
     queryFn: async ({ pageParam = 1 }) => {
       if (search !== undefined) {
         const results = await productService.search({ q: search, page: pageParam, limit: 20 });
@@ -38,6 +102,8 @@ export function useProductListing({ categoryIds, collectionId, search, sort, ord
     },
     initialPageParam: 1,
     enabled,
+    retry: 2,
+    refetchOnWindowFocus: false,
     getNextPageParam: (lastPage) => {
       if ('hasMore' in lastPage && typeof lastPage.hasMore === 'boolean') {
         return lastPage.hasMore ? (lastPage as { next?: number }).next ?? undefined : undefined;

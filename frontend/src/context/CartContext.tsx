@@ -1,8 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { cartService, cartItemKey, type AddToCartPayload } from '@/services/cart.service';
+import { couponService } from '@/services/coupon.service';
 import { useAuth } from '@/context/AuthContext';
 import { getErrorMessage } from '@/lib/utils';
 import { computeTotals } from '@/lib/pricing';
+import { productService } from '@/services/product.service';
 import type { Cart, CartItem } from '@shared/types';
 
 const GUEST_CART_KEY = 'bristi_guest_cart';
@@ -122,6 +124,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const addItem = useCallback(
     async (payload: AddToCartPayload) => {
       if (!isAuthenticated) {
+        let product;
+        try {
+          product = await productService.getById(payload.productId);
+        } catch {
+          throw new Error('Could not load this product. Please try again.');
+        }
+        const variant = payload.variantId
+          ? product.variants?.find((v) => String(v.id) === String(payload.variantId))
+          : undefined;
+        const price = (product.price ?? 0) + (variant?.priceAdjustment ?? 0);
+        const featuredImage = product.images?.find((img) => img.isFeatured) ?? product.images?.[0];
         setCart((current) => {
           const base = current ?? loadGuestCart();
           const items = [...base.items];
@@ -133,9 +146,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
               productId: payload.productId,
               variantId: payload.variantId,
               quantity: payload.quantity,
-              price: 0,
-              name: '',
-              image: '',
+              price,
+              name: variant ? `${product.name} (${variant.name})` : product.name,
+              image: variant?.image ?? featuredImage?.url ?? '',
               selectedOptions: payload.selectedOptions,
             });
           }
@@ -246,10 +259,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const applyCoupon = useCallback(
     async (code: string) => {
       if (!isAuthenticated) {
-        setCart((current) => {
-          const base = current ?? loadGuestCart();
-          return { ...base, couponCode: code };
-        });
+        const current = cart ?? loadGuestCart();
+        const { valid, discount, coupon } = await couponService.validate(code, current.subtotal ?? 0);
+        if (!valid || !coupon) {
+          throw new Error('Invalid coupon code');
+        }
+        setCart(recomputeTotals({ ...current, couponCode: code, couponDiscount: discount, discount }));
         return;
       }
       setIsUpdating(true);
@@ -262,7 +277,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         setIsUpdating(false);
       }
     },
-    [isAuthenticated, recomputeTotals],
+    [cart, isAuthenticated, recomputeTotals],
   );
 
   const removeCoupon = useCallback(() => {

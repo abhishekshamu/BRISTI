@@ -1,8 +1,12 @@
 import { useEffect } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { Check, Package, PackageCheck, Truck } from 'lucide-react';
+import { Check, Package, PackageCheck, Truck, Loader2 } from 'lucide-react';
 import { usePageMeta } from '@/lib/seo';
+import { useAuth } from '@/context/AuthContext';
+import { useBrandName } from '@/context/SettingsContext';
+import { orderService } from '@/services/order.service';
 import { formatPrice } from '@/lib/utils';
 import { ORDER_STATUSES, PAYMENT_STATUSES } from '@shared/constants';
 import type { Order } from '@shared/types';
@@ -10,15 +14,49 @@ import type { Order } from '@shared/types';
 export default function OrderConfirmationPage() {
   const { orderNumber = '' } = useParams<{ orderNumber: string }>();
   const location = useLocation();
-  const order = (location.state as { order?: Order } | null)?.order;
+  const brandName = useBrandName();
+  const { isAuthenticated } = useAuth();
+  const orderFromState = (location.state as { order?: Order } | null)?.order;
 
-  usePageMeta({ title: `Order ${orderNumber} — BRISTI`, description: 'Your order has been placed. Thank you for shopping with BRISTI.' });
+  const { data: fetchedOrder, isLoading: isFetching } = useQuery({
+    queryKey: ['orders', 'confirmation', orderNumber],
+    queryFn: async () => {
+      if (isAuthenticated) {
+        try {
+          return await orderService.getByOrderNumber(orderNumber);
+        } catch {
+          return null;
+        }
+      }
+      try {
+        return await orderService.track(orderNumber);
+      } catch {
+        return null;
+      }
+    },
+    enabled: !orderFromState && Boolean(orderNumber),
+    retry: false,
+    staleTime: 1000 * 60,
+  });
+
+  const order = orderFromState ?? fetchedOrder ?? null;
+
+  usePageMeta({ title: `Order ${orderNumber} — ${brandName}`, description: `Your order has been placed. Thank you for shopping with ${brandName}.` });
 
   useEffect(() => {
     if (!order) {
       window.scrollTo({ top: 0 });
     }
   }, [order]);
+
+  if (isFetching) {
+    return (
+      <div className="container-lux flex min-h-[70vh] flex-col items-center justify-center gap-6 text-center">
+        <Loader2 className="h-8 w-8 animate-spin text-accent" />
+        <p className="text-xs uppercase tracking-lux-sm text-muted-foreground">Fetching order details…</p>
+      </div>
+    );
+  }
 
   if (!order) {
     return (
@@ -56,7 +94,7 @@ export default function OrderConfirmationPage() {
         <p className="text-[11px] font-medium uppercase tracking-lux-sm text-accent">Order confirmed</p>
         <h1 className="font-display text-4xl font-medium sm:text-5xl">Thank you, {order.shippingAddress?.firstName}</h1>
         <p className="max-w-xl text-sm leading-7 text-muted-foreground">
-          Order <span className="font-medium text-foreground">{order.orderNumber}</span> has been placed. A confirmation has been sent to your email, and your pieces are being prepared in the atelier.
+          Order <span className="font-medium text-foreground">{order.orderNumber}</span> has been placed. A confirmation has been sent to your email, and your pieces are being prepared for shipment.
         </p>
 
         <div className="mt-4 grid w-full max-w-3xl grid-cols-3 gap-2 sm:gap-4">

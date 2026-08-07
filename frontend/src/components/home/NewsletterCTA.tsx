@@ -19,6 +19,9 @@ export function NewsletterCTA({ props }: NewsletterCTAProps) {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Newsletter section is CMS-configured; nothing is rendered without it.
+  if (!props?.title) return null;
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!isValidEmailAddress(email)) {
@@ -57,7 +60,7 @@ export function NewsletterCTA({ props }: NewsletterCTAProps) {
             onChange={(event) => setEmail(event.target.value)}
             placeholder={props?.placeholder || 'Your email address'}
             aria-label="Email address"
-            className="h-13 flex-1 border border-[var(--on-ink)]/20 bg-[var(--on-ink)]/5 px-5 py-4 text-sm text-[var(--on-ink)] outline-none transition-colors placeholder:text-[var(--on-ink)]/40 focus:border-accent"
+            className="flex-1 border border-[var(--on-ink)]/20 bg-[var(--on-ink)]/5 px-5 py-4 text-sm text-[var(--on-ink)] outline-none transition-colors placeholder:text-[var(--on-ink)]/40 focus:border-accent"
           />
           <button
             type="submit"

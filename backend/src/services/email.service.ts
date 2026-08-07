@@ -24,12 +24,18 @@ export class EmailService {
     await this.send(email, 'Verify your BRISTI email', `${this.frontendUrl}/verify-email/${verificationToken}`);
   }
 
-  async sendOrderConfirmation(email: string, orderData: any): Promise<void> {
-    console.log(`Order confirmation email sent to ${email}`, orderData);
+async sendOrderConfirmation(email: string, order: any): Promise<void> {
+    if (!order) return;
+    const lines = Array.isArray(order.items)
+      ? order.items.map((item: any) => `• ${item.quantity} × ${item.productName || item.name || 'Item'}`).join('\n')
+      : '';
+    const subject = `Order confirmed — ${order.orderNumber || ''}`.trim();
+    const content = `Thank you for your BRISTI order.\n\nOrder number: ${order.orderNumber}\nTotal: $${order.total ?? 0}\n\n${lines}\n\nWe'll notify you as soon as your pieces ship.`;
+    await this.send(email, subject, content);
   }
 
-  async sendWelcomeEmail(email: string, _name: string): Promise<void> {
-    console.log(`Welcome email sent to ${email}`);
+  async sendWelcomeEmail(email: string, name: string): Promise<void> {
+    await this.send(email, 'Welcome to BRISTI', `Welcome${name ? `, ${name}` : ''}! Thank you for joining the BRISTI maison.`);
   }
 
   async sendNotificationEmail(email: string, subject: string, message: string): Promise<void> {

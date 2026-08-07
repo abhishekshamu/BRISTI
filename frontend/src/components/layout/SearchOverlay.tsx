@@ -6,12 +6,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { productService } from '@/services/product.service';
 import { useUIStore } from '@/store/useUIStore';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useBrandName } from '@/context/SettingsContext';
 import { formatPrice, getImageUrl } from '@/lib/utils';
 import { ROUTES } from '@shared/constants';
 import type { Product } from '@shared/types';
 
 export function SearchOverlay() {
   const { isSearchOpen, closeSearch } = useUIStore();
+  const brandName = useBrandName();
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebounce(query, 300);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -125,7 +127,7 @@ export function SearchOverlay() {
                         />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium">{product.name}</p>
-                          <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">{product.brand || 'BRISTI'}</p>
+                          <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">{product.brand || brandName}</p>
                         </div>
                         <span className="text-sm font-medium">{formatPrice(product.price)}</span>
                       </button>

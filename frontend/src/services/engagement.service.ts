@@ -14,7 +14,7 @@ export const newsletterService = {
 };
 
 export const analyticsService = {
-  async track(data: { eventName: string; properties?: Record<string, unknown>; url?: string }): Promise<void> {
+  async track(data: { eventName: string; properties?: Record<string, unknown>; url?: string; sessionId?: string }): Promise<void> {
     try {
       await api.post('/analytics/track', data);
     } catch {

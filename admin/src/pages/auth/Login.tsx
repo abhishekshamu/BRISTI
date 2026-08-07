@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
 import { useAuth } from '../../lib/auth-context';
 import toast from 'react-hot-toast';
+import { getApiError } from '../../lib/api';
 
 interface LoginForm {
   email: string;
@@ -33,7 +34,7 @@ export default function Login() {
       toast.success('Login successful!');
       navigate('/');
     } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Invalid credentials');
+      toast.error(getApiError(error, 'Invalid credentials'));
     } finally {
       setIsSubmitting(false);
     }

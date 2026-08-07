@@ -18,10 +18,11 @@ export class CouponController {
   });
 
   getAllCoupons = asyncHandler(async (req: Request, res: Response) => {
-    const { page = 1, limit = 20 } = req.query;
+    const { page = 1, limit = 20, isActive } = req.query;
     const result = await this.couponService.getAllCoupons({
       page: parseInt(page as string),
-      limit: parseInt(limit as string)
+      limit: parseInt(limit as string),
+      ...(isActive !== undefined ? { isActive: isActive === 'true' } : {})
     });
     res.status(200).json({
       success: true,

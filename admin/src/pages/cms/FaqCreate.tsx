@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { ArrowLeft, Save } from 'lucide-react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
+import PageShell from '../../components/ui/PageShell';
+import StickySaveBar from '../../components/ui/StickySaveBar';
+import { useUnsavedChanges } from '../../lib/unsaved-context';
 
 interface FaqForm {
   question: string;
@@ -16,17 +18,22 @@ interface FaqForm {
 export default function FaqCreate() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const { dirty, setDirty } = useUnsavedChanges();
 
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<FaqForm>({
     defaultValues: {
       isActive: true,
       sortOrder: 0,
     },
   });
+
+  useEffect(() => {
+    setDirty(isDirty);
+  }, [isDirty, setDirty]);
 
   const onSubmit = async (data: FaqForm) => {
     try {
@@ -42,22 +49,12 @@ export default function FaqCreate() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <button onClick={() => navigate('/faqs')} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md">
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Add FAQ</h2>
-            <p className="text-slate-500 dark:text-slate-400">Create a new FAQ</p>
-          </div>
-        </div>
-        <button type="submit" form="faq-form" disabled={loading} className="admin-btn-primary py-2.5 px-4 flex items-center">
-          {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Save className="w-4 h-4 mr-2" />Save</>}
-        </button>
-      </div>
-
+    <PageShell
+      title="Add FAQ"
+      subtitle="Create a new FAQ"
+      breadcrumbs={[{ label: 'FAQs', to: '/faqs' }]}
+      backTo="/faqs"
+    >
       <form id="faq-form" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div className="admin-card p-6 space-y-4">
           <div>
@@ -85,6 +82,13 @@ export default function FaqCreate() {
           </div>
         </div>
       </form>
-    </div>
+      <StickySaveBar
+        dirty={dirty}
+        saving={loading}
+        onSave={() => handleSubmit(onSubmit)()}
+        onCancel={() => navigate('/faqs')}
+        saveLabel="Save FAQ"
+      />
+    </PageShell>
   );
 }

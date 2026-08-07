@@ -23,3 +23,12 @@ export const preferencesValidation = [
   body('marketing').optional().isBoolean().toBoolean(),
   body('orderUpdates').optional().isBoolean().toBoolean(),
 ];
+
+export const changePasswordValidation = [
+  body('currentPassword').isString().notEmpty().withMessage('Current password is required'),
+  body('newPassword')
+    .isLength({ min: 8 }).withMessage('New password must be at least 8 characters')
+    .matches(/[a-z]/).withMessage('New password must contain at least one lowercase letter')
+    .matches(/[A-Z]/).withMessage('New password must contain at least one uppercase letter')
+    .matches(/[0-9]/).withMessage('New password must contain at least one number'),
+];

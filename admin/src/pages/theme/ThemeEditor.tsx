@@ -5,7 +5,6 @@ import {
   Moon,
   Palette,
   RotateCcw,
-  Save,
   Sun,
   Upload,
   Zap,
@@ -23,6 +22,11 @@ import {
   HEADING_SIZE_FIELDS,
   BREAKPOINT_LABELS,
 } from '../../lib/theme-schema';
+import PageShell from '../../components/ui/PageShell';
+import StickySaveBar from '../../components/ui/StickySaveBar';
+import PageSpinner from '../../components/ui/PageSpinner';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import { useUnsavedChanges } from '../../lib/unsaved-context';
 
 type Tab = 'overview' | 'colors' | 'typography' | 'buttons' | 'headerFooter' | 'effects';
 
@@ -45,6 +49,7 @@ interface ThemeListEntry {
 const IS_HEX = /^#[0-9a-fA-F]{6}$/;
 
 export default function ThemeEditor() {
+  const { dirty, setDirty } = useUnsavedChanges();
   const [tab, setTab] = useState<Tab>('overview');
   const [theme, setTheme] = useState<ThemeSettings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -55,6 +60,8 @@ export default function ThemeEditor() {
   const [applyingPreset, setApplyingPreset] = useState<ThemePresetName | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const fetchTheme = useCallback(async () => {
     const response = await api.get('/theme');
@@ -113,17 +120,22 @@ export default function ThemeEditor() {
 
   const handleChange = useCallback(
     (updater: (prev: ThemeSettings) => ThemeSettings) => {
+      setDirty(true);
       setTheme((prev) => {
         if (!prev) return prev;
         const next = updater(prev);
         if (autoSave) {
           if (saveTimer.current) clearTimeout(saveTimer.current);
-          saveTimer.current = setTimeout(() => persist(next), 600);
+          saveTimer.current = setTimeout(() => {
+            void persist(next).then((ok) => {
+              if (ok) setDirty(false);
+            });
+          }, 600);
         }
         return next;
       });
     },
-    [autoSave, persist],
+    [autoSave, persist, setDirty],
   );
 
   const updateColor = (key: string, value: string) => {
@@ -146,6 +158,7 @@ export default function ThemeEditor() {
     if (!theme) return;
     const ok = await persist(theme);
     if (ok) {
+      setDirty(false);
       toast.success('Theme saved — storefront updates automatically');
       await fetchThemeList();
     }
@@ -157,6 +170,7 @@ export default function ThemeEditor() {
       const response = await api.post('/theme/preset', { name });
       const data = response.data.data as ThemeSettings;
       setTheme(data);
+      setDirty(false);
       toast.success(`Applied ${name} preset`);
       await fetchThemeList();
     } catch (error) {
@@ -168,10 +182,10 @@ export default function ThemeEditor() {
   };
 
   const resetToDefault = async () => {
-    if (!window.confirm('Reset the active theme to the BRISTI default (black/white/gold)?')) return;
     try {
       const response = await api.post('/theme/reset');
       setTheme(response.data.data as ThemeSettings);
+      setDirty(false);
       toast.success('Theme reset to default');
       await fetchThemeList();
     } catch (error) {
@@ -226,6 +240,7 @@ export default function ThemeEditor() {
           effects: { ...(merged.effects || {}), ...(parsed.effects || {}) },
         } as ThemeSettings;
         setTheme(imported);
+        setDirty(true);
         toast.success('Theme imported — review and save');
       } catch (error) {
         console.error('Failed to import theme', error);
@@ -238,6 +253,7 @@ export default function ThemeEditor() {
   const activateTheme = async (id: string) => {
     try {
       await api.put(`/theme/${id}/activate`);
+      setDirty(false);
       toast.success('Theme activated');
       await fetchTheme();
       await fetchThemeList();
@@ -248,7 +264,6 @@ export default function ThemeEditor() {
   };
 
   const deleteTheme = async (id: string) => {
-    if (!window.confirm('Delete this theme?')) return;
     try {
       await api.delete(`/theme/${id}`);
       toast.success('Theme deleted');
@@ -271,31 +286,25 @@ export default function ThemeEditor() {
   }, [colorFilter]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
-      </div>
-    );
+    return <PageSpinner label="Loading theme…" />;
   }
 
   if (!theme) {
     return (
-      <div className="admin-card p-8 text-center text-slate-500">
-        No theme loaded. Refresh the page to retry.
-      </div>
+      <PageShell title="Theme Editor" subtitle="Live design engine — changes appear on the storefront within seconds">
+        <div className="admin-card p-8 text-center text-slate-500">
+          No theme loaded. Refresh the page to retry.
+        </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Theme Editor</h2>
-          <p className="text-slate-500 dark:text-slate-400">
-            Live design engine — changes appear on the storefront within seconds
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+    <PageShell
+      title="Theme Editor"
+      subtitle="Live design engine — changes appear on the storefront within seconds"
+      actions={
+        <>
           <button
             onClick={() => setAutoSave((v) => !v)}
             className={`admin-btn py-2 px-3 text-xs ${autoSave ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200'}`}
@@ -324,21 +333,12 @@ export default function ThemeEditor() {
           <button onClick={duplicateTheme} className="admin-btn-secondary py-2 px-3 flex items-center text-xs">
             <Copy className="w-4 h-4 mr-1.5" /> Duplicate
           </button>
-          <button onClick={resetToDefault} className="admin-btn-secondary py-2 px-3 flex items-center text-xs">
+          <button onClick={() => setConfirmReset(true)} className="admin-btn-secondary py-2 px-3 flex items-center text-xs">
             <RotateCcw className="w-4 h-4 mr-1.5" /> Reset
           </button>
-          <button onClick={handleSave} disabled={saving} className="admin-btn-primary py-2.5 px-4 flex items-center text-xs">
-            {saving ? (
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            ) : (
-              <>
-                <Save className="w-4 h-4 mr-1.5" /> Save Theme
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-
+        </>
+      }
+    >
       {/* Presets */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {(['default', 'dark', 'light'] as ThemePresetName[]).map((name) => (
@@ -452,7 +452,7 @@ export default function ThemeEditor() {
                       </button>
                     )}
                     {!t.isActive && (
-                      <button onClick={() => deleteTheme(t._id)} className="admin-btn-danger py-1 px-2.5" title="Delete">
+                      <button onClick={() => setConfirmDeleteId(t._id)} className="admin-btn-danger py-1 px-2.5" title="Delete">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     )}
@@ -839,6 +839,38 @@ export default function ThemeEditor() {
           </div>
         </div>
       )}
-    </div>
+
+      <StickySaveBar
+        dirty={dirty}
+        onSave={handleSave}
+        saving={saving}
+        saveLabel="Save Theme"
+      />
+
+      <ConfirmDialog
+        open={confirmReset}
+        title="Reset theme"
+        body="Reset the active theme to the BRISTI default (black/white/gold)?"
+        confirmLabel="Reset theme"
+        tone="danger"
+        onConfirm={async () => {
+          await resetToDefault();
+          setConfirmReset(false);
+        }}
+        onCancel={() => setConfirmReset(false)}
+      />
+      <ConfirmDialog
+        open={confirmDeleteId !== null}
+        title="Delete theme"
+        body="Delete this theme?"
+        confirmLabel="Delete theme"
+        tone="danger"
+        onConfirm={async () => {
+          if (confirmDeleteId !== null) await deleteTheme(confirmDeleteId);
+          setConfirmDeleteId(null);
+        }}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
+    </PageShell>
   );
 }

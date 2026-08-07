@@ -30,7 +30,7 @@ export default {
           foreground: 'hsl(var(--muted-foreground))',
         },
         accent: {
-          DEFAULT: 'hsl(var(--accient))',
+          DEFAULT: 'hsl(var(--accent))',
           foreground: 'hsl(var(--accent-foreground))',
         },
         popover: {
@@ -41,6 +41,15 @@ export default {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
+        gold: {
+          DEFAULT: 'hsl(var(--gold))',
+          light: 'hsl(var(--gold-light))',
+          dark: 'hsl(var(--gold-dark))',
+        },
+      },
+      spacing: {
+        '4.5': '1.125rem',
+        '8.5': '2.125rem',
       },
       borderRadius: {
         lg: 'var(--radius)',
@@ -49,7 +58,7 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
-        heading: ['Inter', 'system-ui', 'sans-serif'],
+        heading: ['"Playfair Display"', 'Inter', 'serif'],
       },
       keyframes: {
         'accordion-down': {

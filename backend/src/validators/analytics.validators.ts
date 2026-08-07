@@ -4,10 +4,10 @@ export const trackEventValidation = [
   body('eventName').notEmpty().withMessage('Event name is required').trim(),
   body('userId').optional().isMongoId().withMessage('Invalid user ID'),
   body('sessionId').optional().trim(),
-  body('pageUrl').optional().trim(),
+  body('url').optional().trim(),
   body('referrer').optional().trim(),
-  body('device').optional().isObject(),
-  body('metadata').optional().isObject(),
+  body('deviceType').optional().trim(),
+  body('properties').optional().isObject(),
 ];
 
 export const getEventsByEventNameValidation = [

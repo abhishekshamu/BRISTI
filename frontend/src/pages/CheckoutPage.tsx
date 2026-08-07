@@ -8,6 +8,7 @@ import { useCart } from '@/context/CartContext';
 import { orderService } from '@/services/order.service';
 import { paymentService } from '@/services/payment.service';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { SafeImage } from '@/components/shared/SafeImage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,8 +16,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
 import { usePageMeta } from '@/lib/seo';
-import { formatPrice, getImageUrl } from '@/lib/utils';
+import { formatPrice } from '@/lib/utils';
 import { computeTotals, TAX_RATE } from '@/lib/pricing';
+import { useBrandName } from '@/context/SettingsContext';
 
 type PaymentMethod = 'stripe' | 'razorpay' | 'cod';
 
@@ -52,6 +54,7 @@ const EMPTY_ADDRESS: AddressForm = {
 
 export default function CheckoutPage() {
   const { isAuthenticated, profile, isLoading: authLoading, user } = useAuth();
+  const brandName = useBrandName();
   const { cart, clear } = useCart();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -78,7 +81,7 @@ export default function CheckoutPage() {
   const [submitting, setSubmitting] = useState(false);
   const [step, setStep] = useState<'shipping' | 'payment'>('shipping');
 
-  usePageMeta({ title: 'Checkout — BRISTI' });
+  usePageMeta({ title: `Checkout — ${brandName}` });
 
   const items = cart?.items ?? [];
   const subtotal = cart?.subtotal ?? 0;
@@ -88,7 +91,23 @@ export default function CheckoutPage() {
     [totals, cart?.discount, subtotal],
   );
 
-  if (authLoading) return null;
+  if (authLoading) {
+    return (
+      <div className="container-lux py-36">
+        <div className="grid gap-12 lg:grid-cols-[1fr_400px]">
+          <div className="flex flex-col gap-5">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div key={index} className="flex flex-col gap-2">
+                <div className="h-3 w-24 animate-pulse rounded bg-secondary" />
+                <div className="h-12 w-full animate-pulse rounded bg-secondary" />
+              </div>
+            ))}
+          </div>
+          <div className="h-96 animate-pulse bg-secondary" />
+        </div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login?redirect=/checkout" replace />;
@@ -302,28 +321,25 @@ export default function CheckoutPage() {
             <aside className="h-fit border border-border p-8 lg:sticky lg:top-28">
               <h2 className="mb-6 text-xs font-medium uppercase tracking-lux-sm">Your order</h2>
               <ul className="mb-6 flex flex-col gap-5">
-                {items.map((item) => {
-                  const image = getImageUrl(item.image);
-                  return (
-                    <li key={`${String(item.productId)}-${item.variantId ?? 'default'}`} className="flex gap-4">
-                      <div className="relative h-20 w-16 shrink-0 bg-secondary">
-                        {image && <img src={image} alt={item.name} className="h-full w-full object-cover" />}
-                        <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-foreground px-1 text-[10px] text-background">
-                          {item.quantity}
-                        </span>
-                      </div>
-                      <div className="flex flex-1 flex-col justify-between py-0.5">
-                        <p className="text-sm font-medium">{item.name}</p>
-                        {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
-                          <p className="text-xs text-muted-foreground">
-                            {Object.entries(item.selectedOptions).map(([key, value]) => `${key}: ${value}`).join(' · ')}
-                          </p>
-                        )}
-                        <p className="text-sm">{formatPrice(item.price * item.quantity)}</p>
-                      </div>
-                    </li>
-                  );
-                })}
+                {items.map((item) => (
+                  <li key={`${String(item.productId)}-${item.variantId ?? 'default'}`} className="flex gap-4">
+                    <div className="relative h-20 w-16 shrink-0 bg-secondary">
+                      <SafeImage src={item.image} alt={item.name} className="h-full w-full object-cover" />
+                      <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-foreground px-1 text-[10px] text-background">
+                        {item.quantity}
+                      </span>
+                    </div>
+                    <div className="flex flex-1 flex-col justify-between py-0.5">
+                      <p className="text-sm font-medium">{item.name}</p>
+                      {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          {Object.entries(item.selectedOptions).map(([key, value]) => `${key}: ${value}`).join(' · ')}
+                        </p>
+                      )}
+                      <p className="text-sm">{formatPrice(item.price * item.quantity)}</p>
+                    </div>
+                  </li>
+                ))}
               </ul>
               <Separator />
               <dl className="flex flex-col gap-3 pt-5 text-sm">

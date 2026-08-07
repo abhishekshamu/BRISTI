@@ -151,8 +151,9 @@ export class CartService {
     cart.total = Math.max(0, subtotal - discount) + (cart.tax || 0) + (cart.shipping || 0);
   }
 
-  async updateCartItemQuantity(itemId: string, quantity: number): Promise<ICart> {
-    const updated = await this.cartRepo.updateItemQuantity(itemId, quantity);
+  async updateCartItemQuantity(itemId: string, quantity: number, userId?: string, sessionId?: string): Promise<ICart> {
+    const cart: any = await this.resolveCart(userId, sessionId);
+    const updated = await this.cartRepo.updateItemQuantity(cart._id.toString(), itemId, quantity);
     if (!updated) {
       throw new NotFoundException('Cart item not found');
     }
@@ -160,13 +161,24 @@ export class CartService {
     return this.cartRepo.updateById((updated as any)._id.toString(), updated) as unknown as ICart;
   }
 
-  async removeFromCart(itemId: string): Promise<ICart> {
-    const updated = await this.cartRepo.removeItem(itemId);
+  async removeFromCart(itemId: string, userId?: string, sessionId?: string): Promise<ICart> {
+    const cart: any = await this.resolveCart(userId, sessionId);
+    const updated = await this.cartRepo.removeItem(cart._id.toString(), itemId);
     if (!updated) {
       throw new NotFoundException('Cart item not found');
     }
     await this.recalculateCart(updated);
     return this.cartRepo.updateById((updated as any)._id.toString(), updated) as unknown as ICart;
+  }
+
+  private async resolveCart(userId?: string, sessionId?: string): Promise<ICart> {
+    if (userId) {
+      return this.cartRepo.getCartByUserId(userId);
+    }
+    if (sessionId) {
+      return this.cartRepo.getCartBySessionId(sessionId);
+    }
+    throw new BadRequestException('User or session required');
   }
 
   async clearCart(userId?: string, sessionId?: string): Promise<boolean> {

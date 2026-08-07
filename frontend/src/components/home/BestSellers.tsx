@@ -11,6 +11,8 @@ export function BestSellers() {
     staleTime: 1000 * 60 * 5,
   });
 
+  const list = products ?? [];
+
   return (
     <section className="bg-background pt-12 pb-12 sm:pb-20">
       <div className="container-lux">
@@ -18,14 +20,19 @@ export function BestSellers() {
           eyebrow="Most coveted"
           title="Best Sellers"
           description="The pieces the maison is known for — reordered again and again."
-          link={{ label: 'Shop best sellers', to: '/shop' }}
+          link={{ label: 'Shop best sellers', to: '/best-sellers' }}
         />
         <div className="mt-10">
           {isLoading ? (
             <ProductGridSkeleton count={4} />
+          ) : list.length === 0 ? (
+            <p className="mx-auto max-w-md py-12 text-center text-sm leading-6 text-muted-foreground">
+              The most coveted pieces are being curated. Toggle the Best Seller flag on products in the CMS
+              and they will appear here instantly.
+            </p>
           ) : (
             <div className="grid grid-cols-2 gap-x-5 gap-y-10 sm:gap-x-8 lg:grid-cols-4">
-              {(products ?? []).map((product, index) => (
+              {list.map((product, index) => (
                 <motion.div
                   key={String(product._id)}
                   initial={{ opacity: 0, y: 30 }}

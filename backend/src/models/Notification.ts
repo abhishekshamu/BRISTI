@@ -27,6 +27,9 @@ const NotificationSchema: Schema = new Schema({
     type: Boolean,
     default: false,
   },
+  readAt: {
+    type: Date,
+  },
   relatedId: {
     type: Schema.Types.ObjectId,
     refPath: 'relatedType',

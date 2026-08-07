@@ -31,7 +31,7 @@ export class ErrorBoundary extends Component<Props, State> {
           </span>
           <h1 className="font-display text-3xl font-medium">Something went wrong</h1>
           <p className="max-w-md text-sm leading-7 text-muted-foreground">
-            An unexpected error occurred. Please try again — if the problem persists, our concierge is at your service.
+            An unexpected error occurred. Please reload the page and try again.
           </p>
           <div className="mt-2 flex gap-3">
             <Button variant="dark" onClick={() => window.location.reload()}>

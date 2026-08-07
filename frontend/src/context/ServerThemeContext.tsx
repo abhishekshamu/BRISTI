@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { siteService } from '@/services/site.service';
-import { applyTheme, THEME_POLL_INTERVAL } from '@/lib/theme-engine';
+import { applyTheme } from '@/lib/theme-engine';
 import { mergeThemeWithDefaults } from '@shared/theme';
 import type { ThemeSettings } from '@shared/types';
 
@@ -12,6 +12,19 @@ interface ServerThemeContextValue {
 
 const ServerThemeContext = createContext<ServerThemeContextValue | undefined>(undefined);
 
+// Module-level in-flight dedupe: multiple mounts (e.g. React StrictMode's
+// dev double-mount) share a single GET /theme request instead of firing
+// duplicates. The active theme is fetched once per page load and cached in
+// context state; the API is only re-queried when refresh() is called.
+let activeThemeRequest: Promise<ThemeSettings> | null = null;
+
+function fetchActiveTheme(): Promise<ThemeSettings> {
+  activeThemeRequest ??= siteService.getActiveTheme().finally(() => {
+    activeThemeRequest = null;
+  });
+  return activeThemeRequest;
+}
+
 export function ServerThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<ThemeSettings | null>(null);
   const [version, setVersion] = useState(0);
@@ -19,7 +32,7 @@ export function ServerThemeProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(async () => {
     try {
-      const data = await siteService.getActiveTheme();
+      const data = await fetchActiveTheme();
       const signature = JSON.stringify(data);
       setTheme(data);
       if (signature !== lastApplied.current) {
@@ -34,8 +47,6 @@ export function ServerThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     refresh();
-    const interval = setInterval(refresh, THEME_POLL_INTERVAL);
-    return () => clearInterval(interval);
   }, [refresh]);
 
   const value = useMemo(() => ({ theme, version, refresh }), [theme, version, refresh]);

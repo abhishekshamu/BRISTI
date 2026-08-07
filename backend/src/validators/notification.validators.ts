@@ -4,7 +4,7 @@ export const createNotificationValidation = [
   body('userId').optional().isMongoId().withMessage('Invalid user ID'),
   body('title').notEmpty().withMessage('Notification title is required').trim(),
   body('message').notEmpty().withMessage('Notification message is required').trim(),
-  body('type').optional().isIn(['order', 'promotion', 'system', 'wishlist', 'review']).withMessage('Invalid notification type'),
+  body('type').optional().isIn(['info', 'success', 'warning', 'error']).withMessage('Invalid notification type'),
   body('isRead').optional().isBoolean(),
 ];
 

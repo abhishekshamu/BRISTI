@@ -15,9 +15,10 @@ const AdminSchema: Schema = new Schema({
     lowercase: true,
     trim: true,
   },
-  password: {
+password: {
     type: String,
     required: true,
+    select: false,
   },
   firstName: {
     type: String,
@@ -85,11 +86,12 @@ AdminSchema.methods.isLocked = function(): boolean {
 
 // Method to increment failed login attempts
 AdminSchema.methods.incrementFailedAttempts = async function() {
-  this.failedLoginAttempts += 1;
-  
-  // Lock accountLocked = false;
+  this.failedLoginAttempts = (this.failedLoginAttempts || 0) + 1;
+  if (this.failedLoginAttempts >= 5) {
+    this.lockedUntil = new Date(Date.now() + 15 * 60 * 1000);
+  }
   await this.save();
-  return accountLocked;
+  return this.lockedUntil ? true : false;
 };
 
 // Method to reset failed login attempts

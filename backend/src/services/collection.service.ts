@@ -1,6 +1,9 @@
 import { CollectionRepository } from '../repositories/collection.repository';
 import { ProductRepository } from '../repositories/product.repository';
+import { CouponModel } from '../models/Coupon';
 import { ICollection } from 'shared/types';
+import { Types } from 'mongoose';
+import { AppError, NotFoundError } from '../utils/exceptions';
 
 export class CollectionService {
   constructor(
@@ -15,43 +18,47 @@ export class CollectionService {
   async getCollectionById(id: string): Promise<ICollection> {
     const collection = await this.collectionRepo.findById(id);
     if (!collection) {
-      throw new Error('Collection not found');
+      throw new AppError('Collection not found', 404);
     }
-    return collection;
+    return this.attachProductCount(collection);
   }
 
   async getCollectionBySlug(slug: string): Promise<ICollection> {
     const collection = await this.collectionRepo.findBySlug(slug);
     if (!collection) {
-      throw new Error('Collection not found');
+      throw new AppError('Collection not found', 404);
     }
-    return collection;
+    return this.attachProductCount(collection);
   }
 
-  async getCollectionProducts(collectionId: string, options: any = {}): Promise<any> {
-    // Verify collection exists
-    const collection = await this.collectionRepo.findById(collectionId);
+  async getCollectionProducts(collectionIdOrSlug: string, options: any = {}): Promise<any> {
+    // Accept either a Mongo id or a slug; products are matched through the
+    // `collections` array on the Product document (OR / $in semantics).
+    const isObjectId = Types.ObjectId.isValid(collectionIdOrSlug);
+    const collection = isObjectId
+      ? await this.collectionRepo.findById(collectionIdOrSlug)
+      : await this.collectionRepo.findBySlug(collectionIdOrSlug);
     if (!collection) {
-      throw new Error('Collection not found');
+      throw new AppError('Collection not found', 404);
     }
-    
-    // Get products in collection
+
     return this.productRepo.paginate(
-      { collection: collectionId, status: 'active' },
+      { collections: { $in: [collection.slug] }, status: 'active' },
       options
     );
   }
 
   async getFeaturedCollections(limit: number = 3): Promise<ICollection[]> {
-    return this.collectionRepo.findMany(
+    const collections = await this.collectionRepo.findMany(
       { featured: true, isActive: true },
       { sort: { sortOrder: 1, createdAt: -1 }, limit }
     );
+    return this.attachProductCounts(collections);
   }
 
   async getCurrentCollections(): Promise<ICollection[]> {
     const now = new Date();
-    return this.collectionRepo.findMany(
+    const collections = await this.collectionRepo.findMany(
       { 
         isActive: true,
         $or: [
@@ -67,8 +74,9 @@ export class CollectionService {
           }
         ]
       },
-      { sort: { createdAt: -1 } }
+      { sort: { sortOrder: 1, createdAt: -1 } }
     );
+    return this.attachProductCounts(collections);
   }
 
   async getCollectionCount(): Promise<number> {
@@ -93,7 +101,7 @@ export class CollectionService {
   async updateCollection(id: string, data: Partial<ICollection>): Promise<ICollection> {
     const updated = await this.collectionRepo.updateById(id, data);
     if (!updated) {
-      throw new Error('Collection not found');
+      throw new NotFoundError('Collection not found');
     }
     return updated;
   }
@@ -101,15 +109,45 @@ export class CollectionService {
   async deleteCollection(id: string): Promise<boolean> {
     const collection = await this.collectionRepo.findById(id);
     if (!collection) {
-      throw new Error('Collection not found');
+      throw new NotFoundError('Collection not found');
     }
 
-    // Unassign products from this collection (keep products, drop the link)
+    // Remove this collection's slug from every product that carries it —
+    // products disappear from the section automatically, nothing else breaks.
     await this.productRepo.updateMany(
-      { collection: id },
-      { $unset: { collection: 1 } }
+      { collections: collection.slug },
+      { $pull: { collections: collection.slug } }
+    );
+
+    // Pull the collection out of any coupon collection scopes
+    await CouponModel.updateMany(
+      { collectionIds: collection._id },
+      { $pull: { collectionIds: collection._id } }
     );
 
     return this.collectionRepo.deleteById(id);
+  }
+
+  async attachProductCounts(collections: ICollection[]): Promise<ICollection[]> {
+    if (collections.length === 0) return collections;
+
+    // Single aggregation instead of one count query per collection (N+1).
+    const slugs = collections.map((c) => c.slug);
+    const counts = await this.productRepo.aggregate([
+      { $match: { collections: { $in: slugs }, status: 'active' } },
+      { $unwind: '$collections' },
+      { $match: { collections: { $in: slugs } } },
+      { $group: { _id: '$collections', count: { $sum: 1 } } },
+    ]);
+    const countMap = new Map(counts.map((row: any) => [String(row._id), row.count]));
+    return collections.map((c) => {
+      const doc = (c as any).toObject ? (c as any).toObject() : c;
+      return { ...doc, productCount: countMap.get(String(c.slug)) ?? 0 };
+    });
+  }
+
+  private async attachProductCount(collection: ICollection): Promise<ICollection> {
+    const count = await this.productRepo.count({ collections: collection.slug, status: 'active' });
+    return { ...(collection as any).toObject ? (collection as any).toObject() : collection, productCount: count };
   }
 }

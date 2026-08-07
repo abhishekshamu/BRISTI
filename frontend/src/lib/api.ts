@@ -1,63 +1,35 @@
 import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
 
-const ACCESS_TOKEN_KEY = 'bristi_access_token';
-const REFRESH_TOKEN_KEY = 'bristi_refresh_token';
-
 export const AUTH_EXPIRED_EVENT = 'bristi:auth-expired';
 
 export function notifyAuthExpired(): void {
   window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
 }
 
-export const tokenStorage = {
-  getAccessToken: (): string | null => localStorage.getItem(ACCESS_TOKEN_KEY),
-  getRefreshToken: (): string | null => localStorage.getItem(REFRESH_TOKEN_KEY),
-  setTokens: (accessToken: string, refreshToken?: string): void => {
-    localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-    if (refreshToken) localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
-  },
-  setAccessToken: (accessToken: string): void => {
-    localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-  },
-  clear: (): void => {
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
-  },
-};
-
 export const api: AxiosInstance = axios.create({
   baseURL: '/api',
   headers: { 'Content-Type': 'application/json' },
-  withCredentials: false,
+  withCredentials: true,
   timeout: 30000,
+  // Tokens live in httpOnly cookies; the CSRF token is double-submitted from
+  // the bristi_xsrf cookie on every state-changing request.
+  xsrfCookieName: 'bristi_xsrf',
+  xsrfHeaderName: 'X-XSRF-TOKEN',
+  // Arrays serialize as repeated params (categories=a&categories=b) —
+  // no [] brackets, so the backend sees a plain repeated-param array.
+  paramsSerializer: { indexes: null },
 });
 
-api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  const token = tokenStorage.getAccessToken();
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+let refreshPromise: Promise<boolean> | null = null;
 
-let refreshPromise: Promise<string | null> | null = null;
-
-async function refreshAccessToken(): Promise<string | null> {
-  const refreshToken = tokenStorage.getRefreshToken();
-  if (!refreshToken) return null;
+async function refreshAccessToken(): Promise<boolean> {
   try {
-    const response = await axios.post('/api/auth/refresh', { refreshToken });
-    const accessToken = response.data?.data?.accessToken;
-    if (accessToken) {
-      tokenStorage.setAccessToken(accessToken);
-      return accessToken;
-    }
-    notifyAuthExpired();
-    return null;
+    // The refresh token is an httpOnly cookie; the server rotates both cookies.
+    const response = await api.post('/auth/refresh-token', {});
+    return Boolean(response.data?.data?.accessToken);
   } catch {
-    tokenStorage.clear();
     notifyAuthExpired();
-    return null;
+    return false;
   }
 }
 
@@ -65,17 +37,22 @@ api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const original = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
-    if (error.response?.status === 401 && original && !original._retry && !original.url?.includes('/auth/login')) {
+    const url = original?.url ?? '';
+    const anonymousProbe = /\/auth\/me$|\/users\/profile$/.test(url);
+    if (
+      error.response?.status === 401 &&
+      original &&
+      !original._retry &&
+      !anonymousProbe &&
+      !url.includes('/auth/login') &&
+      !url.includes('/auth/register') &&
+      !url.includes('/auth/refresh-token')
+    ) {
       original._retry = true;
-      if (!tokenStorage.getRefreshToken()) {
-        notifyAuthExpired();
-        return Promise.reject(error);
-      }
       refreshPromise = refreshPromise ?? refreshAccessToken();
-      const newToken = await refreshPromise;
+      const ok = await refreshPromise;
       refreshPromise = null;
-      if (newToken) {
-        original.headers.Authorization = `Bearer ${newToken}`;
+      if (ok) {
         return api(original);
       }
     }

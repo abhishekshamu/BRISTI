@@ -2,11 +2,15 @@ import { PageRepository } from '../repositories/page.repository';
 import { IPage } from 'shared/types';
 import { NotFoundError, BadRequestException } from '../utils/exceptions';
 import { slugify } from 'shared/utils';
+import { normalizeSeo } from '../utils/seo';
+import { sanitizeRichText } from '../utils/sanitize';
 
 export class PageService {
   constructor(private pageRepo: PageRepository) {}
 
   async createPage(data: Partial<IPage>): Promise<IPage> {
+    data = normalizeSeo(data);
+    if (data.content && typeof data.content === 'string') data.content = sanitizeRichText(data.content);
     if (!data.title) {
       throw new BadRequestException('Title is required');
     }
@@ -48,6 +52,8 @@ export class PageService {
   }
 
   async updatePage(id: string, updateData: Partial<IPage>): Promise<IPage> {
+    updateData = normalizeSeo(updateData);
+    if (updateData.content && typeof updateData.content === 'string') updateData.content = sanitizeRichText(updateData.content);
     if (updateData.title && !updateData.slug) {
       updateData.slug = slugify(updateData.title);
     }

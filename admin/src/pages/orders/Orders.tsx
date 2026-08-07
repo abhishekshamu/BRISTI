@@ -1,13 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Search, Filter, Eye } from 'lucide-react';
-import api from '../../lib/api';
+import { Download, Eye } from 'lucide-react';
+import PageShell from '../../components/ui/PageShell';
+import DataTable, { type Column } from '../../components/ui/DataTable';
+import Badge, { type BadgeTone } from '../../components/ui/Badge';
+import api, { getApiError } from '../../lib/api';
 import toast from 'react-hot-toast';
 
 interface Order {
   _id: string;
   orderNumber: string;
   guestEmail?: string;
+  userId?: string;
   items: any[];
   subtotal: number;
   tax: number;
@@ -20,6 +24,25 @@ interface Order {
   createdAt: string;
 }
 
+const STATUS_TONES: Record<string, BadgeTone> = {
+  delivered: 'green',
+  processing: 'blue',
+  packed: 'amber',
+  confirmed: 'green',
+  shipped: 'purple',
+  pending: 'amber',
+  cancelled: 'red',
+  returned: 'purple',
+  refunded: 'slate',
+};
+
+const PAYMENT_TONES: Record<string, BadgeTone> = {
+  paid: 'green',
+  pending: 'amber',
+  failed: 'red',
+  refunded: 'slate',
+};
+
 export default function Orders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,6 +50,7 @@ export default function Orders() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
   const [searchParams] = useSearchParams();
   const customerFilter = searchParams.get('customer');
 
@@ -39,8 +63,9 @@ export default function Orders() {
       const response = await api.get(`/orders/all?${params.join('&')}`);
       setOrders(response.data.data);
       setTotalPages(response.data.pagination?.pages || 1);
+      setTotal(response.data.pagination?.total ?? response.data.data?.length ?? 0);
     } catch (error) {
-      toast.error('Failed to fetch orders');
+      toast.error(getApiError(error, 'Failed to fetch orders'));
     } finally {
       setLoading(false);
     }
@@ -50,80 +75,126 @@ export default function Orders() {
     fetchOrders();
   }, [fetchOrders]);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'delivered':
-        return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
-      case 'processing':
-        return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
-      case 'packed':
-        return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400';
-      case 'confirmed':
-        return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
-      case 'shipped':
-        return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400';
-      case 'cancelled':
-        return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
-      case 'refunded':
-        return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400';
-      default:
-        return 'bg-slate-100 text-slate-700';
-    }
-  };
-
-  const getPaymentStatusColor = (status: string) => {
-    switch (status) {
-      case 'paid':
-        return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400';
-      case 'failed':
-        return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
-      case 'refunded':
-        return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400';
-      default:
-        return 'bg-slate-100 text-slate-700';
-    }
-  };
-
   const filteredOrders = orders.filter(order =>
     order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (order.guestEmail && order.guestEmail.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  const exportCsv = () => {
+    const rows = [
+      ['Order', 'Customer', 'Items', 'Total', 'Status', 'Payment', 'Date'],
+      ...filteredOrders.map((order) => [
+        order.orderNumber,
+        order.guestEmail || order.userId || '',
+        String(order.items?.length ?? 0),
+        String(order.total ?? 0),
+        order.status ?? '',
+        order.paymentStatus ?? '',
+        order.createdAt ? new Date(order.createdAt).toISOString() : '',
+      ]),
+    ];
+    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `orders-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success('Orders exported');
+  };
+
+  const columns: Column<Order>[] = [
+    {
+      key: 'order',
+      header: 'Order',
+      render: (order) => (
+        <Link
+          to={`/orders/${order._id}`}
+          className="text-slate-900 dark:text-slate-100 hover:text-slate-600 dark:hover:text-slate-300 font-medium"
+        >
+          #{order.orderNumber}
+        </Link>
+      ),
+    },
+    {
+      key: 'customer',
+      header: 'Customer',
+      render: (order) => <span className="text-slate-600 dark:text-slate-400">{order.guestEmail || 'Guest'}</span>,
+    },
+    {
+      key: 'items',
+      header: 'Items',
+      render: (order) => <span className="text-slate-600 dark:text-slate-400">{order.items?.length || 0} items</span>,
+    },
+    {
+      key: 'total',
+      header: 'Total',
+      render: (order) => (
+        <span className="font-medium text-slate-900 dark:text-slate-100">
+          ${order.total?.toLocaleString()}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (order) => <Badge tone={STATUS_TONES[order.status] ?? 'slate'}>{order.status}</Badge>,
+    },
+    {
+      key: 'payment',
+      header: 'Payment',
+      render: (order) => <Badge tone={PAYMENT_TONES[order.paymentStatus] ?? 'slate'}>{order.paymentStatus}</Badge>,
+    },
+    {
+      key: 'date',
+      header: 'Date',
+      render: (order) => (
+        <span className="text-slate-500 dark:text-slate-400">
+          {new Date(order.createdAt).toLocaleDateString()}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (order) => (
+        <Link to={`/orders/${order._id}`} title="View" aria-label="View" className="admin-icon-btn">
+          <Eye className="w-4 h-4" />
+        </Link>
+      ),
+    },
+  ];
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Orders</h2>
-          <p className="text-slate-500 dark:text-slate-400">Manage and track customer orders</p>
-        </div>
-        <button className="admin-btn-secondary py-2.5 px-4 flex items-center">
-          <Filter className="w-4 h-4 mr-2" />
+    <PageShell
+      title="Orders"
+      subtitle="Manage and track customer orders"
+      breadcrumbs={[{ label: 'Orders' }]}
+      actions={
+        <button onClick={exportCsv} className="admin-btn-secondary h-10 px-4 text-sm flex items-center gap-1.5">
+          <Download className="w-4 h-4" />
           Export
         </button>
-      </div>
-
-      {/* Filters */}
-      <div className="admin-card p-4">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search orders..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="admin-input pl-10"
-            />
-          </div>
+      }
+    >
+      <DataTable
+        columns={columns}
+        rows={filteredOrders}
+        rowKey={(order) => order._id}
+        loading={loading}
+        searchable
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Search orders..."
+        filters={
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="admin-input"
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setPage(1);
+            }}
+            className="admin-input !w-auto h-10 text-sm"
           >
             <option value="all">All Status</option>
             <option value="pending">Pending</option>
@@ -136,101 +207,11 @@ export default function Orders() {
             <option value="refunded">Refunded</option>
             <option value="returned">Returned</option>
           </select>
-        </div>
-      </div>
-
-      {/* Orders table */}
-      <div className="admin-card overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
-          </div>
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-700">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-500 dark:text-slate-400">Order</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-500 dark:text-slate-400">Customer</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-500 dark:text-slate-400">Items</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-500 dark:text-slate-400">Total</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-500 dark:text-slate-400">Status</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-500 dark:text-slate-400">Payment</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-500 dark:text-slate-400">Date</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-500 dark:text-slate-400">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredOrders.map((order) => (
-                    <tr key={order._id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                      <td className="py-3 px-4 text-sm font-medium text-slate-900 dark:text-slate-100">
-                        #{order.orderNumber}
-                      </td>
-                      <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">
-                        {order.guestEmail || 'Guest'}
-                      </td>
-                      <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">
-                        {order.items?.length || 0} items
-                      </td>
-                      <td className="py-3 px-4 text-sm font-medium text-slate-900 dark:text-slate-100">
-                        ${order.total?.toLocaleString()}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(order.status)}`}>
-                          {order.status}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getPaymentStatusColor(order.paymentStatus)}`}>
-                          {order.paymentStatus}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-sm text-slate-500 dark:text-slate-400">
-                        {new Date(order.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="py-3 px-4">
-                        <Link
-                          to={`/orders/${order._id}`}
-                          className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md inline-flex"
-                        >
-                          <Eye className="w-4 h-4 text-slate-600 dark:text-slate-400" />
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination */}
-            <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 dark:border-slate-700">
-              <div className="text-sm text-slate-500 dark:text-slate-400">
-                Showing {filteredOrders.length} of {orders.length} orders
-              </div>
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="admin-btn-secondary py-1.5 px-3 disabled:opacity-50"
-                >
-                  Previous
-                </button>
-                <span className="text-sm text-slate-600 dark:text-slate-400">
-                  Page {page} of {totalPages}
-                </span>
-                <button
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  className="admin-btn-secondary py-1.5 px-3 disabled:opacity-50"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
+        }
+        pagination={{ page, pages: totalPages, total, onPageChange: setPage }}
+        emptyTitle="No orders found"
+        emptyBody="Try adjusting your search or filters."
+      />
+    </PageShell>
   );
 }

@@ -62,16 +62,16 @@ export class OrderRepository extends BaseRepository<IOrder> {
       {
         $group: {
           _id: {
-            year: { $year: '$createdAt' },
-            month: { $month: '$createdAt' },
-            day: { $dayOfMonth: '$createdAt' }
+            date: {
+              $dateToString: { format: '%Y-%m-%d', date: '$createdAt' }
+            }
           },
           totalSales: { $sum: '$total' },
           orderCount: { $sum: 1 }
         }
       },
       {
-        $sort: { '_id.year': -1, '_id.month': -1, '_id.day': -1 }
+        $sort: { '_id.date': 1 }
       }
     ]).exec();
   }

@@ -6,7 +6,10 @@ import { ProductModel } from '../models/Product';
 import { ReviewModel } from '../models/Review';
 import { UserModel } from '../models/User';
 import { SettingsModel } from '../models/Settings';
+import { HeroBlockModel } from '../models/HeroBlock';
 import { getMongoUri, stopMemoryMongo } from '../config/database';
+import { MARKETING_COLLECTION_SLUGS } from 'shared/constants';
+import type { HeroSlide } from 'shared/types';
 
 dotenv.config();
 
@@ -207,12 +210,76 @@ const DEMO_USER = {
 };
 
 const SETTINGS_DATA = {
+  slogan: 'Quiet luxury, considered design',
+  contactInfo: {
+    email: 'hello@bristi.com',
+    phone: '+1 (555) 123-4567',
+    address: '123 Luxury Avenue, Fashion District, New York, NY 10001',
+  },
+  socialLinks: [
+    { platform: 'instagram', url: 'https://instagram.com/bristi', icon: 'instagram' },
+    { platform: 'facebook', url: 'https://facebook.com/bristi', icon: 'facebook' },
+    { platform: 'twitter', url: 'https://twitter.com/bristi', icon: 'twitter' },
+    { platform: 'pinterest', url: 'https://pinterest.com/bristi', icon: 'pinterest' },
+    { platform: 'tiktok', url: 'https://tiktok.com/@bristi', icon: 'tiktok' },
+    { platform: 'youtube', url: 'https://youtube.com/@bristi', icon: 'youtube' },
+  ],
+  seo: {
+    defaultTitle: 'BRISTI — Quiet Luxury Clothing',
+    defaultDescription: 'BRISTI is a luxury clothing brand defined by restraint — precise tailoring, rare fabrics and a wardrobe built to last.',
+    defaultImage: '/og-image.jpg',
+  },
+  navbar: {
+    items: [
+      { label: 'Shop', url: '/shop', sortOrder: 1, isActive: true },
+      { label: 'Collections', url: '/collections', sortOrder: 2, isActive: true },
+      { label: 'Journal', url: '/journal', sortOrder: 3, isActive: true },
+      { label: 'About', url: '/about', sortOrder: 4, isActive: true },
+      { label: 'Contact', url: '/contact', sortOrder: 5, isActive: true },
+    ],
+  },
+  footer: {
+    sections: [
+      {
+        type: 'links',
+        title: 'Shop',
+        links: [
+          { label: 'New Arrivals', url: '/shop' },
+          { label: 'All Products', url: '/shop' },
+          { label: 'Collections', url: '/collections' },
+        ],
+        sortOrder: 1,
+        isActive: true,
+      },
+      {
+        type: 'links',
+        title: 'Help',
+        links: [
+          { label: 'Track Order', url: '/track-order' },
+          { label: 'Shipping & Returns', url: '/shipping' },
+          { label: 'FAQs', url: '/faq' },
+        ],
+        sortOrder: 2,
+        isActive: true,
+      },
+      {
+        type: 'links',
+        title: 'Company',
+        links: [
+          { label: 'About', url: '/about' },
+          { label: 'Journal', url: '/journal' },
+          { label: 'Contact', url: '/contact' },
+        ],
+        sortOrder: 3,
+        isActive: true,
+      },
+    ],
+  },
   announcement: {
     enabled: true,
     messages: [
       'Complimentary shipping on orders over $100',
       'New season, new silhouettes',
-      'Luxury redefined',
       'Free returns within 30 days',
     ],
   },
@@ -248,6 +315,45 @@ const SETTINGS_DATA = {
 
 const slugify = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
+const HERO_SLIDES: Array<[string, string, string]> = [
+  ['The New Season', 'photo-1490481651871-ab68de25d43d', 'Autumn–Winter 2026 campaign'],
+  ['Quiet Luxury', 'photo-1441986300917-64674bd600d8', 'Quiet luxury campaign'],
+  ['Timeless Craft', 'photo-1521334884684-d80222895322', 'Craft campaign'],
+  ['City Tailoring', 'photo-1556821840-3a63f95609a7', 'Tailoring campaign'],
+];
+
+function heroSlide(heading: string, imageId: string, altText: string): HeroSlide {
+  return {
+    heading,
+    image: IMG(imageId, 1000),
+    imageMobile: IMG(imageId, 900),
+    headingColor: '#FFFFFF',
+    showEyebrow: false,
+    showCta: false,
+    animationType: 'zoom',
+    overlay: false,
+    overlayOpacity: 45,
+    gradient: false,
+    textAlign: 'left',
+    buttonColor: '',
+    animationSpeed: 4.5,
+    priority: 0,
+    visibility: { desktop: true, tablet: true, mobile: true },
+    status: 'published',
+    isActive: true,
+    altText,
+  };
+}
+
+const HERO_SET = {
+  name: 'Autumn–Winter 2026 Editorial',
+  slides: HERO_SLIDES.map(([heading, id, alt]) => heroSlide(heading, id, alt)),
+  animationSpeed: 4.5,
+  priority: 0,
+  status: 'published',
+  isActive: true,
+};
+
 const SIZES = ['XS', 'S', 'M', 'L', 'XL'];
 const COLORS: Record<string, string[]> = {
   'Oversized T-Shirts': ['Black', 'Ivory', 'Sand'],
@@ -262,8 +368,9 @@ const COLORS: Record<string, string[]> = {
 };
 
 async function run() {
+  const alreadyConnected = mongoose.connection.readyState === 1;
   const uri = await getMongoUri();
-  await mongoose.connect(uri);
+  if (!alreadyConnected) await mongoose.connect(uri);
   console.log(`Seeding into: ${uri}`);
 
   const categoryMap = new Map<string, any>();
@@ -384,6 +491,43 @@ async function run() {
   }
   console.log('Collections populated with products.');
 
+  // Marketing flags (Shopify-style): independent boolean flags drive the
+  // homepage and marketing sections. Collections are real merchandising
+  // collections only — marketing slugs are never written to product.collections.
+  const now = new Date();
+  const allActiveProducts = await ProductModel.find({ status: 'active' });
+  for (const product of allActiveProducts) {
+    const flags: Record<string, boolean> = {
+      isNewArrival: false,
+      isBestSeller: false,
+      isTrending: false,
+      isOnSale: false,
+      isFeatured: false,
+      isRecommended: true,
+      isExclusive: false,
+      isLimitedEdition: false,
+      isEditorsPick: false,
+      isPremiumCollection: false,
+    };
+    if (product.createdAt && (now.getTime() - new Date(product.createdAt).getTime()) < 1000 * 60 * 60 * 24 * 45) flags.isNewArrival = true;
+    if (product.compareAtPrice && product.compareAtPrice > product.price) flags.isOnSale = true;
+    if (product.rating && product.rating.count > 0) flags.isBestSeller = true;
+    if (product.rating && product.rating.average >= 4.5) flags.isTrending = true;
+    if (product.featured) flags.isFeatured = true;
+
+    // Keep the legacy single-collection reference in sync with the slug array
+    // (real collections only — fake marketing slugs are filtered out).
+    const assignments = new Set<string>((product.collections ?? [])
+      .map((s: string) => s.trim())
+      .filter((s: string) => Boolean(s) && !MARKETING_COLLECTION_SLUGS.includes(s)));
+    if (product.collection) {
+      const legacy = await CollectionModel.findById(product.collection);
+      if (legacy && legacy.slug) assignments.add(legacy.slug);
+    }
+    await ProductModel.updateOne({ _id: product._id }, { $set: { collections: [...assignments], ...flags } });
+  }
+  console.log('Marketing flags assigned to products.');
+
   for (const r of REVIEWS) {
     const anyProducts = await ProductModel.find({ status: 'active' });
     const target = anyProducts[REVIEWS.indexOf(r) % anyProducts.length];
@@ -412,18 +556,45 @@ async function run() {
     if (!existingSettings.homepageSections?.length) {
       existingSettings.homepageSections = SETTINGS_DATA.homepageSections;
     }
+    if (!existingSettings.navbar?.items?.length) {
+      existingSettings.navbar = SETTINGS_DATA.navbar;
+    }
+    if (!existingSettings.footer?.sections?.length) {
+      existingSettings.footer = SETTINGS_DATA.footer;
+    }
+    if (!existingSettings.slogan) {
+      existingSettings.slogan = SETTINGS_DATA.slogan;
+    }
+    if (!existingSettings.contactInfo?.email) {
+      existingSettings.contactInfo = SETTINGS_DATA.contactInfo;
+    }
+    if (!existingSettings.socialLinks?.length) {
+      existingSettings.socialLinks = SETTINGS_DATA.socialLinks;
+    }
     await existingSettings.save();
   } else {
     await SettingsModel.create({ ...SETTINGS_DATA, brandName: 'BRISTI' });
   }
-  console.log('Settings seeded (announcement + homepage sections).');
+  console.log('Settings seeded (announcement + homepage sections + site config).');
 
-  await mongoose.disconnect();
-  await stopMemoryMongo();
+  const existingHero = await HeroBlockModel.findOne({ name: HERO_SET.name });
+  if (!existingHero) {
+    await HeroBlockModel.create(HERO_SET);
+    console.log(`Hero set created: ${HERO_SET.name}`);
+  }
+
+  if (!alreadyConnected) {
+    await mongoose.disconnect();
+    await stopMemoryMongo();
+  }
   console.log('Seed complete.');
 }
 
-run().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+export { run };
+
+if (require.main === module) {
+  run().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}

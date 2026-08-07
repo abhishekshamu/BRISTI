@@ -1,7 +1,12 @@
-import { useState, useEffect } from 'react';
-import { Save, Plus, Trash2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Plus, Trash2, Image } from 'lucide-react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
+import MediaPicker from '../../components/media/MediaPicker';
+import PageShell from '../../components/ui/PageShell';
+import StickySaveBar from '../../components/ui/StickySaveBar';
+import PageSpinner from '../../components/ui/PageSpinner';
+import { useUnsavedChanges } from '../../lib/unsaved-context';
 
 interface NavItem {
   _id?: string;
@@ -12,10 +17,14 @@ interface NavItem {
 }
 
 export default function NavbarEditor() {
+  const { dirty, setDirty } = useUnsavedChanges();
   const [items, setItems] = useState<NavItem[]>([]);
+  const [logo, setLogo] = useState('');
+  const [icon, setIcon] = useState('');
   const [saving, setSaving] = useState(false);
   const [newItem, setNewItem] = useState({ label: '', url: '' });
   const [loading, setLoading] = useState(true);
+  const baselineRef = useRef<{ logo: string; icon: string }>({ logo: '', icon: '' });
 
   useEffect(() => {
     fetchNavItems();
@@ -26,6 +35,12 @@ export default function NavbarEditor() {
       const response = await api.get('/settings');
       const navbar = response.data.data?.navbar?.items || [];
       setItems(navbar);
+      setLogo(response.data.data?.logo || '');
+      setIcon(response.data.data?.favicon || '');
+      baselineRef.current = {
+        logo: response.data.data?.logo || '',
+        icon: response.data.data?.favicon || '',
+      };
     } catch (error) {
       console.error('Failed to fetch navbar');
     } finally {
@@ -73,6 +88,9 @@ export default function NavbarEditor() {
     try {
       setSaving(true);
       await api.put('/settings/navbar', { items });
+      await api.put('/settings/branding', { logo, favicon: icon });
+      setDirty(false);
+      baselineRef.current = { logo, icon };
       toast.success('Navbar saved successfully');
     } catch (error) {
       toast.error('Failed to save navbar');
@@ -81,36 +99,44 @@ export default function NavbarEditor() {
     }
   };
 
+  const handleCancel = () => {
+    setLogo(baselineRef.current.logo);
+    setIcon(baselineRef.current.icon);
+    setDirty(false);
+  };
+
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
-      </div>
-    );
+    return <PageSpinner label="Loading navbar…" />;
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Navbar Editor</h2>
-          <p className="text-slate-500 dark:text-slate-400">Configure your site navigation</p>
+    <PageShell title="Navbar Editor" subtitle="Configure your site navigation">
+      <div className="admin-card p-6">
+        <h3 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
+          <Image className="w-5 h-5 text-slate-600" /> Branding
+        </h3>
+        <div className="space-y-4">
+          <MediaPicker
+            label="Logo"
+            value={logo}
+            onChange={(url) => {
+              setLogo(url);
+              setDirty(true);
+            }}
+            ratio="logo"
+            folder="navbar"
+          />
+          <MediaPicker
+            label="Favicon"
+            value={icon}
+            onChange={(url) => {
+              setIcon(url);
+              setDirty(true);
+            }}
+            ratio="logo"
+            folder="navbar"
+          />
         </div>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="admin-btn-primary py-2.5 px-4 flex items-center"
-        >
-          {saving ? (
-            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          ) : (
-            <>
-              <Save className="w-4 h-4 mr-2" />
-              Save Navbar
-            </>
-          )}
-        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -188,6 +214,14 @@ export default function NavbarEditor() {
           </div>
         </div>
       </div>
-    </div>
+
+      <StickySaveBar
+        dirty={dirty}
+        onSave={handleSave}
+        onCancel={handleCancel}
+        saving={saving}
+        saveLabel="Save Navbar"
+      />
+    </PageShell>
   );
 }

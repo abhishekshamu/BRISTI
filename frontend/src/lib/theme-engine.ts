@@ -1,8 +1,6 @@
 import type { ThemeSettings } from '@shared/types';
 import { fontStack } from '@shared/theme';
 
-export const THEME_POLL_INTERVAL = 5000;
-
 function camelToKebab(key: string): string {
   return key.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
 }

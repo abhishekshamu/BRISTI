@@ -4,8 +4,14 @@ import { ReviewService } from '../services/review.service';
 import { ReviewRepository } from '../repositories/review.repository';
 import { ProductRepository } from '../repositories/product.repository';
 import { UserRepository } from '../repositories/user.repository';
-import { protect } from '../middleware/auth.middleware';
-import { createReviewValidation, updateReviewValidation, deleteReviewValidation } from '../validators/review.validators';
+import { protect, authorize } from '../middleware/auth.middleware';
+import { auditLog } from '../middleware/audit.middleware';
+import {
+  createReviewValidation,
+  updateReviewValidation,
+  updateReviewStatusValidation,
+  deleteReviewValidation
+} from '../validators/review.validators';
 import { validate } from '../validators/index';
 
 const reviewRepo = new ReviewRepository();
@@ -18,9 +24,13 @@ const router = Router();
 
 router.get('/featured', reviewController.getFeaturedReviews);
 router.get('/product/:productId', reviewController.getProductReviews);
-router.put('/:reviewId', protect, updateReviewValidation, validate, reviewController.updateReview);
 
 router.post('/', protect, createReviewValidation, validate, reviewController.createReview);
+router.put('/:reviewId', protect, updateReviewValidation, validate, reviewController.updateReview);
 router.delete('/:reviewId', protect, deleteReviewValidation, validate, reviewController.deleteReview);
+
+// Admin moderation
+router.get('/', protect, authorize('admin'), reviewController.listReviews);
+router.patch('/:reviewId/status', protect, authorize('admin'), auditLog('review', 'update'), updateReviewStatusValidation, validate, reviewController.updateReviewStatus);
 
 export default router;

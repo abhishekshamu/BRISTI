@@ -8,6 +8,7 @@ import { ThemeProvider } from 'next-themes';
 
 import App from './App';
 import { AuthProvider } from './lib/auth-context';
+import { UnsavedChangesProvider } from './lib/unsaved-context';
 import './index.css';
 
 const queryClient = new QueryClient({
@@ -26,7 +27,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <BrowserRouter>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <AuthProvider>
-            <App />
+            <UnsavedChangesProvider>
+              <App />
+            </UnsavedChangesProvider>
             <Toaster
               position="top-right"
               toastOptions={{

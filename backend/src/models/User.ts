@@ -10,14 +10,14 @@ export interface IUserDoc extends Omit<IUser, '_id'>, Document {
 const UserSchema: Schema = new Schema({
   email: {
     type: String,
-    required: true,
-    unique: true,
+    required: false,
     lowercase: true,
     trim: true,
   },
   password: {
     type: String,
-    required: true,
+    required: false,
+    select: false,
   },
   passwordResetToken: { type: String, select: false },
   passwordResetExpires: { type: Date, select: false },
@@ -27,31 +27,45 @@ const UserSchema: Schema = new Schema({
   loginCount: { type: Number, default: 0 },
   firstName: {
     type: String,
-    required: true,
+    required: false,
+    default: 'BRISTI',
     trim: true,
   },
   lastName: {
     type: String,
-    required: true,
+    required: false,
+    default: 'Member',
     trim: true,
   },
   phone: {
     type: String,
-  },
-  dateOfBirth: {
-    type: Date,
-  },
-  gender: {
-    type: String,
-    enum: ['male', 'female', 'other', 'prefer_not_to_say'],
-  },
-  emailVerified: {
-    type: Boolean,
-    default: false,
+    trim: true,
   },
   phoneVerified: {
     type: Boolean,
     default: false,
+  },
+  authProvider: {
+    type: String,
+    enum: ['email', 'google', 'phone'],
+    default: 'email',
+  },
+  googleId: {
+    type: String,
+  },
+  avatar: {
+    type: String,
+  },
+  failedLoginAttempts: {
+    type: Number,
+    default: 0,
+  },
+  lockedUntil: {
+    type: Date,
+  },
+  rewardPoints: {
+    type: Number,
+    default: 0,
   },
   role: {
     type: String,
@@ -138,10 +152,13 @@ const UserSchema: Schema = new Schema({
 });
 
 // Indexes
-UserSchema.index({ email: 1 });
+UserSchema.index({ email: 1 }, { unique: true, sparse: true });
+UserSchema.index({ phone: 1 }, { unique: true, sparse: true });
+UserSchema.index({ googleId: 1 }, { unique: true, sparse: true });
 UserSchema.index({ role: 1 });
 UserSchema.index({ status: 1 });
 UserSchema.index({ emailVerified: 1 });
+UserSchema.index({ authProvider: 1 });
 UserSchema.index({ passwordResetToken: 1 }, { sparse: true });
 UserSchema.index({ emailVerificationToken: 1 }, { sparse: true });
 

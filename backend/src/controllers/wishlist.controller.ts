@@ -80,4 +80,20 @@ export class WishlistController {
       data: { inWishlist: isInWishlist }
     });
   });
+
+  clearWishlist = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.id;
+    
+    if (!userId) {
+      throw new ValidationError('User must be logged in to clear wishlist');
+    }
+    
+    const cleared = await this.wishlistService.clearWishlist(userId);
+    
+    res.status(200).json({
+      success: true,
+      message: cleared ? 'Wishlist cleared' : 'Wishlist already empty',
+      data: cleared
+    });
+  });
 }

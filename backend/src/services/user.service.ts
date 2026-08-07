@@ -1,10 +1,14 @@
 import { UserRepository } from '../repositories/user.repository';
+import { AuthRepository } from '../repositories/auth.repository';
 import { IUser } from 'shared/types';
 import { ValidationError, NotFoundError, BadRequestError } from '../utils/exceptions';
 import { randomUUID } from 'crypto';
 
 export class UserService {
-  constructor(private userRepo: UserRepository) {}
+  constructor(
+    private userRepo: UserRepository,
+    private authRepo?: AuthRepository
+  ) {}
 
   async getUserById(userId: string): Promise<IUser> {
     const user = await this.userRepo.findById(userId);
@@ -51,6 +55,10 @@ export class UserService {
     }
 
     await this.userRepo.updatePassword(userId, newPassword);
+    // Revoke all refresh tokens after a password change (all devices).
+    if (this.authRepo) {
+      await this.authRepo.deleteUserTokens(userId);
+    }
   }
 
   async deleteUser(userId: string): Promise<boolean> {

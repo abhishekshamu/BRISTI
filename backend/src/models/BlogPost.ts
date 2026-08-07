@@ -16,6 +16,12 @@ const BlogPostSchema: Schema = new Schema({
     unique: true,
     lowercase: true,
     trim: true,
+    default: function (this: { title: string }) {
+      return this.title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)+/g, '');
+    },
   },
   excerpt: {
     type: String,

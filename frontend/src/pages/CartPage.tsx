@@ -1,27 +1,45 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Minus, Plus, ShoppingBag, Trash2, Ticket, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
+import { productService } from '@/services/product.service';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { SafeImage } from '@/components/shared/SafeImage';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePageMeta } from '@/lib/seo';
-import { formatPrice, getImageUrl, slugifyText } from '@/lib/utils';
-import { FREE_SHIPPING_THRESHOLD, FLAT_SHIPPING_RATE } from '@/lib/pricing';
+import { formatPrice } from '@/lib/utils';
+import { FREE_SHIPPING_THRESHOLD, FLAT_SHIPPING_RATE, TAX_RATE } from '@/lib/pricing';
+import { useBrandName } from '@/context/SettingsContext';
 
 export default function CartPage() {
   const { cart, isLoading, updateQuantity, removeItem, applyCoupon, removeCoupon, isUpdating } = useCart();
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const brandName = useBrandName();
   const [couponCode, setCouponCode] = useState('');
   const [applying, setApplying] = useState(false);
 
-  usePageMeta({ title: 'Shopping Bag — BRISTI' });
+  usePageMeta({ title: `Shopping Bag — ${brandName}` });
 
   const items = cart?.items ?? [];
+
+  const { data: cartProducts } = useQuery({
+    queryKey: ['cart', 'products', items.map((item) => String(item.productId)).join(',')],
+    queryFn: () => productService.getByIds(items.map((item) => String(item.productId))),
+    enabled: items.length > 0,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const slugById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const product of cartProducts ?? []) map.set(String(product._id), product.slug);
+    return map;
+  }, [cartProducts]);
 
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) return;
@@ -88,12 +106,18 @@ export default function CartPage() {
             <div>
               <ul className="flex flex-col divide-y divide-border border-y border-border">
                 {items.map((item) => {
-                  const image = getImageUrl(item.image);
+                  const productSlug = slugById.get(String(item.productId));
                   return (
                     <li key={`${String(item.productId)}-${item.variantId ?? 'default'}`} className="flex gap-6 py-8">
-                      <a href={`/product/${slugifyText(item.name)}`} className="h-44 w-36 shrink-0 bg-secondary">
-                        {image && <img src={image} alt={item.name} className="h-full w-full object-cover" />}
-                      </a>
+                      {productSlug ? (
+                        <Link to={`/product/${productSlug}`} className="block h-44 w-36 shrink-0 bg-secondary">
+                          <SafeImage src={item.image} alt={item.name} className="h-full w-full object-cover" />
+                        </Link>
+                      ) : (
+                        <div className="h-44 w-36 shrink-0 bg-secondary">
+                          <SafeImage src={item.image} alt={item.name} className="h-full w-full object-cover" />
+                        </div>
+                      )}
                       <div className="flex flex-1 flex-col">
                         <div className="flex items-start justify-between gap-4">
                           <div>
@@ -175,7 +199,7 @@ export default function CartPage() {
                   <dd>{cart && cart.subtotal >= FREE_SHIPPING_THRESHOLD ? 'Free' : formatPrice(cart?.shipping ?? FLAT_SHIPPING_RATE)}</dd>
                 </div>
                 <div className="flex justify-between text-muted-foreground">
-                  <dt>Tax (10%)</dt>
+                  <dt>Tax ({Math.round(TAX_RATE * 100)}%)</dt>
                   <dd>{formatPrice(cart?.tax ?? 0)}</dd>
                 </div>
                 {cart && cart.discount > 0 && (
@@ -189,9 +213,9 @@ export default function CartPage() {
                   <dd>{formatPrice(cart?.total ?? 0)}</dd>
                 </div>
               </dl>
-              {cart && cart.subtotal < 100 && (
+              {cart && cart.subtotal < FREE_SHIPPING_THRESHOLD && (
                 <p className="mt-4 text-xs text-muted-foreground">
-                  Add {formatPrice(100 - cart.subtotal)} more to unlock complimentary shipping.
+                  Add {formatPrice(FREE_SHIPPING_THRESHOLD - cart.subtotal)} more to unlock complimentary shipping.
                 </p>
               )}
               <Button variant="gold" size="lg" className="mt-6 w-full" onClick={goToCheckout} disabled={isUpdating}>

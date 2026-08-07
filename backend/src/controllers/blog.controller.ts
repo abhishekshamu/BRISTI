@@ -66,7 +66,7 @@ export class BlogController {
 
   getBlogPostById = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const post = await this.blogService.getBlogPostById(id);
+    const post = await this.blogService.getBlogPostById(id, req.authType === 'admin');
     res.status(200).json({
       success: true,
       data: post
@@ -75,7 +75,7 @@ export class BlogController {
 
   getBlogPostBySlug = asyncHandler(async (req: Request, res: Response) => {
     const { slug } = req.params;
-    const post = await this.blogService.getBlogPostBySlug(slug);
+    const post = await this.blogService.getBlogPostBySlug(slug, req.authType === 'admin');
     res.status(200).json({
       success: true,
       data: post

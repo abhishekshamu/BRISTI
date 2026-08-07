@@ -24,8 +24,10 @@ export const orderService = {
     return response.data.data as Order;
   },
 
-  async myOrders(userId: string, params: { page?: number; limit?: number } = {}): Promise<PaginatedResponse<Order>> {
-    const response = await api.get(`/orders/user/${userId}`, { params });
+  async myOrders(_userId: string, params: { page?: number; limit?: number } = {}): Promise<PaginatedResponse<Order>> {
+    // Customer order history comes from the authenticated `/orders` endpoint;
+    // `/orders/user/:userId` is admin-only.
+    const response = await api.get('/orders', { params });
     return response.data as PaginatedResponse<Order>;
   },
 
@@ -34,8 +36,18 @@ export const orderService = {
     return response.data.data as Order;
   },
 
+  async getByOrderNumber(orderNumber: string): Promise<Order> {
+    const response = await api.get(`/orders/by-order-number/${encodeURIComponent(orderNumber)}`);
+    return response.data.data as Order;
+  },
+
   async cancel(id: string): Promise<Order> {
     const response = await api.put(`/orders/${id}/cancel`);
+    return response.data.data as Order;
+  },
+
+  async track(orderNumber: string): Promise<Order> {
+    const response = await api.get(`/orders/track/${encodeURIComponent(orderNumber)}`);
     return response.data.data as Order;
   },
 };

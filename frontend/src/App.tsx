@@ -12,6 +12,12 @@ const CollectionDetailPage = lazy(() => import('@/pages/CollectionDetailPage'));
 const ProductDetailPage = lazy(() => import('@/pages/ProductDetailPage'));
 const NewArrivalsPage = lazy(() => import('@/pages/NewArrivalsPage'));
 const SalePage = lazy(() => import('@/pages/SalePage'));
+const BestSellersPage = lazy(() => import('@/pages/BestSellersPage'));
+const TrendingPage = lazy(() => import('@/pages/TrendingPage'));
+const FeaturedPage = lazy(() => import('@/pages/FeaturedPage'));
+const RecommendedPage = lazy(() => import('@/pages/RecommendedPage'));
+const LuxuryCollectionPage = lazy(() => import('@/pages/LuxuryCollectionPage'));
+const CategoryPage = lazy(() => import('@/pages/CategoryPage'));
 const CartPage = lazy(() => import('@/pages/CartPage'));
 const WishlistPage = lazy(() => import('@/pages/WishlistPage'));
 const CheckoutPage = lazy(() => import('@/pages/CheckoutPage'));
@@ -47,12 +53,18 @@ export default function App() {
           <Route element={<Layout />}>
             <Route index element={<HomePage />} />
             <Route path="/shop" element={<ShopPage />} />
+            <Route path="/category/:slug" element={<CategoryPage />} />
             <Route path="/search" element={<SearchPage />} />
             <Route path="/collections" element={<CollectionsPage />} />
             <Route path="/collection/:slug" element={<CollectionDetailPage />} />
             <Route path="/product/:slug" element={<ProductDetailPage />} />
             <Route path="/new-arrivals" element={<NewArrivalsPage />} />
             <Route path="/sale" element={<SalePage />} />
+            <Route path="/best-sellers" element={<BestSellersPage />} />
+            <Route path="/trending" element={<TrendingPage />} />
+            <Route path="/featured" element={<FeaturedPage />} />
+            <Route path="/recommended" element={<RecommendedPage />} />
+            <Route path="/luxury-collection" element={<LuxuryCollectionPage />} />
             <Route path="/cart" element={<CartPage />} />
             <Route path="/wishlist" element={<WishlistPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />

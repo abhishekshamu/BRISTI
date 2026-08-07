@@ -1,12 +1,20 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { ArrowLeft, Save, X, Plus, Trash2 } from 'lucide-react';
-import api from '../../lib/api';
+import { Plus, Trash2 } from 'lucide-react';
+import api, { FRONTEND_URL } from '../../lib/api';
 import toast from 'react-hot-toast';
+import { MARKETING_COLLECTION_SLUGS } from '@shared/constants';
+import MediaGallery, { GalleryImage } from '../../components/media/MediaGallery';
+import PageShell from '../../components/ui/PageShell';
+import FormSection from '../../components/ui/FormSection';
+import StickySaveBar from '../../components/ui/StickySaveBar';
+import PageSpinner from '../../components/ui/PageSpinner';
+import { useUnsavedChanges } from '../../lib/unsaved-context';
 
 interface ProductForm {
   name: string;
+  slug?: string;
   description: string;
   shortDescription: string;
   price: number;
@@ -15,7 +23,7 @@ interface ProductForm {
   sku: string;
   barcode?: string;
   category: string;
-  collection?: string;
+  collections: string[];
   brand?: string;
   weight: number;
   status: 'draft' | 'active' | 'archived';
@@ -23,11 +31,20 @@ interface ProductForm {
   allowBackorder: boolean;
   lowStockThreshold: number;
   stock: number;
-  featured: boolean;
+  isNewArrival: boolean;
+  isBestSeller: boolean;
+  isTrending: boolean;
+  isOnSale: boolean;
+  isFeatured: boolean;
+  isRecommended: boolean;
+  isExclusive: boolean;
+  isLimitedEdition: boolean;
+  isEditorsPick: boolean;
+  isPremiumCollection: boolean;
   seoTitle?: string;
   seoDescription?: string;
   seoKeywords: string;
-  images: string[];
+  images: GalleryImage[];
   options: Array<{ name: string; values: string[] }>;
   variants: Array<{ id: string; name: string; options: Record<string, string>; priceAdjustment: number; sku: string; stock: number; image?: string }>;
 }
@@ -39,7 +56,7 @@ export default function ProductEdit() {
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
   const [collections, setCollections] = useState<any[]>([]);
-  const [imageUrl, setImageUrl] = useState('');
+  const { dirty, setDirty } = useUnsavedChanges();
 
   const {
     register,
@@ -47,12 +64,25 @@ export default function ProductEdit() {
     setValue,
     watch,
     reset,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<ProductForm>();
+
+  useEffect(() => setDirty(isDirty), [isDirty, setDirty]);
 
   const images = watch('images');
   const variants = watch('variants') ?? [];
   const productOptions = watch('options') ?? [];
+  const selectedCollections = watch('collections') ?? [];
+
+  const productSlug = watch('slug');
+  const productUrl = productSlug ? `${FRONTEND_URL}/product/${productSlug}` : undefined;
+
+  const toggleCollection = (slug: string) => {
+    const next = selectedCollections.includes(slug)
+      ? selectedCollections.filter(s => s !== slug)
+      : [...selectedCollections, slug];
+    setValue('collections', next);
+  };
 
   const addOption = () => {
     setValue('options', [...productOptions, { name: '', values: [] }]);
@@ -106,8 +136,15 @@ export default function ProductEdit() {
       reset({
         ...product,
         category: typeof product.category === 'object' ? product.category._id : product.category,
-        collection: product.collection ? (typeof product.collection === 'object' ? product.collection._id : product.collection) : '',
+        collections: Array.isArray(product.collections) ? product.collections : [],
         seoKeywords: product.seo?.keywords?.join(', ') || '',
+        images: Array.isArray(product.images)
+          ? product.images.map((img: any) => ({
+              url: img?.url || img,
+              alt: img?.alt ?? '',
+              isFeatured: !!img?.isFeatured,
+            }))
+          : [],
       });
     } catch (error) {
       toast.error('Failed to fetch product');
@@ -129,7 +166,9 @@ export default function ProductEdit() {
   const fetchCollections = useCallback(async () => {
     try {
       const response = await api.get('/collections');
-      setCollections(response.data.data || []);
+      // Only real merchandising collections appear in Organization — marketing
+      // sections are controlled by the Marketing Lists toggles.
+      setCollections((response.data.data || []).filter((c: any) => !MARKETING_COLLECTION_SLUGS.includes(c.slug)));
     } catch (error) {
       console.error('Failed to fetch collections');
     }
@@ -143,22 +182,18 @@ export default function ProductEdit() {
     }
   }, [id, fetchProduct, fetchCategories, fetchCollections]);
 
-  const addImage = () => {
-    if (imageUrl && !images.includes(imageUrl)) {
-      setValue('images', [...images, imageUrl]);
-      setImageUrl('');
-    }
-  };
-
-  const removeImage = (url: string) => {
-    setValue('images', images.filter(img => img !== url));
-  };
-
   const onSubmit = async (data: ProductForm) => {
     try {
       setSaving(true);
-      await api.put(`/products/${id}`, { ...data, options: productOptions, variants });
+      const payload = {
+        ...data,
+        options: productOptions,
+        variants,
+        images: data.images.map((img) => ({ url: img.url, alt: img.alt ?? '', isFeatured: !!img.isFeatured })),
+      };
+      await api.put(`/products/${id}`, payload);
       toast.success('Product updated successfully');
+      setDirty(false);
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to update product');
     } finally {
@@ -167,414 +202,393 @@ export default function ProductEdit() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
-      </div>
-    );
+    return <PageSpinner label="Loading…" />;
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={() => navigate('/products')}
-            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md"
+    <PageShell
+      title="Edit Product"
+      subtitle="Update product information"
+      breadcrumbs={[{ label: 'Products', to: '/products' }, { label: 'Edit Product' }]}
+      backTo="/products"
+      sidebar={
+        <>
+          {/* Organization */}
+          <FormSection title="Organization" description="Category, collections and brand.">
+            <div className="space-y-4">
+              <div>
+                <label className="admin-label">Category</label>
+                <select
+                  {...register('category', { required: 'Category is required' })}
+                  className="admin-input mt-1"
+                >
+                  <option value="">Select category</option>
+                  {categories.map(cat => (
+                    <option key={cat._id} value={cat._id}>{cat.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="admin-label">Product Collections</label>
+                <div className="mt-1 max-h-56 overflow-y-auto rounded-md border border-slate-200 dark:border-slate-700 p-2 space-y-1">
+                  {collections.map(col => {
+                    const checked = selectedCollections.includes(col.slug);
+                    return (
+                      <label
+                        key={col._id}
+                        className="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+                      >
+                        <span className="text-sm text-slate-700 dark:text-slate-300">
+                          {col.name}
+                          <span className="ml-1.5 text-xs text-slate-400">{col.slug}</span>
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleCollection(col.slug)}
+                          className="w-4 h-4"
+                        />
+                      </label>
+                    );
+                  })}
+                  {collections.length === 0 && (
+                    <p className="px-2 py-1.5 text-sm text-slate-400">No collections available — create one first</p>
+                  )}
+                </div>
+                <p className="mt-1 text-xs text-slate-400">
+                  {selectedCollections.length > 0
+                    ? `${selectedCollections.length} selected — appears in: ${selectedCollections.join(', ')}`
+                    : 'Products can belong to any number of collections'}
+                </p>
+              </div>
+
+              <div>
+                <label className="admin-label">Brand</label>
+                <input
+                  {...register('brand')}
+                  className="admin-input mt-1"
+                />
+                <p className="admin-hint mt-1">Manufacturer or house label</p>
+              </div>
+            </div>
+          </FormSection>
+
+          {/* Inventory */}
+          <FormSection title="Inventory" description="Stock levels, tracking and backorder behaviour.">
+            <div className="space-y-4">
+              <div>
+                <label className="admin-label">SKU</label>
+                <input
+                  {...register('sku', { required: 'SKU is required' })}
+                  className="admin-input mt-1"
+                />
+              </div>
+
+              <div>
+                <label className="admin-label">Barcode</label>
+                <input
+                  {...register('barcode')}
+                  className="admin-input mt-1"
+                />
+              </div>
+
+              <div>
+                <label className="admin-label">Stock</label>
+                <input
+                  type="number"
+                  {...register('stock', { min: 0 })}
+                  className="admin-input mt-1"
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <label className="admin-label">Track Quantity</label>
+                <input
+                  type="checkbox"
+                  {...register('trackQuantity')}
+                  className="w-4 h-4"
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <label className="admin-label">Allow Backorder</label>
+                <input
+                  type="checkbox"
+                  {...register('allowBackorder')}
+                  className="w-4 h-4"
+                />
+              </div>
+            </div>
+          </FormSection>
+
+          {/* Status */}
+          <FormSection title="Status" description="Publishing state of the product.">
+            <div className="space-y-4">
+              <div>
+                <label className="admin-label">Status</label>
+                <select
+                  {...register('status')}
+                  className="admin-input mt-1"
+                >
+                  <option value="draft">Draft</option>
+                  <option value="active">Active</option>
+                  <option value="archived">Archived</option>
+                </select>
+              </div>
+            </div>
+          </FormSection>
+
+          {/* Marketing Lists */}
+          <FormSection
+            title="Marketing Lists"
+            description="Independent toggles — a product may belong to any number of lists at once."
           >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Edit Product</h2>
-            <p className="text-slate-500 dark:text-slate-400">Update product information</p>
-          </div>
-        </div>
-        <button
-          type="submit"
-          form="product-form"
-          disabled={saving}
-          className="admin-btn-primary py-2.5 px-4 flex items-center"
-        >
-          {saving ? (
-            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          ) : (
-            <>
-              <Save className="w-4 h-4 mr-2" />
-              Save Changes
-            </>
-          )}
-        </button>
-      </div>
-
+            <div className="space-y-3">
+              {([
+                ['isNewArrival', 'New Arrival'],
+                ['isTrending', 'Trending'],
+                ['isBestSeller', 'Best Seller'],
+                ['isOnSale', 'On Sale'],
+                ['isFeatured', 'Featured'],
+                ['isRecommended', 'Recommended'],
+                ['isExclusive', 'Exclusive'],
+                ['isLimitedEdition', 'Limited Edition'],
+                ['isEditorsPick', "Editor's Pick"],
+                ['isPremiumCollection', 'Premium Collection'],
+              ] as const).map(([field, label]) => (
+                <div key={field} className="flex items-center justify-between">
+                  <label className="admin-label">{label}</label>
+                  <input type="checkbox" {...register(field)} className="w-4 h-4" />
+                </div>
+              ))}
+            </div>
+          </FormSection>
+        </>
+      }
+    >
       <form id="product-form" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Basic info */}
-            <div className="admin-card p-6">
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Basic Information</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="admin-label">Product Name</label>
-                  <input
-                    {...register('name', { required: 'Product name is required' })}
-                    className="admin-input mt-1"
-                  />
-                  {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>}
-                </div>
-
-                <div>
-                  <label className="admin-label">Short Description</label>
-                  <input
-                    {...register('shortDescription')}
-                    className="admin-input mt-1"
-                  />
-                </div>
-
-                <div>
-                  <label className="admin-label">Description</label>
-                  <textarea
-                    {...register('description', { required: 'Description is required' })}
-                    rows={4}
-                    className="admin-input mt-1"
-                  />
-                  {errors.description && <p className="mt-1 text-sm text-red-600">{errors.description.message}</p>}
-                </div>
-              </div>
+        {/* Basic info */}
+        <FormSection number={1} title="Basic Information" description="Public details shown on the product page.">
+          <div className="space-y-4">
+            <div>
+              <label className="admin-label">Product Name</label>
+              <input
+                {...register('name', { required: 'Product name is required' })}
+                className="admin-input mt-1"
+              />
+              {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>}
             </div>
 
-            {/* Pricing */}
-            <div className="admin-card p-6">
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Pricing</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="admin-label">Price ($)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    {...register('price', { required: 'Price is required', min: 0 })}
-                    className="admin-input mt-1"
-                  />
-                  {errors.price && <p className="mt-1 text-sm text-red-600">{errors.price.message}</p>}
-                </div>
-                <div>
-                  <label className="admin-label">Compare at Price ($)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    {...register('compareAtPrice', { min: 0 })}
-                    className="admin-input mt-1"
-                  />
-                </div>
-                <div>
-                  <label className="admin-label">Cost Price ($)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    {...register('costPrice', { min: 0 })}
-                    className="admin-input mt-1"
-                  />
-                </div>
-              </div>
+            <div>
+              <label className="admin-label">Short Description</label>
+              <input
+                {...register('shortDescription')}
+                className="admin-input mt-1"
+              />
             </div>
 
-            {/* Images */}
-            <div className="admin-card p-6">
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Images</h3>
-              <div className="space-y-4">
-                <div className="flex space-x-2">
+            <div>
+              <label className="admin-label">Description</label>
+              <textarea
+                {...register('description', { required: 'Description is required' })}
+                rows={4}
+                className="admin-input mt-1"
+              />
+              {errors.description && <p className="mt-1 text-sm text-red-600">{errors.description.message}</p>}
+            </div>
+          </div>
+        </FormSection>
+
+        {/* Pricing */}
+        <FormSection number={2} title="Pricing" description="Retail price, original price and cost for margin reporting.">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="admin-label">Price ($)</label>
+              <input
+                type="number"
+                step="0.01"
+                {...register('price', { required: 'Price is required', min: 0 })}
+                className="admin-input mt-1"
+              />
+              {errors.price && <p className="mt-1 text-sm text-red-600">{errors.price.message}</p>}
+            </div>
+            <div>
+              <label className="admin-label">Compare at Price ($)</label>
+              <input
+                type="number"
+                step="0.01"
+                {...register('compareAtPrice', { min: 0 })}
+                className="admin-input mt-1"
+              />
+            </div>
+            <div>
+              <label className="admin-label">Cost Price ($)</label>
+              <input
+                type="number"
+                step="0.01"
+                {...register('costPrice', { min: 0 })}
+                className="admin-input mt-1"
+              />
+            </div>
+          </div>
+        </FormSection>
+
+        {/* Images */}
+        <FormSection number={3} title="Images" description="Gallery images, with the first marked featured used as the product thumbnail.">
+          <MediaGallery
+            images={images}
+            onChange={(next) => setValue('images', next, { shouldDirty: true })}
+            ratio="product"
+            folder="products"
+          />
+        </FormSection>
+
+        {/* SEO */}
+        <FormSection number={4} title="SEO" description="Search engine title, description and keywords.">
+          <div className="space-y-4">
+            <div>
+              <label className="admin-label">SEO Title</label>
+              <input
+                {...register('seoTitle')}
+                className="admin-input mt-1"
+              />
+            </div>
+            <div>
+              <label className="admin-label">SEO Description</label>
+              <textarea
+                {...register('seoDescription')}
+                rows={2}
+                className="admin-input mt-1"
+              />
+            </div>
+            <div>
+              <label className="admin-label">SEO Keywords</label>
+              <input
+                {...register('seoKeywords')}
+                className="admin-input mt-1"
+              />
+            </div>
+          </div>
+        </FormSection>
+
+        {/* Variants & Options */}
+        <FormSection number={5} title="Variants & Options" description="Customizable options like size and color, each tracked with its own stock.">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 w-full">Options</h3>
+            <button
+              type="button"
+              onClick={addOption}
+              className="admin-btn-secondary py-1.5 px-3 text-sm"
+            >
+              <Plus className="w-3.5 h-3.5 mr-1 inline" /> Option
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {productOptions.map((option: any, index: number) => (
+              <div key={index} className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 space-y-2">
+                <div className="flex gap-2">
                   <input
-                    type="url"
-                    value={imageUrl}
-                    onChange={(e) => setImageUrl(e.target.value)}
+                    value={option.name}
+                    onChange={(e) => updateOption(index, 'name', e.target.value)}
                     className="admin-input flex-1"
-                    placeholder="Enter image URL"
+                    placeholder="Option name (e.g. Size)"
                   />
                   <button
                     type="button"
-                    onClick={addImage}
-                    className="admin-btn-secondary py-2 px-4"
+                    onClick={() => removeOption(index)}
+                    className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md"
                   >
-                    <Plus className="w-4 h-4" />
+                    <Trash2 className="w-4 h-4 text-red-500" />
                   </button>
                 </div>
-                {images.length > 0 && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {images.map((url, idx) => (
-                      <div key={idx} className="relative group">
-                        <img src={url} alt="" className="w-full h-32 object-cover rounded-md" />
-                        <button
-                          type="button"
-                          onClick={() => removeImage(url)}
-                          className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <input
+                  value={(option.values ?? []).join(', ')}
+                  onChange={(e) => updateOption(index, 'values', e.target.value)}
+                  className="admin-input"
+                  placeholder="Values, comma separated (e.g. S, M, L)"
+                />
               </div>
-            </div>
-
-            {/* SEO */}
-            <div className="admin-card p-6">
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">SEO</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="admin-label">SEO Title</label>
-                  <input
-                    {...register('seoTitle')}
-                    className="admin-input mt-1"
-                  />
-                </div>
-                <div>
-                  <label className="admin-label">SEO Description</label>
-                  <textarea
-                    {...register('seoDescription')}
-                    rows={2}
-                    className="admin-input mt-1"
-                  />
-                </div>
-                <div>
-                  <label className="admin-label">SEO Keywords</label>
-                  <input
-                    {...register('seoKeywords')}
-                    className="admin-input mt-1"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Variants & Options */}
-            <div className="admin-card p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Variants & Options</h3>
-                <button
-                  type="button"
-                  onClick={addOption}
-                  className="admin-btn-secondary py-1.5 px-3 text-sm"
-                >
-                  <Plus className="w-3.5 h-3.5 mr-1 inline" /> Option
-                </button>
-              </div>
-
-              <div className="space-y-3">
-                {productOptions.map((option: any, index: number) => (
-                  <div key={index} className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 space-y-2">
-                    <div className="flex gap-2">
-                      <input
-                        value={option.name}
-                        onChange={(e) => updateOption(index, 'name', e.target.value)}
-                        className="admin-input flex-1"
-                        placeholder="Option name (e.g. Size)"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeOption(index)}
-                        className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md"
-                      >
-                        <Trash2 className="w-4 h-4 text-red-500" />
-                      </button>
-                    </div>
-                    <input
-                      value={(option.values ?? []).join(', ')}
-                      onChange={(e) => updateOption(index, 'values', e.target.value)}
-                      className="admin-input"
-                      placeholder="Values, comma separated (e.g. S, M, L)"
-                    />
-                  </div>
-                ))}
-                {productOptions.length === 0 && (
-                  <p className="text-sm text-slate-500 dark:text-slate-400">No options defined — the product sells without variants.</p>
-                )}
-              </div>
-
-              <div className="mt-5 flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Variants ({variants.length})</h4>
-                <button
-                  type="button"
-                  onClick={addVariant}
-                  className="admin-btn-secondary py-1.5 px-3 text-sm"
-                >
-                  <Plus className="w-3.5 h-3.5 mr-1 inline" /> Variant
-                </button>
-              </div>
-
-              <div className="mt-3 space-y-3">
-                {variants.map((variant: any, index: number) => (
-                  <div key={variant.id ?? index} className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 space-y-2">
-                    <div className="flex gap-2">
-                      <input
-                        value={variant.name}
-                        onChange={(e) => updateVariant(index, 'name', e.target.value)}
-                        className="admin-input flex-1"
-                        placeholder="Variant name (e.g. S / Black)"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeVariant(index)}
-                        className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md"
-                      >
-                        <Trash2 className="w-4 h-4 text-red-500" />
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <input
-                        value={variant.sku}
-                        onChange={(e) => updateVariant(index, 'sku', e.target.value)}
-                        className="admin-input"
-                        placeholder="Variant SKU"
-                      />
-                      <input
-                        type="number"
-                        value={variant.stock}
-                        onChange={(e) => updateVariant(index, 'stock', parseInt(e.target.value) || 0)}
-                        className="admin-input"
-                        placeholder="Stock"
-                      />
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={variant.priceAdjustment}
-                        onChange={(e) => updateVariant(index, 'priceAdjustment', parseFloat(e.target.value) || 0)}
-                        className="admin-input"
-                        placeholder="Price adj."
-                      />
-                    </div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400">
-                      Options: {Object.entries(variant.options ?? {}).map(([k, v]) => `${k}: ${v}`).join(' · ') || '—'}
-                    </div>
-                  </div>
-                ))}
-                {variants.length === 0 && (
-                  <p className="text-sm text-slate-500 dark:text-slate-400">No variants — stock is tracked on the product itself.</p>
-                )}
-              </div>
-            </div>
+            ))}
+            {productOptions.length === 0 && (
+              <p className="text-sm text-slate-500 dark:text-slate-400">No options defined — the product sells without variants.</p>
+            )}
           </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Organization */}
-            <div className="admin-card p-6">
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Organization</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="admin-label">Category</label>
-                  <select
-                    {...register('category', { required: 'Category is required' })}
-                    className="admin-input mt-1"
+          <div className="mt-5 flex items-center justify-between">
+            <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Variants ({variants.length})</h4>
+            <button
+              type="button"
+              onClick={addVariant}
+              className="admin-btn-secondary py-1.5 px-3 text-sm"
+            >
+              <Plus className="w-3.5 h-3.5 mr-1 inline" /> Variant
+            </button>
+          </div>
+
+          <div className="mt-3 space-y-3">
+            {variants.map((variant: any, index: number) => (
+              <div key={variant.id ?? index} className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    value={variant.name}
+                    onChange={(e) => updateVariant(index, 'name', e.target.value)}
+                    className="admin-input flex-1"
+                    placeholder="Variant name (e.g. S / Black)"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeVariant(index)}
+                    className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md"
                   >
-                    <option value="">Select category</option>
-                    {categories.map(cat => (
-                      <option key={cat._id} value={cat._id}>{cat.name}</option>
-                    ))}
-                  </select>
+                    <Trash2 className="w-4 h-4 text-red-500" />
+                  </button>
                 </div>
-
-                <div>
-                  <label className="admin-label">Collection</label>
-                  <select
-                    {...register('collection')}
-                    className="admin-input mt-1"
-                  >
-                    <option value="">Select collection</option>
-                    {collections.map(col => (
-                      <option key={col._id} value={col._id}>{col.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="admin-label">Brand</label>
+                <div className="grid grid-cols-3 gap-2">
                   <input
-                    {...register('brand')}
-                    className="admin-input mt-1"
+                    value={variant.sku}
+                    onChange={(e) => updateVariant(index, 'sku', e.target.value)}
+                    className="admin-input"
+                    placeholder="Variant SKU"
                   />
-                </div>
-              </div>
-            </div>
-
-            {/* Inventory */}
-            <div className="admin-card p-6">
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Inventory</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="admin-label">SKU</label>
-                  <input
-                    {...register('sku', { required: 'SKU is required' })}
-                    className="admin-input mt-1"
-                  />
-                </div>
-
-                <div>
-                  <label className="admin-label">Barcode</label>
-                  <input
-                    {...register('barcode')}
-                    className="admin-input mt-1"
-                  />
-                </div>
-
-                <div>
-                  <label className="admin-label">Stock</label>
                   <input
                     type="number"
-                    {...register('stock', { min: 0 })}
-                    className="admin-input mt-1"
+                    value={variant.stock}
+                    onChange={(e) => updateVariant(index, 'stock', parseInt(e.target.value) || 0)}
+                    className="admin-input"
+                    placeholder="Stock"
+                  />
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={variant.priceAdjustment}
+                    onChange={(e) => updateVariant(index, 'priceAdjustment', parseFloat(e.target.value) || 0)}
+                    className="admin-input"
+                    placeholder="Price adj."
                   />
                 </div>
-
-                <div className="flex items-center justify-between">
-                  <label className="admin-label">Track Quantity</label>
-                  <input
-                    type="checkbox"
-                    {...register('trackQuantity')}
-                    className="w-4 h-4"
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <label className="admin-label">Allow Backorder</label>
-                  <input
-                    type="checkbox"
-                    {...register('allowBackorder')}
-                    className="w-4 h-4"
-                  />
+                <div className="text-xs text-slate-500 dark:text-slate-400">
+                  Options: {Object.entries(variant.options ?? {}).map(([k, v]) => `${k}: ${v}`).join(' · ') || '—'}
                 </div>
               </div>
-            </div>
-
-            {/* Status */}
-            <div className="admin-card p-6">
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Status</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="admin-label">Status</label>
-                  <select
-                    {...register('status')}
-                    className="admin-input mt-1"
-                  >
-                    <option value="draft">Draft</option>
-                    <option value="active">Active</option>
-                    <option value="archived">Archived</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <label className="admin-label">Featured</label>
-                  <input
-                    type="checkbox"
-                    {...register('featured')}
-                    className="w-4 h-4"
-                  />
-                </div>
-              </div>
-            </div>
+            ))}
+            {variants.length === 0 && (
+              <p className="text-sm text-slate-500 dark:text-slate-400">No variants — stock is tracked on the product itself.</p>
+            )}
           </div>
-        </div>
+        </FormSection>
       </form>
-    </div>
+
+      <StickySaveBar
+        dirty={dirty}
+        saving={saving}
+        onSave={() => handleSubmit(onSubmit)()}
+        onCancel={() => navigate('/products')}
+        saveLabel="Save changes"
+        previewHref={productUrl}
+        frontendHref={productUrl}
+      />
+    </PageShell>
   );
 }

@@ -2,11 +2,15 @@ import { BlogRepository } from '../repositories/blog.repository';
 import { IBlogPost } from 'shared/types';
 import { NotFoundError, BadRequestException } from '../utils/exceptions';
 import { slugify } from 'shared/utils';
+import { normalizeSeo, normalizeTags } from '../utils/seo';
+import { sanitizeRichText } from '../utils/sanitize';
 
 export class BlogService {
   constructor(private blogRepo: BlogRepository) {}
 
   async createBlogPost(data: Partial<IBlogPost>): Promise<IBlogPost> {
+    data = normalizeSeo(normalizeTags(data));
+    if (data.content && typeof data.content === 'string') data.content = sanitizeRichText(data.content as any);
     if (!data.title) {
       throw new BadRequestException('Title is required');
     }
@@ -27,17 +31,23 @@ export class BlogService {
     return this.blogRepo.create(data);
   }
 
-  async getBlogPostById(id: string): Promise<IBlogPost> {
+  async getBlogPostById(id: string, includeNonPublished = false): Promise<IBlogPost> {
     const post = await this.blogRepo.findById(id);
     if (!post) {
+      throw new NotFoundError('Blog post not found');
+    }
+    if (!includeNonPublished && post.status !== 'published') {
       throw new NotFoundError('Blog post not found');
     }
     return post;
   }
 
-  async getBlogPostBySlug(slug: string): Promise<IBlogPost> {
+  async getBlogPostBySlug(slug: string, includeNonPublished = false): Promise<IBlogPost> {
     const post = await this.blogRepo.findBySlug(slug);
     if (!post) {
+      throw new NotFoundError('Blog post not found');
+    }
+    if (!includeNonPublished && post.status !== 'published') {
       throw new NotFoundError('Blog post not found');
     }
     await this.blogRepo.incrementViewCount(post._id.toString());
@@ -45,6 +55,8 @@ export class BlogService {
   }
 
   async updateBlogPost(id: string, updateData: Partial<IBlogPost>): Promise<IBlogPost> {
+    updateData = normalizeSeo(normalizeTags(updateData));
+    if (updateData.content && typeof updateData.content === 'string') updateData.content = sanitizeRichText(updateData.content as any);
     if (updateData.title && !updateData.slug) {
       updateData.slug = slugify(updateData.title);
     }

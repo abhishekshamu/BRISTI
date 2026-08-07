@@ -17,6 +17,10 @@ export class ProductController {
   getProductById = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     const product = await this.productService.getProductById(id);
+    // Non-active products (draft/archived) are only visible to admins.
+    if (product.status !== 'active' && req.authType !== 'admin') {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
     res.status(200).json({
       success: true,
       data: product
@@ -26,6 +30,9 @@ export class ProductController {
   getProductBySlug = asyncHandler(async (req: Request, res: Response) => {
     const { slug } = req.params;
     const product = await this.productService.getProductBySlug(slug);
+    if (product.status !== 'active' && req.authType !== 'admin') {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
     res.status(200).json({
       success: true,
       data: product

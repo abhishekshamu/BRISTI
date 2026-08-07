@@ -26,9 +26,23 @@ export function formatPriceFromCents(cents: number, currency = 'USD'): string {
   return sharedFormatPrice(cents / 100, currency);
 }
 
+// Origin that serves uploaded files (/uploads/*). Override in production via
+// VITE_API_URL; defaults to the local API during development.
+const API_ORIGIN: string =
+  (import.meta as any).env?.VITE_API_URL?.replace(/\/$/, '') || 'http://localhost:5000';
+
+/**
+ * Resolve an image URL for <img> use.
+ * - Absolute http(s) URLs are used unchanged.
+ * - Backend-served relative paths (/uploads/...) get the API origin prepended,
+ *   otherwise they would resolve to the storefront origin and 404.
+ * - Any other relative path is left untouched (frontend public assets).
+ */
 export function getImageUrl(url?: string): string | null {
   if (!url) return null;
-  if (url.startsWith('http') || url.startsWith('/')) return url;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('/uploads/')) return `${API_ORIGIN}${url}`;
+  if (url.startsWith('/')) return url;
   return url;
 }
 

@@ -8,3 +8,10 @@ export const updateInventoryValidation = [
   body('maxStockLevel').optional().isInt({ min: 0 }).withMessage('Max stock level must be a non-negative integer'),
   body('reason').optional().isString().withMessage('Reason must be a string'),
 ];
+
+export const transferInventoryValidation = [
+  param('id').isMongoId().withMessage('Invalid inventory item ID'),
+  body('quantity').isInt({ min: 1 }).withMessage('Transfer quantity must be a positive integer'),
+  body('targetWarehouse').isString().trim().notEmpty().withMessage('Target warehouse is required'),
+  body('note').optional().isString().withMessage('Note must be a string'),
+];

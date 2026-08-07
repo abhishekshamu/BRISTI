@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { authService, type AuthUser } from '@/services/auth.service';
-import { tokenStorage, AUTH_EXPIRED_EVENT } from '@/lib/api';
+import { AUTH_EXPIRED_EVENT } from '@/lib/api';
 import { getErrorMessage } from '@/lib/utils';
 import type { User } from '@shared/types';
 
@@ -11,6 +11,9 @@ interface AuthContextValue {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
+  googleLogin: (credential: string) => Promise<void>;
+  requestOtp: (phone: string) => Promise<{ sent: boolean; resendInSeconds: number }>;
+  verifyOtp: (phone: string, otp: string) => Promise<void>;
   register: (data: { email: string; password: string; firstName: string; lastName: string }) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (user: AuthUser) => void;
@@ -27,21 +30,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
 
   const syncProfile = useCallback(async () => {
-    if (!tokenStorage.getAccessToken()) return;
     try {
       const [authUser, fullProfile] = await Promise.all([authService.getMe(), authService.getProfile()]);
       setProfileState(fullProfile);
       setUser({
         id: String(fullProfile._id ?? authUser._id),
-        email: fullProfile.email ?? authUser.email,
+        email: fullProfile.email ?? authUser.email ?? '',
         firstName: fullProfile.firstName ?? authUser.firstName,
         lastName: fullProfile.lastName ?? authUser.lastName,
         role: fullProfile.role ?? authUser.role,
       });
-    } catch {
-      tokenStorage.clear();
-      setUser(null);
-      setProfileState(null);
+    } catch (error) {
+      const status = (error as { response?: { status?: number } })?.response?.status;
+      if (status === 401) {
+        setUser(null);
+        setProfileState(null);
+      }
     }
   }, []);
 
@@ -61,22 +65,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     const response = await authService.login({ email, password });
-    tokenStorage.setTokens(response.accessToken, response.refreshToken);
+    setUser(response.user);
+    await authService.getProfile().then(setProfileState).catch(() => undefined);
+  }, []);
+
+  const googleLogin = useCallback(async (credential: string) => {
+    const response = await authService.googleLogin(credential);
+    setUser(response.user);
+    await authService.getProfile().then(setProfileState).catch(() => undefined);
+  }, []);
+
+  const requestOtp = useCallback((phone: string) => authService.requestOtp(phone), []);
+
+  const verifyOtp = useCallback(async (phone: string, otp: string) => {
+    const response = await authService.verifyOtp(phone, otp);
     setUser(response.user);
     await authService.getProfile().then(setProfileState).catch(() => undefined);
   }, []);
 
   const register = useCallback(async (data: { email: string; password: string; firstName: string; lastName: string }) => {
     const response = await authService.register(data);
-    tokenStorage.setTokens(response.accessToken, response.refreshToken);
     setUser(response.user);
     await authService.getProfile().then(setProfileState).catch(() => undefined);
   }, []);
 
   const logout = useCallback(async () => {
-    const refreshToken = tokenStorage.getRefreshToken() ?? undefined;
-    await authService.logout(refreshToken);
-    tokenStorage.clear();
+    await authService.logout();
     setUser(null);
     setProfileState(null);
     queryClient.clear();
@@ -113,13 +127,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading,
       isAuthenticated: Boolean(user),
       login,
+      googleLogin,
+      requestOtp,
+      verifyOtp,
       register,
       logout,
       updateUser,
       setProfile,
       refreshProfile,
     }),
-    [user, profile, isLoading, login, register, logout, updateUser, setProfile, refreshProfile],
+    [user, profile, isLoading, login, googleLogin, requestOtp, verifyOtp, register, logout, updateUser, setProfile, refreshProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

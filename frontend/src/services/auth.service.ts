@@ -7,6 +7,9 @@ export interface AuthUser {
   firstName: string;
   lastName: string;
   role: string;
+  phone?: string;
+  avatar?: string;
+  authProvider?: 'email' | 'google' | 'phone';
 }
 
 export interface AuthResponse {
@@ -26,17 +29,27 @@ export const authService = {
     return response.data.data as AuthResponse;
   },
 
-  async logout(refreshToken?: string): Promise<void> {
+  async googleLogin(credential: string): Promise<AuthResponse> {
+    const response = await api.post('/auth/google', { credential });
+    return response.data.data as AuthResponse;
+  },
+
+  async requestOtp(phone: string): Promise<{ sent: boolean; resendInSeconds: number }> {
+    const response = await api.post('/auth/otp/request', { phone });
+    return response.data.data as { sent: boolean; resendInSeconds: number };
+  },
+
+  async verifyOtp(phone: string, otp: string): Promise<AuthResponse> {
+    const response = await api.post('/auth/otp/verify', { phone, otp });
+    return response.data.data as AuthResponse;
+  },
+
+  async logout(): Promise<void> {
     try {
-      await api.post('/auth/logout', { refreshToken });
+      await api.post('/auth/logout', {});
     } catch {
       // Ignore logout network errors - session is cleared client-side regardless
     }
-  },
-
-  async refresh(refreshToken: string): Promise<{ accessToken: string; user: AuthUser }> {
-    const response = await api.post('/auth/refresh', { refreshToken });
-    return response.data.data;
   },
 
   async forgotPassword(email: string): Promise<void> {
@@ -44,7 +57,7 @@ export const authService = {
   },
 
   async resetPassword(token: string, password: string): Promise<void> {
-    await api.post(`/auth/reset-password?token=${encodeURIComponent(token)}`, { token, password });
+    await api.post(`/auth/reset-password/${encodeURIComponent(token)}`, { password });
   },
 
   async getMe(): Promise<User> {

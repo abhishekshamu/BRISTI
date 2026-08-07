@@ -11,6 +11,22 @@ export class UserRepository extends BaseRepository<any> {
     return this.findOne({ email: new RegExp(`^${email}$`, 'i') });
   }
 
+  async findByPhone(phone: string): Promise<any | null> {
+    return this.findOne({ phone });
+  }
+
+  async findByGoogleId(googleId: string): Promise<any | null> {
+    return this.findOne({ googleId });
+  }
+
+  async findByCredentials(email: string): Promise<any | null> {
+    return this.model.findOne({ email: new RegExp(`^${email}$`, 'i') }).select('+password').exec();
+  }
+
+  async findByIdWithPassword(id: string): Promise<any | null> {
+    return this.model.findById(id).select('+password').exec();
+  }
+
   async findByIdAndPopulate(id: string, populateOptions: string | object = ''): Promise<any | null> {
     return this.model.findById(id).populate(populateOptions as any).exec();
   }
@@ -19,8 +35,12 @@ export class UserRepository extends BaseRepository<any> {
     return this.findMany({ status: 'active' }, options);
   }
 
-  async listCustomers(options: { page?: number; limit?: number; search?: string; sort?: any } = {}): Promise<any> {
+  async listCustomers(options: { page?: number; limit?: number; search?: string; status?: string; sort?: any } = {}): Promise<any> {
     const filter: any = { role: 'customer' };
+    // Admin customer list can filter by account status (active/banned).
+    if (options.status) {
+      filter.status = options.status;
+    }
     if (options.search) {
       const regex = new RegExp(options.search, 'i');
       filter.$or = [
@@ -54,9 +74,33 @@ export class UserRepository extends BaseRepository<any> {
   async updateLastLogin(userId: string): Promise<IUser | null> {
     return this.findByIdAndUpdate(
       userId,
-      { $set: { lastLoginAt: new Date() } },
+      { $set: { lastLoginAt: new Date() }, $inc: { loginCount: 1 } },
       { new: true }
     );
+  }
+
+  async registerFailedLogin(userId: string): Promise<IUser | null> {
+    return this.findByIdAndUpdate(
+      userId,
+      { $inc: { failedLoginAttempts: 1 } },
+      { new: true }
+    );
+  }
+
+  async lockAccount(userId: string, until: Date): Promise<IUser | null> {
+    return this.findByIdAndUpdate(userId, { $set: { lockedUntil: until } }, { new: true });
+  }
+
+  async clearFailedLogins(userId: string): Promise<IUser | null> {
+    return this.findByIdAndUpdate(
+      userId,
+      { $set: { failedLoginAttempts: 0 }, $unset: { lockedUntil: '' } },
+      { new: true }
+    );
+  }
+
+  async isAccountLocked(user: any): Promise<boolean> {
+    return Boolean(user?.lockedUntil && new Date(user.lockedUntil) > new Date());
   }
 
   async updatePassword(userId: string, password: string): Promise<IUser | null> {

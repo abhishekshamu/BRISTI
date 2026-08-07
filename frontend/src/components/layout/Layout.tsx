@@ -22,7 +22,7 @@ function TrackPageView() {
     analyticsService.track({
       eventName: 'page_view',
       url: pathname,
-      properties: { sessionId: getSessionId() },
+      sessionId: getSessionId(),
     });
   }, [pathname]);
   return null;

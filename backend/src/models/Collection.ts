@@ -27,10 +27,36 @@ const CollectionSchema: Schema = new Schema({
     type: String, // URL to image
   },
   bannerImage: {
-    type: String, // URL to banner image
+    type: String, // URL to desktop banner image
+  },
+  bannerTablet: {
+    type: String, // URL to tablet banner image
+  },
+  mobileBanner: {
+    type: String, // URL to mobile banner image
+  },
+  icon: {
+    type: String, // URL or icon identifier
   },
   video: {
     type: String, // URL to video
+  },
+  showOnHomepage: {
+    type: Boolean,
+    default: true,
+  },
+  showInNavigation: {
+    type: Boolean,
+    default: false,
+  },
+  themeColor: {
+    type: String,
+  },
+  buttonColor: {
+    type: String,
+  },
+  buttonText: {
+    type: String,
   },
   products: [{
     type: Schema.Types.ObjectId,
@@ -64,6 +90,9 @@ const CollectionSchema: Schema = new Schema({
     description: {
       type: String,
     },
+    image: {
+      type: String,
+    },
   },
 }, {
   timestamps: true,
@@ -75,6 +104,8 @@ CollectionSchema.index({ name: 1 });
 CollectionSchema.index({ featured: 1 });
 CollectionSchema.index({ sortOrder: 1 });
 CollectionSchema.index({ isActive: 1 });
+CollectionSchema.index({ showOnHomepage: 1 });
+CollectionSchema.index({ showInNavigation: 1 });
 CollectionSchema.index({ startDate: 1 });
 CollectionSchema.index({ endDate: 1 });
 

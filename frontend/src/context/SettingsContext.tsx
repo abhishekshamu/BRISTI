@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { siteService } from '@/services/site.service';
 import { organizationJsonLd, setJsonLd } from '@/lib/seo';
+import { DEFAULT_SETTINGS } from '@shared/constants';
 import type { SiteSettings } from '@shared/types';
 
 interface SettingsContextValue {
@@ -157,4 +158,9 @@ export function useSiteSettings(): SettingsContextValue {
   const context = useContext(SettingsContext);
   if (!context) throw new Error('useSiteSettings must be used within a SettingsProvider');
   return context;
+}
+
+export function useBrandName(): string {
+  const { settings } = useSiteSettings();
+  return settings?.brandName || DEFAULT_SETTINGS.brandName;
 }

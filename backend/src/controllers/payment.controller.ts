@@ -1,12 +1,22 @@
 import { Request, Response } from 'express';
 import { PaymentService } from '../services/payment.service';
 import { asyncHandler } from '../middleware/async';
+import { BadRequestException } from '../utils/exceptions';
+
+function isAdminUser(user: any): boolean {
+  return !!user && (user.role === 'admin' || user.role === 'super_admin' || !!user.isAdmin);
+}
+
+function currentUserId(user: any): string | null {
+  return user ? String(user.id ?? user._id ?? '') : null;
+}
 
 export class PaymentController {
   constructor(private paymentService: PaymentService) {}
 
   createPayment = asyncHandler(async (req: Request, res: Response) => {
-    const payment = await this.paymentService.createPayment(req.body);
+    const userId = currentUserId(req.user);
+    const payment = await this.paymentService.createPayment({ ...req.body, userId });
     res.status(201).json({
       success: true,
       data: payment
@@ -16,6 +26,10 @@ export class PaymentController {
   getPaymentById = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     const payment = await this.paymentService.getPaymentById(id);
+    const userId = currentUserId(req.user);
+    if (!isAdminUser(req.user) && String(payment.userId) !== userId) {
+      throw new BadRequestException('Not authorized to view this payment');
+    }
     res.status(200).json({
       success: true,
       data: payment
@@ -25,6 +39,13 @@ export class PaymentController {
   getPaymentByOrderId = asyncHandler(async (req: Request, res: Response) => {
     const { orderId } = req.params;
     const payment = await this.paymentService.getPaymentByOrderId(orderId);
+    if (!payment) {
+      throw new BadRequestException('No payment found for this order');
+    }
+    const userId = currentUserId(req.user);
+    if (!isAdminUser(req.user) && String(payment.userId) !== userId) {
+      throw new BadRequestException('Not authorized to view this payment');
+    }
     res.status(200).json({
       success: true,
       data: payment
@@ -62,7 +83,8 @@ export class PaymentController {
 
   createStripeIntent = asyncHandler(async (req: Request, res: Response) => {
     const { amount, currency, orderId } = req.body;
-    const result = await this.paymentService.createStripeIntent(amount, currency || 'USD', orderId);
+    const userId = currentUserId(req.user);
+    const result = await this.paymentService.createStripeIntent(amount, currency || 'USD', orderId, userId || undefined);
     res.status(200).json({
       success: true,
       data: result
@@ -71,7 +93,8 @@ export class PaymentController {
 
   createRazorpayOrder = asyncHandler(async (req: Request, res: Response) => {
     const { amount, currency, orderId } = req.body;
-    const result = await this.paymentService.createRazorpayOrder(amount, currency || 'INR', orderId);
+    const userId = currentUserId(req.user);
+    const result = await this.paymentService.createRazorpayOrder(amount, currency || 'INR', orderId, userId || undefined);
     res.status(200).json({
       success: true,
       data: result

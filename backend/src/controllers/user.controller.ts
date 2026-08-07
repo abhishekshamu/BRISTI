@@ -62,11 +62,12 @@ export class UserController {
   });
 
   listCustomers = asyncHandler(async (req: Request, res: Response) => {
-    const { page = 1, limit = 20, search } = req.query;
+    const { page = 1, limit = 20, search, status } = req.query;
     const result = await this.userService.listCustomers({
       page: parseInt(page as string),
       limit: parseInt(limit as string),
       search: search as string | undefined,
+      status: status as string | undefined,
     });
     res.status(200).json({ success: true, data: result });
   });

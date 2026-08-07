@@ -22,7 +22,7 @@ const NewsletterSubscriberSchema: Schema = new Schema({
   },
   source: {
     type: String,
-    enum: ['homepage', 'popup', 'checkout', 'account_signup', 'social_media', 'blog', 'other'],
+    enum: ['homepage', 'footer', 'popup', 'checkout', 'account_signup', 'social_media', 'blog', 'other'],
     default: 'homepage',
   },
   isActive: {

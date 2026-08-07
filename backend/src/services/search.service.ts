@@ -1,7 +1,7 @@
 import { ProductRepository } from '../repositories/product.repository';
 import { CategoryRepository } from '../repositories/category.repository';
 import { CollectionRepository } from '../repositories/collection.repository';
-import { BlogPostRepository } from '../repositories/blogpost.repository';
+import { BlogRepository } from '../repositories/blog.repository';
 import { PageRepository } from '../repositories/page.repository';
 import { OrderRepository } from '../repositories/order.repository';
 import { UserRepository } from '../repositories/user.repository';
@@ -11,7 +11,7 @@ export class SearchService {
     private productRepo: ProductRepository,
     private categoryRepo: CategoryRepository,
     private collectionRepo: CollectionRepository,
-    private blogRepo: BlogPostRepository,
+    private blogRepo: BlogRepository,
     private pageRepo: PageRepository,
     private orderRepo: OrderRepository,
     private userRepo: UserRepository

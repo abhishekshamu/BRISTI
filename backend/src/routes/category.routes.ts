@@ -5,6 +5,9 @@ import { CategoryRepository } from '../repositories/category.repository';
 import { ProductRepository } from '../repositories/product.repository';
 import { CouponRepository } from '../repositories/coupon.repository';
 import { protect, authorize } from '../middleware/auth.middleware';
+import { auditLog } from '../middleware/audit.middleware';
+import { createCategoryValidation, updateCategoryValidation } from '../validators/category.validators';
+import { validateRequest } from '../validators';
 
 const categoryRepo = new CategoryRepository();
 const productRepo = new ProductRepository();
@@ -20,8 +23,8 @@ router.get('/:id', categoryController.getCategoryById);
 router.get('/slug/:slug', categoryController.getCategoryBySlug);
 router.get('/:categoryId/products', categoryController.getCategoryProducts);
 
-router.post('/', protect, authorize('admin'), categoryController.createCategory);
-router.put('/:id', protect, authorize('admin'), categoryController.updateCategory);
-router.delete('/:id', protect, authorize('admin'), categoryController.deleteCategory);
+router.post('/', protect, authorize('admin'), auditLog('category', 'create'), createCategoryValidation, validateRequest, categoryController.createCategory);
+router.put('/:id', protect, authorize('admin'), auditLog('category', 'update'), updateCategoryValidation, validateRequest, categoryController.updateCategory);
+router.delete('/:id', protect, authorize('admin'), auditLog('category', 'delete'), categoryController.deleteCategory);
 
 export default router;

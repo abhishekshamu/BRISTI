@@ -1,9 +1,14 @@
-import { useState, useEffect } from 'react';
-import { Type, Save } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Type } from 'lucide-react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
+import PageShell from '../../components/ui/PageShell';
+import StickySaveBar from '../../components/ui/StickySaveBar';
+import PageSpinner from '../../components/ui/PageSpinner';
+import { useUnsavedChanges } from '../../lib/unsaved-context';
 
 export default function TypographyEditor() {
+  const { dirty, setDirty } = useUnsavedChanges();
   const [settings, setSettings] = useState({
     headingFont: 'Cormorant Garamond',
     bodyFont: 'Inter',
@@ -11,6 +16,7 @@ export default function TypographyEditor() {
   });
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const baselineRef = useRef<typeof settings | null>(null);
 
   useEffect(() => {
     fetchSettings();
@@ -21,6 +27,7 @@ export default function TypographyEditor() {
       const response = await api.get('/settings');
       if (response.data.data?.typography) {
         setSettings(response.data.data.typography);
+        baselineRef.current = response.data.data.typography;
       }
     } catch (error) {
       console.error('Failed to fetch settings');
@@ -29,10 +36,17 @@ export default function TypographyEditor() {
     }
   };
 
+  const updateSettings = (next: typeof settings) => {
+    setSettings(next);
+    setDirty(true);
+  };
+
   const handleSave = async () => {
     try {
       setSaving(true);
       await api.put('/settings/typography', settings);
+      setDirty(false);
+      baselineRef.current = settings;
       toast.success('Typography settings saved');
     } catch (error) {
       toast.error('Failed to save typography settings');
@@ -41,38 +55,19 @@ export default function TypographyEditor() {
     }
   };
 
+  const handleCancel = () => {
+    if (baselineRef.current) {
+      setSettings(baselineRef.current);
+    }
+    setDirty(false);
+  };
+
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
-      </div>
-    );
+    return <PageSpinner label="Loading typography…" />;
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Typography</h2>
-          <p className="text-slate-500 dark:text-slate-400">Configure fonts and text styles</p>
-        </div>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="admin-btn-primary py-2.5 px-4 flex items-center"
-        >
-          {saving ? (
-            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          ) : (
-            <>
-              <Save className="w-4 h-4 mr-2" />
-              Save Settings
-            </>
-          )}
-        </button>
-      </div>
-
+    <PageShell title="Typography" subtitle="Configure fonts and text styles">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Fonts */}
         <div className="admin-card p-6">
@@ -85,7 +80,7 @@ export default function TypographyEditor() {
               <label className="admin-label">Heading Font</label>
               <select
                 value={settings.headingFont}
-                onChange={(e) => setSettings({ ...settings, headingFont: e.target.value })}
+                onChange={(e) => updateSettings({ ...settings, headingFont: e.target.value })}
                 className="admin-input mt-1"
               >
                 <option value="Cormorant Garamond">Cormorant Garamond</option>
@@ -99,7 +94,7 @@ export default function TypographyEditor() {
               <label className="admin-label">Body Font</label>
               <select
                 value={settings.bodyFont}
-                onChange={(e) => setSettings({ ...settings, bodyFont: e.target.value })}
+                onChange={(e) => updateSettings({ ...settings, bodyFont: e.target.value })}
                 className="admin-input mt-1"
               >
                 <option value="Inter">Inter</option>
@@ -113,7 +108,7 @@ export default function TypographyEditor() {
               <input
                 type="text"
                 value={settings.baseSize}
-                onChange={(e) => setSettings({ ...settings, baseSize: e.target.value })}
+                onChange={(e) => updateSettings({ ...settings, baseSize: e.target.value })}
                 className="admin-input mt-1"
               />
             </div>
@@ -142,6 +137,14 @@ export default function TypographyEditor() {
           </div>
         </div>
       </div>
-    </div>
+
+      <StickySaveBar
+        dirty={dirty}
+        onSave={handleSave}
+        onCancel={handleCancel}
+        saving={saving}
+        saveLabel="Save Settings"
+      />
+    </PageShell>
   );
 }

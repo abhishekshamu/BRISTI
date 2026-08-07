@@ -22,44 +22,35 @@ export class ProductRepository extends BaseRepository<any> {
 
   async findFeatured(limit: number = 10): Promise<IProduct[]> {
     return this.findMany(
-      { featured: true, status: 'active' },
-      { sort: { featuredUntil: -1 }, limit }
+      { isFeatured: true, status: 'active' },
+      { sort: { createdAt: -1 }, limit }
     );
   }
 
-  async findNewArrivals(limit: number = 10, days: number = 30): Promise<IProduct[]> {
-    const date = new Date();
-    date.setDate(date.getDate() - days);
-    
+  async findNewArrivals(limit: number = 10): Promise<IProduct[]> {
     return this.findMany(
-      { 
-        status: 'active',
-        createdAt: { $gte: date }
-      },
+      { isNewArrival: true, status: 'active' },
       { sort: { createdAt: -1 }, limit }
     );
   }
 
   async findOnSale(limit: number = 10): Promise<IProduct[]> {
     return this.findMany(
-      { 
-        status: 'active',
-        compareAtPrice: { $gt: 0 }
-      },
+      { isOnSale: true, status: 'active' },
       { sort: { createdAt: -1 }, limit }
     );
   }
 
   async findBestSellers(limit: number = 10): Promise<IProduct[]> {
     return this.findMany(
-      { status: 'active', 'rating.count': { $gt: 0 } },
+      { isBestSeller: true, status: 'active' },
       { sort: { 'rating.count': -1, 'rating.average': -1 }, limit }
     );
   }
 
   async findTrending(limit: number = 10): Promise<IProduct[]> {
     return this.findMany(
-      { status: 'active' },
+      { isTrending: true, status: 'active' },
       { sort: { 'rating.average': -1, 'rating.count': -1 }, limit }
     );
   }
@@ -92,7 +83,7 @@ export class ProductRepository extends BaseRepository<any> {
   }
 
   async search(query: string, options: any = {}): Promise<IProduct[]> {
-    const searchRegex = new RegExp(query, 'i');
+    const searchRegex = new RegExp(this.escapeRegex(query), 'i');
     return this.findMany(
       {
         $or: [
@@ -105,6 +96,38 @@ export class ProductRepository extends BaseRepository<any> {
       },
       options
     );
+  }
+
+  async searchWithFilter(query: string, options: any = {}, extraFilter: any = {}): Promise<IProduct[]> {
+    const searchRegex = new RegExp(this.escapeRegex(query), 'i');
+    // Search results keep the array response envelope the storefront expects;
+    // `page` is honored via skip so deep pages actually advance.
+    const page = Math.max(1, Number(options.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(options.limit) || 20));
+    const cleanOptions: any = { ...options };
+    delete cleanOptions.page;
+    delete cleanOptions.limit;
+    return this.findMany(
+      {
+        $and: [
+          {
+            $or: [
+              { name: { $regex: searchRegex } },
+              { description: { $regex: searchRegex } },
+              { tags: { $regex: searchRegex } },
+              { sku: { $regex: searchRegex } }
+            ]
+          },
+          extraFilter,
+          { status: 'active' }
+        ]
+      },
+      { ...cleanOptions, skip: (page - 1) * limit, limit }
+    );
+  }
+
+  private escapeRegex(text: string): string {
+    return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   async getProductWithRelations(productId: string): Promise<any> {

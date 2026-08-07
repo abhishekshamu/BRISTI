@@ -43,9 +43,9 @@ export function organizationJsonLd(settings: { brandName?: string; slogan?: stri
 }
 
 export function setDocumentMeta(seo?: SeoInput): void {
-  const title = seo?.title ?? DEFAULT_SETTINGS.seo.defaultTitle;
-  const description = seo?.description ?? DEFAULT_SETTINGS.seo.defaultDescription;
-  const image = seo?.image ?? DEFAULT_SETTINGS.seo.defaultImage;
+  const title = seo?.title ?? DEFAULT_SETTINGS.brandName;
+  const description = seo?.description ?? DEFAULT_SETTINGS.seo.defaultDescription ?? '';
+  const image = seo?.image ?? DEFAULT_SETTINGS.seo.defaultImage ?? '';
 
   document.title = title;
 

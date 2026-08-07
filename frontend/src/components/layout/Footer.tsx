@@ -13,44 +13,13 @@ const SOCIAL_ICONS: Record<string, typeof Instagram> = {
   youtube: Youtube,
 };
 
-const FALLBACK_LINK_COLUMNS = [
-  {
-    title: 'Shop',
-    links: [
-      { label: 'New Arrivals', to: '/new-arrivals' },
-      { label: 'Sale', to: '/sale' },
-      { label: 'All Collections', to: '/collections' },
-      { label: 'Shop All', to: '/shop' },
-    ],
-  },
-  {
-    title: 'Maison',
-    links: [
-      { label: 'About BRISTI', to: '/about' },
-      { label: 'The Journal', to: '/journal' },
-      { label: 'Contact', to: '/contact' },
-      { label: 'Track Order', to: '/track-order' },
-    ],
-  },
-  {
-    title: 'Policies',
-    links: [
-      { label: 'Privacy Policy', to: '/privacy' },
-      { label: 'Terms of Service', to: '/terms' },
-      { label: 'Shipping & Delivery', to: '/shipping' },
-      { label: 'Returns & Refunds', to: '/refund' },
-      { label: 'FAQ', to: '/faq' },
-    ],
-  },
-];
-
 export function Footer() {
   const { settings } = useSiteSettings();
   const [email, setEmail] = useState('');
   const [subscribing, setSubscribing] = useState(false);
 
   const brandName = settings?.brandName || 'BRISTI';
-  const tagline = settings?.slogan || 'Luxury redefined';
+  const tagline = settings?.slogan;
   const showLogoImage = !!settings?.logo && settings.logo !== '/logo.png' && settings.logo !== '/favicon.svg';
 
   const linkColumns: Array<{ title: string; links: Array<{ label: string; to: string }>; content?: string }> = settings?.footer?.sections?.length
@@ -62,11 +31,9 @@ export function Footer() {
           links: (section.links || []).map((link) => ({ label: link.label, to: link.url })),
           content: section.content,
         }))
-    : FALLBACK_LINK_COLUMNS;
-
-  const socialLinks = settings?.socialLinks?.length
-    ? settings.socialLinks.filter((link) => link.url && SOCIAL_ICONS[link.platform])
     : [];
+
+  const socialLinks = (settings?.socialLinks ?? []).filter((link) => link.url && SOCIAL_ICONS[link.platform]);
 
   const handleSubscribe = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -97,11 +64,13 @@ export function Footer() {
               ) : (
                 <span className="font-display text-3xl font-semibold tracking-[0.3em] text-[var(--footer-heading)]">{brandName}</span>
               )}
-              <span className="mt-2 text-[10px] uppercase tracking-lux text-[var(--footer-text)]">{tagline}</span>
+              {tagline && (
+                <span className="mt-2 text-[10px] uppercase tracking-lux text-[var(--footer-text)]">{tagline}</span>
+              )}
             </Link>
-            <p className="max-w-xs text-sm leading-7 text-[var(--footer-text)]">
-              {settings?.contactInfo?.address || 'Timeless elegance, modern sophistication. A maison devoted to the art of dressing well.'}
-            </p>
+            {settings?.contactInfo?.address && (
+              <p className="max-w-xs text-sm leading-7 text-[var(--footer-text)]">{settings.contactInfo.address}</p>
+            )}
             <form onSubmit={handleSubscribe} className="mt-2 flex max-w-sm items-stretch">
               <input
                 type="email"
@@ -114,14 +83,15 @@ export function Footer() {
               <button
                 type="submit"
                 disabled={subscribing}
+                aria-label="Subscribe to newsletter"
                 className="flex h-12 items-center gap-2 bg-[var(--footer-heading)] px-5 text-[11px] font-medium uppercase tracking-lux-sm text-[var(--footer-background)] transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-60"
               >
                 {subscribing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
               </button>
             </form>
-            {(socialLinks.length > 0 || !socialLinks.length) && (
+            {socialLinks.length > 0 && (
               <div className="flex items-center gap-3">
-                {(socialLinks.length > 0 ? socialLinks : Object.keys(SOCIAL_ICONS).map((p) => ({ platform: p, url: `https://${p}.com/bristi` }))).map(({ platform, url }) => {
+                {socialLinks.map(({ platform, url }) => {
                   const Icon = SOCIAL_ICONS[platform];
                   if (!Icon) return null;
                   return (

@@ -6,10 +6,29 @@ import { InventoryItemRepository } from '../repositories/inventory-item.reposito
 import { WishlistRepository } from '../repositories/wishlist.repository';
 import { CartRepository } from '../repositories/cart.repository';
 import { CouponRepository } from '../repositories/coupon.repository';
+import { MediaRepository } from '../repositories/media.repository';
 import { NotificationService } from './notification.service';
 import { notifyAdmins } from './admin-notifier';
+import { UserModel } from '../models/User';
 import { IProduct, IReview } from 'shared/types';
+import { Types } from 'mongoose';
 import { NotFoundException, BadRequestException } from '../utils/exceptions';
+import { normalizeSeo } from '../utils/seo';
+
+// Query param name → product field. Every marketing list has an independent
+// boolean on the product; filters are combinable (AND).
+const FLAG_FILTER_MAP: Record<string, string> = {
+  newArrival: 'isNewArrival',
+  bestSeller: 'isBestSeller',
+  trending: 'isTrending',
+  sale: 'isOnSale',
+  featured: 'isFeatured',
+  recommended: 'isRecommended',
+  exclusive: 'isExclusive',
+  limitedEdition: 'isLimitedEdition',
+  editorsPick: 'isEditorsPick',
+  premiumCollection: 'isPremiumCollection',
+};
 
 export class ProductService {
   constructor(
@@ -21,7 +40,8 @@ export class ProductService {
     private wishlistRepo: WishlistRepository,
     private cartRepo: CartRepository,
     private couponRepo: CouponRepository,
-    private notificationService: NotificationService
+    private notificationService: NotificationService,
+    private mediaRepo: MediaRepository = new MediaRepository()
   ) {}
 
   private async syncCategoryCount(categoryId: any): Promise<void> {
@@ -51,6 +71,7 @@ export class ProductService {
   }
 
   async createProduct(productData: Partial<IProduct>): Promise<IProduct> {
+    productData = normalizeSeo(productData);
     if (productData.category) {
       const categoryExists = await this.categoryRepo.exists({ _id: productData.category });
       if (!categoryExists) {
@@ -62,6 +83,15 @@ export class ProductService {
       const collectionExists = await this.collectionRepo.exists({ _id: productData.collection });
       if (!collectionExists) {
         throw new BadRequestException('Collection not found');
+      }
+    }
+
+    // Validate every marketing collection slug exists in the CMS
+    if (productData.collections?.length) {
+      const valid = await this.collectionRepo.exists({ slug: { $in: productData.collections } });
+      const count = await this.collectionRepo.count({ slug: { $in: productData.collections } });
+      if (!valid || count !== new Set(productData.collections).size) {
+        throw new BadRequestException('One or more collections do not exist');
       }
     }
 
@@ -114,6 +144,7 @@ export class ProductService {
   }
 
   async updateProduct(productId: string, updateData: Partial<IProduct>): Promise<IProduct> {
+    updateData = normalizeSeo(updateData);
     const existing = await this.productRepo.findById(productId);
     if (!existing) {
       throw new NotFoundException('Product not found');
@@ -130,6 +161,13 @@ export class ProductService {
       const collectionExists = await this.collectionRepo.exists({ _id: updateData.collection });
       if (!collectionExists) {
         throw new BadRequestException('Collection not found');
+      }
+    }
+
+    if (updateData.collections?.length) {
+      const count = await this.collectionRepo.count({ slug: { $in: updateData.collections } });
+      if (count !== new Set(updateData.collections).size) {
+        throw new BadRequestException('One or more collections do not exist');
       }
     }
 
@@ -177,7 +215,11 @@ export class ProductService {
     // Cascade cleanup: reviews, cart items, wishlists, coupons, collections, inventory
     await this.reviewRepo.deleteMany({ productId });
     await this.cartRepo.deleteMany({ 'items.productId': productId });
-    await this.wishlistRepo.deleteMany({ productId });
+    // Wishlist stores ids in a `productIds` array — target that field
+    await this.wishlistRepo.deleteMany({ productIds: productId });
+    // Also pull the id from users' embedded wishlist arrays
+    await UserModel.updateMany({ wishlist: productId }, { $pull: { wishlist: productId } });
+    // Also pull the id from users' embedded wishlist arrays and carts
     await this.couponRepo.updateMany(
       { productIds: productId },
       { $pull: { productIds: productId } }
@@ -187,6 +229,18 @@ export class ProductService {
       { $pull: { products: productId } }
     );
     await this.inventoryRepo.deleteMany({ productId });
+
+    // Cascade the product's own media library entries (URL-matched) so
+    // deleted products do not leave orphaned MediaFile documents behind.
+    const mediaUrls = [
+      ...(product.images ?? []).map((img: any) => img?.url),
+      ...(product.videos ?? []).map((v: any) => v?.url),
+      ...(product.videos ?? []).map((v: any) => v?.thumbnail),
+    ].filter(Boolean);
+    if (mediaUrls.length > 0) {
+      await this.mediaRepo.deleteMany({ url: { $in: mediaUrls } });
+      await this.mediaRepo.deleteMany({ thumbnailUrl: { $in: mediaUrls } });
+    }
 
     const deleted = await this.productRepo.deleteById(productId);
     if (!deleted) {
@@ -199,19 +253,118 @@ export class ProductService {
   }
 
   async getProducts(options: any = {}): Promise<any> {
-    const filter: any = { status: 'active' };
+    const filter: any = {};
+    // Storefront defaults to live products only; an explicit `status` param
+    // (used by the admin product manager) overrides that. `status=all` from
+    // the admin list shows every status including draft/archived.
+    if (options.status && options.status !== 'all') filter.status = options.status;
+    else if (!options.status) filter.status = 'active';
     const paginateOptions: any = { ...options };
-    if (options.category) filter.category = options.category;
+    // Multi-category support (OR semantics): `category` and/or `categories`
+    // may be a single value, a comma-separated list, or a repeated query
+    // param (array). Values may be category _ids or slugs — both are
+    // resolved into _ids and applied as a single $in (union) filter. A
+    // product only ever belongs to one category, so $in is the only
+    // correct semantic.
+    const categoryValues = this.collectListParam(options.category).concat(
+      this.collectListParam(options.categories)
+    );
+    if (categoryValues.length > 0) {
+      const categoryIds = await this.resolveCategoryIds(categoryValues);
+      // $in: [] matches nothing, so a stale/unknown slug yields an empty
+      // (but valid) result instead of falling back to "all products".
+      filter.category = categoryIds.length > 1 ? { $in: categoryIds } : categoryIds.length === 1 ? categoryIds[0] : { $in: [] };
+    }
+    if (options.collections) {
+      const collectionList = Array.isArray(options.collections)
+        ? options.collections
+        : String(options.collections)
+            .split(',')
+            .map((slug: string) => slug.trim())
+            .filter(Boolean);
+      filter.collections = collectionList.length > 1 ? { $in: collectionList } : collectionList[0];
+    }
     if (options.collection) filter.collection = options.collection;
-    if (options.featured !== undefined) filter.featured = options.featured;
+    // Independent marketing flags (combinable). Each param maps to a product
+    // boolean field; multiple flags AND together. Accepts true/false/1/0.
+    for (const [param, field] of Object.entries(FLAG_FILTER_MAP)) {
+      const value = options[param];
+      if (value === undefined || value === null) continue;
+      const enabled = String(value).toLowerCase();
+      if (enabled === 'true' || enabled === '1') filter[field] = true;
+      else if (enabled === 'false' || enabled === '0') filter[field] = false;
+    }
     if (options.minPrice !== undefined) filter.price = { ...filter.price, $gte: options.minPrice };
     if (options.maxPrice !== undefined) filter.price = { ...filter.price, $lte: options.maxPrice };
+    // Server-side search (name / description / tags / sku) — the admin
+    // product list searches across all pages, not just the current one.
+    if (options.search) {
+      const re = new RegExp(String(options.search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      filter.$or = [
+        { name: { $regex: re } },
+        { description: { $regex: re } },
+        { tags: { $regex: re } },
+        { sku: { $regex: re } },
+      ];
+    }
+    for (const param of Object.keys(FLAG_FILTER_MAP)) delete paginateOptions[param];
     delete paginateOptions.category;
+    delete paginateOptions.categories;
     delete paginateOptions.collection;
+    delete paginateOptions.collections;
     delete paginateOptions.featured;
+    delete paginateOptions.status;
+    delete paginateOptions.search;
     delete paginateOptions.minPrice;
     delete paginateOptions.maxPrice;
     return this.productRepo.paginate(filter, paginateOptions);
+  }
+
+  // Splits a query param into a list of values regardless of whether it
+  // arrived as a single string, a comma-separated string, or a repeated
+  // (array) param. Values are URL-decoded, trimmed and lowercased.
+  private collectListParam(value: any): string[] {
+    if (value === undefined || value === null) return [];
+    const rawList = Array.isArray(value) ? value : String(value);
+    const list = Array.isArray(rawList) ? rawList : [rawList];
+    const values: string[] = [];
+    for (const item of list) {
+      for (const part of String(item).split(',')) {
+        const cleaned = this.normalizeCategoryValue(part);
+        if (cleaned) values.push(cleaned);
+      }
+    }
+    return values;
+  }
+
+  private normalizeCategoryValue(value: string): string {
+    let cleaned = value.trim().toLowerCase();
+    try {
+      cleaned = decodeURIComponent(cleaned);
+    } catch {
+      // already decoded or not encodable — keep as-is
+    }
+    cleaned = cleaned.trim();
+    return cleaned;
+  }
+
+  // Accepts a mix of category _ids and slugs; slugs are resolved to _ids
+  // server-side so the client never needs to know category ids.
+  private async resolveCategoryIds(values: string[]): Promise<string[]> {
+    const ids = new Set<string>();
+    const slugCandidates: string[] = [];
+    for (const value of values) {
+      if (Types.ObjectId.isValid(value)) {
+        ids.add(value);
+      } else {
+        slugCandidates.push(value);
+      }
+    }
+    if (slugCandidates.length > 0) {
+      const matches = await this.categoryRepo.findMany({ slug: { $in: slugCandidates } });
+      for (const match of matches) ids.add(String(match._id));
+    }
+    return Array.from(ids);
   }
 
   async getFeaturedProducts(limit: number = 10): Promise<IProduct[]> {
@@ -254,7 +407,19 @@ export class ProductService {
   }
 
   async searchProducts(query: string, options: any = {}): Promise<IProduct[]> {
-    return this.productRepo.search(query, options);
+    const searchOptions: any = { ...options };
+    const collectionFilter: any = {};
+    if (options.collections) {
+      const collectionList = Array.isArray(options.collections)
+        ? options.collections
+        : String(options.collections)
+            .split(',')
+            .map((slug: string) => slug.trim())
+            .filter(Boolean);
+      collectionFilter.collections = collectionList.length > 1 ? { $in: collectionList } : collectionList[0];
+    }
+    delete searchOptions.collections;
+    return this.productRepo.searchWithFilter(query, searchOptions, collectionFilter);
   }
 
   async getProductsByCategory(categoryId: string, options: any = {}): Promise<any> {

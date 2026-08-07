@@ -35,15 +35,22 @@ const MediaFileSchema: Schema = new Schema({
     type: Number,
     min: 0,
   },
-  height: {
+height: {
     type: Number,
     min: 0,
   },
+  ratio: {
+    type: String,
+  }, // Auto-detected aspect ratio (e.g. '3:4') — never changed by the system, informational only
   duration: {
     type: Number,
     min: 0,
   }, // For video/audio files
   altText: {
+    type: String,
+    trim: true,
+  },
+  title: {
     type: String,
     trim: true,
   },
@@ -60,6 +67,42 @@ const MediaFileSchema: Schema = new Schema({
     type: String,
     default: '/',
     trim: true,
+  },
+  checksum: {
+    type: String,
+  },
+  favorite: {
+    type: Boolean,
+    default: false,
+  },
+  variants: {
+    type: Schema.Types.Mixed,
+    default: {},
+  },
+  derived: [{
+    url: { type: String },
+    width: { type: Number },
+    height: { type: Number },
+    ratio: { type: String },
+    source: { type: String, enum: ['auto', 'manual'] },
+    createdAt: { type: Date, default: Date.now },
+  }],
+  versions: [{
+    url: { type: String },
+    thumbnailUrl: { type: String },
+    width: { type: Number },
+    height: { type: Number },
+    size: { type: Number },
+    mimeType: { type: String },
+    note: { type: String },
+    createdAt: { type: Date, default: Date.now },
+  }],
+  optimization: {
+    type: Schema.Types.Mixed,
+    default: {},
+  },
+  lastUsedAt: {
+    type: Date,
   },
   uploadedBy: {
     type: Schema.Types.ObjectId,
@@ -87,6 +130,9 @@ MediaFileSchema.index({ uploadedBy: 1 });
 MediaFileSchema.index({ createdAt: -1 });
 MediaFileSchema.index({ tags: 1 });
 MediaFileSchema.index({ isPublic: 1 });
+MediaFileSchema.index({ checksum: 1 });
+MediaFileSchema.index({ favorite: 1 });
+MediaFileSchema.index({ lastUsedAt: -1 });
 
 // Virtual for file extension
 MediaFileSchema.virtual('extension').get(function() {

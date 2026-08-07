@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { CalendarDays, Clock } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -10,14 +10,17 @@ import { ErrorState } from '@/components/shared/ErrorState';
 import { Pagination } from '@/components/ui/pagination';
 import { usePageMeta } from '@/lib/seo';
 import { calculateReadingTime, formatDate, getImageUrl } from '@/lib/utils';
+import { useBrandName } from '@/context/SettingsContext';
 import type { BlogPost } from '@shared/types';
 
 const PAGE_SIZE = 12;
 
 export default function JournalPage() {
-  const [activeTag, setActiveTag] = useState<string | null>(null);
+  const brandName = useBrandName();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTag = searchParams.get('tag');
   const [page, setPage] = useState(1);
-  usePageMeta({ title: 'The Journal — BRISTI', description: 'Stories from the maison: craftsmanship, culture and the art of dressing well.' });
+  usePageMeta({ title: `The Journal — ${brandName}`, description: `Stories from the maison: craftsmanship, culture and the art of dressing well.` });
 
   const { data: tagsPage } = useQuery({
     queryKey: ['blogs', 'tags'],
@@ -51,9 +54,14 @@ export default function JournalPage() {
   const rest = showFeatured ? posts.slice(1) : posts;
 
   const selectTag = (tag: string | null) => {
-    setActiveTag(tag);
+    const next = new URLSearchParams(searchParams);
+    if (tag) next.set('tag', tag);
+    else next.delete('tag');
+    setSearchParams(next, { replace: false });
     setPage(1);
   };
+
+  const toggleTag = (tag: string) => selectTag(activeTag === tag ? null : tag);
 
   return (
     <>
@@ -77,7 +85,7 @@ export default function JournalPage() {
             <button
               key={tag}
               type="button"
-              onClick={() => selectTag(activeTag === tag ? null : tag)}
+              onClick={() => toggleTag(tag)}
               className={`border px-4 py-2 text-[11px] uppercase tracking-[0.12em] transition-colors ${activeTag === tag ? 'border-foreground bg-foreground text-background' : 'border-border text-muted-foreground hover:border-foreground'}`}
             >
               {tag}

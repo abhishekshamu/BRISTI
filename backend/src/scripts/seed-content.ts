@@ -2,6 +2,8 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import { BlogPostModel } from '../models/BlogPost';
 import { FAQModel } from '../models/FAQ';
+import { PageModel } from '../models/Page';
+import { UserModel } from '../models/User';
 import { getMongoUri, stopMemoryMongo } from '../config/database';
 
 dotenv.config();
@@ -73,7 +75,7 @@ const BLOG_POSTS = [
 ];
 
 const FAQS = [
-  { question: 'How do I find my size?', answer: 'Every product page includes a detailed size guide with measurements for each garment. When in doubt, our concierge can help you choose the perfect fit — write to hello@bristi.com with your height, weight and usual size.', category: 'Orders', sortOrder: 1 },
+  { question: 'How do I find my size?', answer: 'Every product page includes a detailed size guide with measurements for each garment. When in doubt, our concierge can help you choose the perfect fit.', category: 'Orders', sortOrder: 1 },
   { question: 'Can I track my order?', answer: 'Yes. Once your order ships you will receive tracking details by email, and you can follow progress from your account dashboard or the Track Order page.', category: 'Shipping', sortOrder: 2 },
   { question: 'How long does delivery take?', answer: 'Standard delivery takes 2–4 business days. Express delivery is available at checkout and takes 1–2 business days. International deliveries take 5–10 business days depending on destination.', category: 'Shipping', sortOrder: 3 },
   { question: 'Is shipping free?', answer: 'Shipping is complimentary on all orders over $100. Orders below this threshold incur a flat shipping fee of $15, charged at checkout.', category: 'Shipping', sortOrder: 4 },
@@ -84,12 +86,65 @@ const FAQS = [
   { question: 'Are my payment details secure?', answer: 'Payments are processed by trusted third-party providers (Stripe and Razorpay) using industry-standard encryption. Card details are never stored on our servers.', category: 'Payments', sortOrder: 9 },
   { question: 'How do I care for my pieces?', answer: 'Care instructions are printed on each garment label. As a rule, our pieces prefer gentle handling — cool water, mild detergent and air-drying. Never tumble-dry wool or brushed cottons.', category: 'Care', sortOrder: 10 },
   { question: 'Do you offer gift wrapping?', answer: 'We do. Add a note at checkout and our atelier will wrap your pieces in our signature packaging, ready to gift.', category: 'Orders', sortOrder: 11 },
-  { question: 'How can I contact the maison?', answer: 'Our concierge is available seven days a week at hello@bristi.com or +1 (555) 123-4567. We respond within 24 hours.', category: 'Contact', sortOrder: 12 },
+  { question: 'How can I contact the maison?', answer: 'Our contact details are listed on the Contact page. We respond within 24 hours.', category: 'Contact', sortOrder: 12 },
+];
+
+const PAGES = [
+  {
+    slug: 'privacy',
+    title: 'Privacy Policy',
+    excerpt: 'How BRISTI collects, uses and protects your personal data.',
+    content: '<h2>1. What we collect</h2><p>We collect the information you provide when placing an order or creating an account: name, email address, shipping and billing address, phone number and order history. Payment details are handled by our payment providers and are never stored on our servers.</p><h2>2. How we use it</h2><p>Your data is used to process orders, deliver purchases, provide customer support, and — with your consent — send updates about new collections. We never sell personal data to third parties.</p><h2>3. Your rights</h2><p>You may request a copy of your data, correct inaccuracies, or ask us to delete your account and data at any time by contacting us through the Contact page.</p><h2>4. Cookies</h2><p>We use essential cookies to keep your cart and session working. Analytics and marketing cookies are only set with your consent.</p><h2>5. Contact</h2><p>For any privacy questions, contact us via the Contact page.</p>',
+    seo: { title: 'Privacy Policy | BRISTI', description: 'How BRISTI collects, uses and protects your personal data.' },
+  },
+  {
+    slug: 'terms',
+    title: 'Terms of Service',
+    excerpt: 'The terms governing your use of the BRISTI store.',
+    content: '<h2>1. Agreement</h2><p>By using this store you agree to these terms. We may update them from time to time; continued use of the store constitutes acceptance of the updated terms.</p><h2>2. Orders</h2><p>All orders are subject to availability and confirmation of the price. We reserve the right to cancel any order for fraud prevention or pricing errors.</p><h2>3. Pricing</h2><p>Prices are displayed in the store currency and include applicable taxes unless stated otherwise at checkout.</p><h2>4. Intellectual property</h2><p>All content on this store — designs, text, imagery — is the property of BRISTI and may not be reproduced without written permission.</p>',
+    seo: { title: 'Terms of Service | BRISTI', description: 'The terms governing your use of the BRISTI store.' },
+  },
+  {
+    slug: 'shipping',
+    title: 'Shipping & Delivery',
+    excerpt: 'Delivery times and costs for every destination.',
+    content: '<h2>Standard delivery</h2><p>Standard delivery takes 2–4 business days within the USA. International deliveries take 5–10 business days depending on destination.</p><h2>Express delivery</h2><p>Express delivery is available at checkout and takes 1–2 business days.</p><h2>Shipping costs</h2><p>Shipping is complimentary on all orders over $100. Orders below this threshold incur a flat shipping fee of $15, charged at checkout.</p><h2>Tracking</h2><p>Once your order ships you will receive tracking details by email, and you can follow progress from your account dashboard or the Track Order page.</p>',
+    seo: { title: 'Shipping & Delivery | BRISTI', description: 'Delivery times and costs for every destination.' },
+  },
+  {
+    slug: 'refund',
+    title: 'Returns & Refunds',
+    excerpt: 'Our 30-day returns policy, step by step.',
+    content: '<h2>Returns window</h2><p>We accept returns within 30 days of delivery. Items must be unworn, unwashed and returned with all original tags and packaging.</p><h2>How to return</h2><p>Start a return from your account dashboard or by contacting us through the Contact page. A prepaid return label is provided for standard returns.</p><h2>Refunds</h2><p>Refunds are issued to the original payment method within 5–7 business days of receiving your return.</p><h2>Exchanges</h2><p>Exchanges are treated as a return plus a new order, ensuring you receive your new size or piece as quickly as possible.</p>',
+    seo: { title: 'Returns & Refunds | BRISTI', description: 'Our 30-day returns policy, step by step.' },
+  },
+  {
+    slug: 'contact',
+    title: 'Contact the Maison',
+    excerpt: 'Questions, commissions or private appointments.',
+    content: '<p>We would love to hear from you. Send us a message through the form, and we will respond within 24 hours.</p>',
+    seo: { title: 'Contact | BRISTI', description: 'Questions, commissions or private appointments.' },
+  },
+  {
+    slug: 'about',
+    title: 'About BRISTI',
+    excerpt: 'A maison built on restraint, precision and rare fabrics.',
+    content: '<p>BRISTI is a luxury clothing brand defined by what it leaves out. Every piece is cut from rare fabrics, constructed with precision tailoring, and finished to a standard that does not announce itself.</p><p>Our atelier runs on a simple belief: a wardrobe should be built slowly, from a few exceptional pieces rather than many ordinary ones.</p>',
+    seo: { title: 'About | BRISTI', description: 'A maison built on restraint, precision and rare fabrics.' },
+  },
+  {
+    slug: 'faq',
+    title: 'Frequently Asked Questions',
+    excerpt: 'Answers to the questions we hear most often.',
+    content: '<p>Browse the FAQ sections below for answers to common questions about orders, shipping, returns, payments and care. Can\'t find what you need? Contact us.</p>',
+    seo: { title: 'FAQs | BRISTI', description: 'Answers to the questions we hear most often.' },
+  },
 ];
 
 async function run() {
+  const alreadyConnected = mongoose.connection.readyState === 1;
   const uri = await getMongoUri();
-  await mongoose.connect(uri);
+  if (!alreadyConnected) await mongoose.connect(uri);
   console.log(`Seeding content into: ${uri}`);
 
   let createdBlogs = 0;
@@ -117,12 +172,38 @@ async function run() {
   }
   console.log(`FAQs seeded (${createdFaqs} created).`);
 
-  await mongoose.disconnect();
-  await stopMemoryMongo();
+  const author = await UserModel.findOne({}).sort({ createdAt: 1 });
+  if (author) {
+    let createdPages = 0;
+    for (const page of PAGES) {
+      const existing = await PageModel.findOne({ slug: page.slug });
+      if (existing) continue;
+      await PageModel.create({
+        ...page,
+        content: page.content,
+        status: 'published',
+        createdBy: author._id,
+      });
+      createdPages++;
+      console.log(`Page created: ${page.slug}`);
+    }
+    console.log(`Pages seeded (${createdPages} created).`);
+  } else {
+    console.warn('No user found — skipping page seeding (pages require a createdBy user).');
+  }
+
+  if (!alreadyConnected) {
+    await mongoose.disconnect();
+    await stopMemoryMongo();
+  }
   console.log('Content seed complete.');
 }
 
-run().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+export { run };
+
+if (require.main === module) {
+  run().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}

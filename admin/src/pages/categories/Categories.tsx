@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  Plus,
-  Search,
-  Edit,
-  Trash2,
-  ChevronRight,
-  FolderTree,
-} from 'lucide-react';
+import { Plus, Edit, Trash2, ChevronRight, FolderTree } from 'lucide-react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
+import PageShell from '../../components/ui/PageShell';
+import Toolbar from '../../components/ui/Toolbar';
+import IconBtn from '../../components/ui/IconBtn';
+import Badge from '../../components/ui/Badge';
+import EmptyState from '../../components/ui/EmptyState';
+import PageSpinner from '../../components/ui/PageSpinner';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 interface Category {
   _id: string;
@@ -32,6 +32,7 @@ export default function Categories() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
 
   useEffect(() => {
     fetchCategories();
@@ -39,7 +40,7 @@ export default function Categories() {
 
   const fetchCategories = async () => {
     try {
-      const response = await api.get('/categories');
+      const response = await api.get('/categories?includeInactive=true');
       setCategories(response.data.data || []);
     } catch (error) {
       toast.error('Failed to fetch categories');
@@ -48,12 +49,13 @@ export default function Categories() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this category?')) return;
-    
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+
     try {
-      await api.delete(`/categories/${id}`);
+      await api.delete(`/categories/${deleteTarget._id}`);
       toast.success('Category deleted successfully');
+      setDeleteTarget(null);
       fetchCategories();
     } catch (error) {
       toast.error('Failed to delete category');
@@ -79,9 +81,21 @@ export default function Categories() {
       }));
   };
 
+  const matchesSearch = (category: Category) =>
+    category.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    category.slug.toLowerCase().includes(searchQuery.toLowerCase());
+
+  const filterTree = (nodes: Category[]): Category[] =>
+    nodes
+      .map(node => ({
+        ...node,
+        children: node.children ? filterTree(node.children) : [],
+      }))
+      .filter(node => matchesSearch(node) || (node.children?.length ?? 0) > 0);
+
   const renderCategory = (category: Category, level: number = 0) => {
     const hasChildren = category.children && category.children.length > 0;
-    const isExpanded = expandedIds.has(category._id);
+    const isExpanded = searchQuery.trim() ? true : expandedIds.has(category._id);
 
     return (
       <div key={category._id}>
@@ -117,26 +131,16 @@ export default function Categories() {
             <span className="text-sm text-slate-500 dark:text-slate-400">
               {category.productCount || 0} products
             </span>
-            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-              category.isActive
-                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400'
-            }`}>
+            <Badge tone={category.isActive ? 'green' : 'slate'}>
               {category.isActive ? 'Active' : 'Inactive'}
-            </span>
+            </Badge>
             <div className="flex items-center space-x-2">
-              <Link
-                to={`/categories/${category._id}/edit`}
-                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md"
-              >
-                <Edit className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+              <Link to={`/categories/${category._id}/edit`} className="admin-icon-btn">
+                <Edit className="w-4 h-4" />
               </Link>
-              <button
-                onClick={() => handleDelete(category._id)}
-                className="p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md"
-              >
+              <IconBtn title="Delete" onClick={() => setDeleteTarget(category)}>
                 <Trash2 className="w-4 h-4 text-red-600" />
-              </button>
+              </IconBtn>
             </div>
           </div>
         </div>
@@ -149,58 +153,56 @@ export default function Categories() {
     );
   };
 
-  const tree = buildTree(categories);
+  const tree = filterTree(buildTree(categories));
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Categories</h2>
-          <p className="text-slate-500 dark:text-slate-400">Organize your products into categories</p>
-        </div>
-        <Link to="/categories/create" className="admin-btn-primary py-2.5 px-4 flex items-center">
-          <Plus className="w-4 h-4 mr-2" />
+    <PageShell
+      title="Categories"
+      subtitle="Organize your products into categories"
+      actions={
+        <Link to="/categories/create" className="admin-btn-primary h-10 px-4 text-sm flex items-center gap-1.5">
+          <Plus className="w-4 h-4" />
           Add Category
         </Link>
-      </div>
+      }
+    >
+      <Toolbar
+        searchable
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Search categories..."
+      />
 
-      {/* Search */}
-      <div className="admin-card p-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search categories..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="admin-input pl-10"
-          />
-        </div>
-      </div>
-
-      {/* Categories list */}
       <div className="admin-card overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
-          </div>
+          <PageSpinner />
+        ) : tree.length === 0 ? (
+          <EmptyState
+            title="No categories found"
+            body="Create your first category to start organizing products."
+            icon={<FolderTree className="w-6 h-6" />}
+            action={
+              <Link to="/categories/create" className="admin-btn-primary h-10 px-4 text-sm inline-flex items-center gap-1.5">
+                <Plus className="w-4 h-4" />
+                Create your first category
+              </Link>
+            }
+          />
         ) : (
           <div>
             {tree.map(category => renderCategory(category))}
-            {tree.length === 0 && (
-              <div className="text-center py-12">
-                <FolderTree className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                <p className="text-slate-500 dark:text-slate-400">No categories found</p>
-                <Link to="/categories/create" className="admin-btn-primary mt-4 py-2 px-4 inline-flex items-center">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create your first category
-                </Link>
-              </div>
-            )}
           </div>
         )}
       </div>
-    </div>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Delete category"
+        body={`Are you sure you want to delete "${deleteTarget?.name}"?`}
+        confirmLabel="Delete"
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
+    </PageShell>
   );
 }

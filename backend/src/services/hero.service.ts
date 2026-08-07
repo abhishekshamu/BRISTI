@@ -1,6 +1,7 @@
 import { HeroBlockModel, IHeroBlockDoc } from '../models/HeroBlock';
 import { HeroBlock, HeroSlide } from 'shared/types';
 import { heroBus, HERO_CHANGED } from '../events/heroBus';
+import { NotFoundError } from '../utils/exceptions';
 
 function slideIsLive(slide: HeroSlide | undefined, now: Date): boolean {
   if (!slide) return false;
@@ -76,7 +77,7 @@ export class HeroService {
 
   async getBlockById(id: string): Promise<IHeroBlockDoc> {
     const block = await HeroBlockModel.findById(id).exec();
-    if (!block) throw new Error('Hero block not found');
+    if (!block) throw new NotFoundError('Hero block not found');
     return block;
   }
 
@@ -89,14 +90,14 @@ export class HeroService {
 
   async updateBlock(id: string, data: Partial<HeroBlock>): Promise<IHeroBlockDoc> {
     const updated = await HeroBlockModel.findByIdAndUpdate(id, data, { new: true, runValidators: true }).exec();
-    if (!updated) throw new Error('Hero block not found');
+    if (!updated) throw new NotFoundError('Hero block not found');
     heroBus.emit(HERO_CHANGED);
     return updated;
   }
 
   async deleteBlock(id: string): Promise<void> {
     const deleted = await HeroBlockModel.findByIdAndDelete(id).exec();
-    if (!deleted) throw new Error('Hero block not found');
+    if (!deleted) throw new NotFoundError('Hero block not found');
     heroBus.emit(HERO_CHANGED);
   }
 

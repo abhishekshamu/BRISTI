@@ -6,17 +6,25 @@ import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import type { Product } from '@shared/types';
 
+export type ProductGridColumns = 3 | 4;
+
+export function productGridClass(columns: ProductGridColumns = 3) {
+  return columns === 4
+    ? 'grid grid-cols-2 gap-x-5 gap-y-10 sm:gap-x-8 lg:grid-cols-4'
+    : 'grid grid-cols-2 gap-x-5 gap-y-10 sm:gap-x-8 lg:grid-cols-3';
+}
+
 interface ProductGridProps {
   products: Product[];
+  columns?: ProductGridColumns;
   isLoading?: boolean;
   hasMore?: boolean;
   loadMore?: () => void;
   pageKey?: string;
-  columns?: 3 | 4;
   className?: string;
 }
 
-export function ProductGrid({ products, isLoading, hasMore, loadMore, pageKey, columns = 4, className }: ProductGridProps) {
+export function ProductGrid({ products, columns = 3, isLoading, hasMore, loadMore, pageKey, className }: ProductGridProps) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -33,7 +41,7 @@ export function ProductGrid({ products, isLoading, hasMore, loadMore, pageKey, c
 
   return (
     <div>
-      <div className={cn('grid grid-cols-2 gap-x-5 gap-y-10 sm:gap-x-8 lg:grid-cols-3', columns === 4 && 'xl:grid-cols-4', className)}>
+      <div className={cn(productGridClass(columns), className)}>
         {products.map((product) => (
           <ProductCard key={String(product._id)} product={product} />
         ))}

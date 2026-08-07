@@ -25,9 +25,13 @@
     "db:migrate": "npm run db:migrate --workspace=backend"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "playwright": "^1.62.1"
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "google-auth-library": "^11.0.0"
   }
 }

@@ -9,7 +9,10 @@ export class AuditService {
   }
 
   async getLogs(options: any = {}) {
-    return this.auditRepo.paginate({}, options);
+    // The controller builds an action/entityType/userId filter and carries it
+    // in options.filter; separate it from the pagination options.
+    const { filter = {}, ...paginateOptions } = options;
+    return this.auditRepo.paginate(filter, paginateOptions);
   }
 
   async getLogsByEntity(entityType: string, entityId: string) {

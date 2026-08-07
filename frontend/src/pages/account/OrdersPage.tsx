@@ -5,6 +5,7 @@ import { PackageOpen } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { orderService } from '@/services/order.service';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { ErrorState } from '@/components/shared/ErrorState';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Pagination } from '@/components/ui/pagination';
@@ -17,7 +18,7 @@ export default function OrdersPage() {
   const { user } = useAuth();
   const [page, setPage] = useState(1);
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['orders', 'mine', 'all', page],
     queryFn: () => orderService.myOrders(String(user?.id), { page, limit: PAGE_SIZE }),
     enabled: Boolean(user),
@@ -36,7 +37,11 @@ export default function OrdersPage() {
     );
   }
 
-  if (error || orders.length === 0) {
+  if (error) {
+    return <ErrorState message={(error as Error)?.message ?? 'Could not load your orders'} onRetry={() => refetch()} />;
+  }
+
+  if (orders.length === 0) {
     return (
       <EmptyState
         icon={<PackageOpen className="h-7 w-7" />}

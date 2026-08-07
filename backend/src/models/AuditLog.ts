@@ -19,7 +19,7 @@ const AuditLogSchema: Schema = new Schema({
   action: {
     type: String,
     required: true,
-    enum: ['create', 'update', 'delete', 'view', 'login', 'logout'],
+    enum: ['create', 'update', 'delete', 'view', 'login', 'logout', 'reorder', 'duplicate', 'transfer'],
   },
   entityType: {
     type: String,

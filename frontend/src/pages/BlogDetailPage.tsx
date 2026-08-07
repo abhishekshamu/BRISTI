@@ -6,11 +6,14 @@ import { blogService } from '@/services/blog.service';
 import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorState } from '@/components/shared/ErrorState';
-import { usePageMeta } from '@/lib/seo';
+import { usePageMeta, useJsonLd } from '@/lib/seo';
+import { sanitizeRichText } from '@/lib/sanitize';
 import { calculateReadingTime, formatDate, getImageUrl } from '@/lib/utils';
+import { useBrandName } from '@/context/SettingsContext';
 
 export default function BlogDetailPage() {
   const { slug = '' } = useParams<{ slug: string }>();
+  const brandName = useBrandName();
 
   const { data: post, isLoading, error } = useQuery({
     queryKey: ['blog', 'slug', slug],
@@ -25,11 +28,37 @@ export default function BlogDetailPage() {
   });
 
   usePageMeta({
-    title: post ? `${post.title} — BRISTI Journal` : 'Journal — BRISTI',
+    title: post ? `${post.title} — ${brandName} Journal` : `Journal — ${brandName}`,
     description: post?.seo?.description ?? post?.excerpt,
     image: post?.featuredImage,
     keywords: post?.seo?.keywords,
   });
+
+  useJsonLd(
+    post
+      ? [
+          {
+            '@context': 'https://schema.org',
+            '@type': 'BlogPosting',
+            headline: post.title,
+            description: post.seo?.description ?? post.excerpt,
+            image: post.featuredImage ? [post.featuredImage] : undefined,
+            datePublished: post.publishedAt ?? post.createdAt,
+            dateModified: post.updatedAt ?? undefined,
+            author: { '@type': 'Person', name: post.author || brandName },
+            ...(Array.isArray(post.tags) && post.tags.length ? { keywords: post.tags.join(', ') } : {}),
+          },
+          {
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: 'Journal', item: `${window.location.origin}/journal` },
+              { '@type': 'ListItem', position: 2, name: post.title },
+            ],
+          },
+        ]
+      : []
+  );
 
   if (isLoading) {
     return (
@@ -100,7 +129,7 @@ export default function BlogDetailPage() {
             </div>
           )}
 
-          <div className="prose-lux" dangerouslySetInnerHTML={{ __html: post.content }} />
+          <div className="prose-lux" dangerouslySetInnerHTML={{ __html: sanitizeRichText(post.content) }} />
 
           {post.tags && post.tags.length > 0 && (
             <div className="mt-12 flex flex-wrap gap-2 border-t border-border pt-8">

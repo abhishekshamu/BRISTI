@@ -7,8 +7,20 @@ export interface ProductQueryParams {
   sort?: string;
   order?: 'asc' | 'desc';
   category?: string;
+  categories?: string[];
   collection?: string;
+  collections?: string;
+  // Independent marketing flags — combinable (AND).
+  newArrival?: boolean;
+  bestSeller?: boolean;
+  trending?: boolean;
+  sale?: boolean;
   featured?: boolean;
+  recommended?: boolean;
+  exclusive?: boolean;
+  limitedEdition?: boolean;
+  editorsPick?: boolean;
+  premiumCollection?: boolean;
   minPrice?: number;
   maxPrice?: number;
 }
@@ -50,7 +62,7 @@ export const productService = {
     return response.data.data as Product[];
   },
 
-  async search(params: SearchQueryParams): Promise<Product[]> {
+  async search(params: SearchQueryParams & { collections?: string }): Promise<Product[]> {
     const response = await api.get('/products/search', { params });
     return response.data.data as Product[];
   },

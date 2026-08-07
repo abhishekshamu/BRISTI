@@ -6,12 +6,15 @@ export class AnalyticsController {
   constructor(private analyticsService: AnalyticsService) {}
 
   trackEvent = asyncHandler(async (req: Request, res: Response) => {
+    const { userId: _ignored, ...safeBody } = req.body;
     const event = await this.analyticsService.createEvent({
-      ...req.body,
+      ...safeBody,
       sessionId: req.body.sessionId || req.headers['x-session-id'],
       url: req.body.url || req.originalUrl,
       userAgent: req.headers['user-agent'],
-      userId: req.user?.id || req.body.userId
+      // Identity comes from the authenticated principal only; a spoofed
+      // body userId is never trusted.
+      userId: req.user?.id
     });
     res.status(201).json({
       success: true,

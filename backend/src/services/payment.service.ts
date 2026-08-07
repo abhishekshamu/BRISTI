@@ -1,7 +1,7 @@
 import { PaymentRepository } from '../repositories/payment.repository';
 import { OrderRepository } from '../repositories/order.repository';
 import { IPayment } from 'shared/types';
-import { NotFoundError, BadRequestException } from '../utils/exceptions';
+import { NotFoundError, BadRequestException, ForbiddenError } from '../utils/exceptions';
 import Stripe from 'stripe';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
@@ -12,15 +12,32 @@ export class PaymentService {
     private orderRepo: OrderRepository
   ) {}
 
+  private async validateOrderOwnership(orderId: any, userId?: string): Promise<any> {
+    const order = await this.orderRepo.findById(orderId.toString());
+    if (!order) {
+      throw new NotFoundError('Order not found');
+    }
+    // A payment may only be created against the caller's own order, and the
+    // amount must match the order total exactly (no self-pricing).
+    if (order.userId && String(order.userId) !== String(userId)) {
+      throw new ForbiddenError('Order does not belong to this user');
+    }
+    return order;
+  }
+
+  private assertAmountMatches(order: any, amount: number): void {
+    if (Math.abs(Number(order.total) - Number(amount)) > 0.01) {
+      throw new BadRequestException('Amount does not match the order total');
+    }
+  }
+
   async createPayment(data: Partial<IPayment>): Promise<IPayment> {
     if (!data.orderId || !data.userId || !data.amount || !data.method) {
       throw new BadRequestException('Order ID, user ID, amount, and payment method are required');
     }
 
-    const order = await this.orderRepo.findById(data.orderId.toString());
-    if (!order) {
-      throw new NotFoundError('Order not found');
-    }
+    const order = await this.validateOrderOwnership(data.orderId, String(data.userId));
+    this.assertAmountMatches(order, data.amount);
 
     const payment = await this.paymentRepo.create({
       ...data,
@@ -75,7 +92,10 @@ export class PaymentService {
     return updated;
   }
 
-  async createStripeIntent(amount: number, currency: string, orderId: string): Promise<{ clientSecret: string }> {
+  async createStripeIntent(amount: number, currency: string, orderId: string, userId?: string): Promise<{ clientSecret: string }> {
+    const order = await this.validateOrderOwnership(orderId, userId);
+    this.assertAmountMatches(order, amount);
+
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
       apiVersion: '2023-10-16',
     });
@@ -89,7 +109,10 @@ export class PaymentService {
     return { clientSecret: paymentIntent.client_secret };
   }
 
-  async createRazorpayOrder(amount: number, currency: string, orderId: string): Promise<any> {
+  async createRazorpayOrder(amount: number, currency: string, orderId: string, userId?: string): Promise<any> {
+    const order = await this.validateOrderOwnership(orderId, userId);
+    this.assertAmountMatches(order, amount);
+
     const razorpay = new Razorpay({
       key_id: process.env.RAZORPAY_KEY_ID || '',
       key_secret: process.env.RAZORPAY_KEY_SECRET || ''
@@ -102,8 +125,8 @@ export class PaymentService {
       payment_capture: 1
     };
 
-    const order = await razorpay.orders.create(options);
-    return order;
+    const razorpayOrder = await razorpay.orders.create(options);
+    return razorpayOrder;
   }
 
   async verifyRazorpayPayment(razorpayOrderId: string, razorpayPaymentId: string, signature: string): Promise<boolean> {

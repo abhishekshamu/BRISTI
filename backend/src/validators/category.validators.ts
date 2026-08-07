@@ -11,7 +11,7 @@ export const createCategoryValidation = [
   body('isActive').optional().isBoolean().withMessage('isActive must be a boolean'),
   body('seo.title').optional(),
   body('seo.description').optional(),
-  body('parentId').optional().isMongoId().withMessage('Invalid parent ID'),
+  body('parentId').optional({ values: 'falsy' }).isMongoId().withMessage('Invalid parent ID'),
 ];
 
 export const updateCategoryValidation = [
@@ -26,5 +26,5 @@ export const updateCategoryValidation = [
   body('isActive').optional().isBoolean().withMessage('isActive must be a boolean'),
   body('seo.title').optional(),
   body('seo.description').optional(),
-  body('parentId').optional().isMongoId().withMessage('Invalid parent ID'),
+  body('parentId').optional({ values: 'falsy' }).isMongoId().withMessage('Invalid parent ID'),
 ];

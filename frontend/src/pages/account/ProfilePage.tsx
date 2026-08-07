@@ -7,7 +7,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { getErrorMessage } from '@/lib/utils';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { getErrorMessage, getInitials } from '@/lib/utils';
+
+const PROVIDER_LABEL: Record<string, string> = {
+  email: 'Email',
+  google: 'Google',
+  phone: 'Phone',
+};
 
 export default function ProfilePage() {
   const { profile, refreshProfile } = useAuth();
@@ -62,6 +70,29 @@ export default function ProfilePage() {
 
   return (
     <div className="flex max-w-xl flex-col gap-10">
+      <div className="flex items-center gap-4 border border-border p-6">
+        <Avatar className="h-16 w-16 border border-border">
+          {profile?.avatar ? <AvatarImage src={profile.avatar} alt="Profile photo" /> : null}
+          <AvatarFallback className="text-base">{getInitials(`${form.firstName || 'B'} ${form.lastName || 'B'}`.trim())}</AvatarFallback>
+        </Avatar>
+        <div>
+          <p className="font-display text-xl font-medium">
+            {form.firstName || form.lastName ? `${form.firstName} ${form.lastName}`.trim() : 'BRISTI Member'}
+          </p>
+          <p className="text-sm text-muted-foreground">{profile?.email ?? 'No email on file'}</p>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            {profile?.authProvider && (
+              <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
+                {PROVIDER_LABEL[profile.authProvider] ?? profile.authProvider}
+              </Badge>
+            )}
+            {typeof profile?.rewardPoints === 'number' && (
+              <span className="text-[10px] uppercase tracking-wider text-accent">{profile.rewardPoints.toLocaleString()} points</span>
+            )}
+          </div>
+        </div>
+      </div>
+
       <form onSubmit={handleProfile} className="flex flex-col gap-6">
         <h2 className="text-xs font-medium uppercase tracking-lux-sm">Personal information</h2>
         <div className="grid gap-5 sm:grid-cols-2">
@@ -76,7 +107,7 @@ export default function ProfilePage() {
         </div>
         <div className="flex flex-col gap-2">
           <Label htmlFor="profile-phone">Phone</Label>
-          <Input id="profile-phone" type="tel" value={form.phone} onChange={setField('phone')} placeholder="+1 555 000 0000" />
+          <Input id="profile-phone" type="tel" value={form.phone} onChange={setField('phone')} placeholder="Phone number" />
         </div>
         <div className="flex flex-col gap-2">
           <Label htmlFor="profile-gender">Gender</Label>

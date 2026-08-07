@@ -70,198 +70,213 @@ export class OrderService {
     }
 
     const orderConfig = await this.getOrderSettings();
-    const session = await mongoose.startSession();
 
-    try {
-      session.startTransaction();
+    // The order number is randomly generated; on a (rare) unique-index
+    // collision the whole transaction is safely retried with a fresh number.
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const session = await mongoose.startSession();
 
-      // Validate items, verify stock atomically, calculate totals
-      let subtotal = 0;
-      const orderItems: any[] = [];
+      try {
+        session.startTransaction();
 
-      for (const itemData of data.items) {
-        const product = await this.productRepo.findById(itemData.productId, session);
-        if (!product) {
-          throw new NotFoundException(`Product not found: ${itemData.productId}`);
-        }
-        if (product.status !== 'active') {
-          throw new BadRequestException(`${product.name} is not available for purchase`);
-        }
+        // Validate items, verify stock atomically, calculate totals
+        let subtotal = 0;
+        const orderItems: any[] = [];
 
-        let unitPrice = product.price;
-        let variant = null;
-        if (itemData.variantId) {
-          variant = product.variants?.find((v: any) => String(v.id) === String(itemData.variantId));
-          if (!variant) {
-            throw new BadRequestException(`Variant not found for ${product.name}`);
+        for (const itemData of data.items) {
+          const product = await this.productRepo.findById(itemData.productId, session);
+          if (!product) {
+            throw new NotFoundException(`Product not found: ${itemData.productId}`);
           }
-          unitPrice = product.price + (variant.priceAdjustment ?? 0);
-        }
-
-        // Atomically decrement stock to prevent overselling
-        if (product.trackQuantity) {
-          // Guard aggregate stock atomically; the transaction aborts if either guard fails
-          const aggregateGuard = await ProductModel.updateOne(
-            { _id: product._id, stock: { $gte: itemData.quantity } },
-            { $inc: { stock: -itemData.quantity } },
-            { session }
-          ).exec();
-          if (aggregateGuard.modifiedCount === 0) {
-            throw new BadRequestException(`Insufficient stock for ${product.name}`);
+          if (product.status !== 'active') {
+            throw new BadRequestException(`${product.name} is not available for purchase`);
           }
 
-          if (variant) {
-            const variantGuard = await ProductModel.updateOne(
-              { _id: product._id, 'variants.id': variant.id, 'variants.stock': { $gte: itemData.quantity } },
-              { $inc: { 'variants.$.stock': -itemData.quantity } },
+          let unitPrice = product.price;
+          let variant = null;
+          if (itemData.variantId) {
+            variant = product.variants?.find((v: any) => String(v.id) === String(itemData.variantId));
+            if (!variant) {
+              throw new BadRequestException(`Variant not found for ${product.name}`);
+            }
+            unitPrice = product.price + (variant.priceAdjustment ?? 0);
+          }
+
+          // Atomically decrement stock to prevent overselling
+          if (product.trackQuantity) {
+            // Guard aggregate stock atomically; the transaction aborts if either guard fails
+            const aggregateGuard = await ProductModel.updateOne(
+              { _id: product._id, stock: { $gte: itemData.quantity } },
+              { $inc: { stock: -itemData.quantity } },
               { session }
             ).exec();
-            if (variantGuard.modifiedCount === 0) {
-              throw new BadRequestException(`Insufficient stock for ${product.name} (${variant.name})`);
+            if (aggregateGuard.modifiedCount === 0) {
+              throw new BadRequestException(`Insufficient stock for ${product.name}`);
+            }
+
+            if (variant) {
+              const variantGuard = await ProductModel.updateOne(
+                { _id: product._id, 'variants.id': variant.id, 'variants.stock': { $gte: itemData.quantity } },
+                { $inc: { 'variants.$.stock': -itemData.quantity } },
+                { session }
+              ).exec();
+              if (variantGuard.modifiedCount === 0) {
+                throw new BadRequestException(`Insufficient stock for ${product.name} (${variant.name})`);
+              }
+            }
+          }
+
+          const itemTotal = unitPrice * itemData.quantity;
+          subtotal += itemTotal;
+
+          const featuredImage = product.images?.find((img: any) => img.isFeatured) || product.images?.[0];
+
+          orderItems.push({
+            productId: product._id,
+            variantId: itemData.variantId || null,
+            productName: product.name,
+            variantName: variant ? variant.name : undefined,
+            quantity: itemData.quantity,
+            price: unitPrice,
+            total: itemTotal,
+            sku: variant?.sku || product.sku,
+            image: featuredImage?.url,
+          });
+
+          // Keep inventory ledger in sync
+          await this.inventoryRepo.applyOrderItem(
+            product._id.toString(),
+            itemData.variantId,
+            itemData.quantity,
+            undefined as any,
+            session
+          );
+        }
+
+        const taxRate = orderConfig.taxRate;
+        const tax = parseFloat((subtotal * taxRate).toFixed(2));
+        const shipping = subtotal >= orderConfig.freeShippingThreshold ? 0 : orderConfig.flatShippingRate;
+
+        // Apply coupon (validated against cart scope)
+        let discount = 0;
+        let couponCode = null;
+        let couponDiscount = 0;
+
+        if (data.couponCode) {
+          const coupon = await this.couponRepo.findByCode(data.couponCode, session);
+          if (coupon && coupon.isValid) {
+            if (coupon.minimumPurchase && subtotal < coupon.minimumPurchase) {
+              throw new BadRequestException(`Minimum purchase of $${coupon.minimumPurchase} required`);
+            }
+            if (coupon.perCustomerLimit && user) {
+              const customerUses = (coupon.customersUsed ?? []).filter((id: any) => String(id) === String(user._id)).length;
+              if (customerUses >= coupon.perCustomerLimit) {
+                throw new BadRequestException('You have already used this coupon');
+              }
+            }
+            const scoped = await this.couponRepo.validateScopes(coupon, orderItems, session);
+            if (!scoped.valid) {
+              throw new BadRequestException(scoped.message || 'Coupon does not apply to these items');
+            }
+            discount = coupon.calculateDiscount(subtotal, shipping);
+            couponCode = coupon.code;
+            couponDiscount = discount;
+            if (user) {
+              await this.couponRepo.incrementUsage(coupon.code, user._id.toString(), session);
+            } else {
+              await this.couponRepo.incrementUsage(coupon.code, undefined as any, session);
             }
           }
         }
 
-        const itemTotal = unitPrice * itemData.quantity;
-        subtotal += itemTotal;
+        const total = parseFloat((subtotal + tax + shipping - discount).toFixed(2));
 
-        const featuredImage = product.images?.find((img: any) => img.isFeatured) || product.images?.[0];
-
-        orderItems.push({
-          productId: product._id,
-          variantId: itemData.variantId || null,
-          productName: product.name,
-          variantName: variant ? variant.name : undefined,
-          quantity: itemData.quantity,
-          price: unitPrice,
-          total: itemTotal,
-          sku: variant?.sku || product.sku,
-          image: featuredImage?.url,
-        });
-
-        // Keep inventory ledger in sync
-        await this.inventoryRepo.applyOrderItem(
-          product._id.toString(),
-          itemData.variantId,
-          itemData.quantity,
-          undefined as any,
-          session
-        );
-      }
-
-      const taxRate = orderConfig.taxRate;
-      const tax = parseFloat((subtotal * taxRate).toFixed(2));
-      const shipping = subtotal >= orderConfig.freeShippingThreshold ? 0 : orderConfig.flatShippingRate;
-
-      // Apply coupon (validated against cart scope)
-      let discount = 0;
-      let couponCode = null;
-      let couponDiscount = 0;
-
-      if (data.couponCode) {
-        const coupon = await this.couponRepo.findByCode(data.couponCode, session);
-        if (coupon && coupon.isValid) {
-          if (coupon.perCustomerLimit && user) {
-            const customerUses = (coupon.customersUsed ?? []).filter((id: any) => String(id) === String(user._id)).length;
-            if (customerUses >= coupon.perCustomerLimit) {
-              throw new BadRequestException('You have already used this coupon');
-            }
-          }
-          const scoped = await this.couponRepo.validateScopes(coupon, orderItems, session);
-          if (!scoped.valid) {
-            throw new BadRequestException(scoped.message || 'Coupon does not apply to these items');
-          }
-          discount = coupon.calculateDiscount(subtotal, shipping);
-          couponCode = coupon.code;
-          couponDiscount = discount;
-          if (user) {
-            await this.couponRepo.incrementUsage(coupon.code, user._id.toString(), session);
-          } else {
-            await this.couponRepo.incrementUsage(coupon.code, undefined as any, session);
-          }
-        }
-      }
-
-      const total = parseFloat((subtotal + tax + shipping - discount).toFixed(2));
-
-      // Create order inside the transaction
-      const order = await this.orderRepo.create({
-        orderNumber: this.generateOrderNumber(orderConfig.orderNumberPrefix, orderConfig.orderNumberLength),
-        userId: isGuest ? undefined : user._id,
-        guestEmail: isGuest ? data.guestEmail : undefined,
-        items: orderItems,
-        subtotal,
-        tax,
-        shipping,
-        discount,
-        total,
-        status: 'pending',
-        paymentStatus: 'pending',
-        paymentMethod: data.paymentMethod,
-        shippingAddress: data.shippingAddress,
-        billingAddress: data.billingAddress || data.shippingAddress,
-        couponCode,
-        couponDiscount,
-        notes: data.notes,
-        statusHistory: [{
+        // Create order inside the transaction
+        const order = await this.orderRepo.create({
+          orderNumber: this.generateOrderNumber(orderConfig.orderNumberPrefix, orderConfig.orderNumberLength),
+          userId: isGuest ? undefined : user._id,
+          guestEmail: isGuest ? data.guestEmail : undefined,
+          items: orderItems,
+          subtotal,
+          tax,
+          shipping,
+          discount,
+          total,
           status: 'pending',
-          note: isGuest ? 'Order placed (guest)' : 'Order placed',
-          changedAt: new Date(),
-        }],
-      } as any, session);
+          paymentStatus: 'pending',
+          paymentMethod: data.paymentMethod,
+          shippingAddress: data.shippingAddress,
+          billingAddress: data.billingAddress || data.shippingAddress,
+          couponCode,
+          couponDiscount,
+          notes: data.notes,
+          statusHistory: [{
+            status: 'pending',
+            note: isGuest ? 'Order placed (guest)' : 'Order placed',
+            changedAt: new Date(),
+          }],
+        } as any, session);
 
-      // Attach the order reference to inventory history entries created during the decrement
-      for (const itemData of data.items) {
-        await this.inventoryRepo.setHistoryOrderId(
-          itemData.productId,
-          itemData.variantId,
-          order._id.toString(),
-          session
-        );
-      }
+        // Attach the order reference to inventory history entries created during the decrement
+        for (const itemData of data.items) {
+          await this.inventoryRepo.setHistoryOrderId(
+            itemData.productId,
+            itemData.variantId,
+            order._id.toString(),
+            session
+          );
+        }
 
-      // Clear cart (registered users only)
-      if (user) {
-        await this.cartRepo.clearByUserId(user._id.toString(), session);
-      }
+        // Clear cart (registered users only)
+        if (user) {
+          await this.cartRepo.clearByUserId(user._id.toString(), session);
+        }
 
-      await session.commitTransaction();
+        await session.commitTransaction();
 
-      // Fire-and-forget notifications / emails after commit
-      if (user) {
-        await this.notificationService.createNotification({
-          userId: user._id.toString(),
-          title: 'Order Placed',
-          message: `Your order #${order.orderNumber} has been placed successfully!`,
-          type: 'success',
+        // Fire-and-forget notifications / emails after commit
+        if (user) {
+          await this.notificationService.createNotification({
+            userId: user._id.toString(),
+            title: 'Order Placed',
+            message: `Your order #${order.orderNumber} has been placed successfully!`,
+            type: 'success',
+            relatedId: order._id,
+            relatedType: 'Order',
+          });
+        }
+        await this.notifyAdmins({
+          title: 'New Order',
+          message: `New order #${order.orderNumber} for $${total.toFixed(2)} by ${user ? user.email : data.guestEmail}`,
+          type: 'info',
           relatedId: order._id,
           relatedType: 'Order',
         });
-      }
-      await this.notifyAdmins({
-        title: 'New Order',
-        message: `New order #${order.orderNumber} for $${total.toFixed(2)} by ${user ? user.email : data.guestEmail}`,
-        type: 'info',
-        relatedId: order._id,
-        relatedType: 'Order',
-      });
-      await this.emailService.sendOrderConfirmation(user ? user.email : (data.guestEmail as string), {
-        orderNumber: order.orderNumber,
-        items: orderItems,
-        subtotal,
-        tax,
-        shipping,
-        discount,
-        total,
-      });
+        await this.emailService.sendOrderConfirmation(user ? user.email : (data.guestEmail as string), {
+          orderNumber: order.orderNumber,
+          items: orderItems,
+          subtotal,
+          tax,
+          shipping,
+          discount,
+          total,
+        });
 
-      return order;
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
+        return order;
+      } catch (error) {
+        await session.abortTransaction();
+        const duplicateOrderNumber =
+          (error as any)?.code === 11000 && /orderNumber/.test((error as any)?.message ?? '');
+        if (duplicateOrderNumber && attempt < 3) {
+          continue;
+        }
+        throw error;
+      } finally {
+        session.endSession();
+      }
     }
+
+    throw new BadRequestException('Could not generate a unique order number, please retry');
   }
 
   private async notifyAdmins(data: { title: string; message: string; type: string; relatedId?: any; relatedType?: string }) {
@@ -391,6 +406,16 @@ export class OrderService {
     const updated = await this.orderRepo.updatePaymentStatus(id, paymentStatus, paymentId);
 
     if (paymentStatus === 'failed') {
+      // Stock was reserved at order creation; a failed payment must release it.
+      if (order.status === 'pending') {
+        await this.restoreStockForOrder(order, 'cancel');
+        await this.orderRepo.updateOrderStatus(id, 'cancelled');
+        await this.orderRepo.updateById(id, {
+          statusHistory: this.recordStatusHistory(order, 'cancelled', 'Cancelled due to failed payment', actorName),
+        });
+      } else {
+        await this.restoreStockForOrder(order, 'cancel');
+      }
       await this.notifyAdmins({
         title: 'Failed Payment',
         message: `Payment failed for order #${order.orderNumber} (${order.paymentMethod}).`,
@@ -539,6 +564,10 @@ export class OrderService {
   }
 
   async restoreStockForOrder(order: IOrder, reason: 'cancel' | 'refund'): Promise<void> {
+    // Idempotency guard: stock must only ever be returned to the shelf once,
+    // regardless of how many cancellation paths run against the same order.
+    if ((order as any).stockRestored) return;
+
     const session = await mongoose.startSession();
     try {
       session.startTransaction();
@@ -560,6 +589,7 @@ export class OrderService {
           session
         );
       }
+      await this.orderRepo.updateById(order._id.toString(), { stockRestored: true }, session);
       await session.commitTransaction();
     } catch (error) {
       await session.abortTransaction();

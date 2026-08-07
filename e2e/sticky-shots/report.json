@@ -1,0 +1,286 @@
+{
+  "results": [
+    {
+      "name": "desktop: page did not auto-scroll on load",
+      "ok": true,
+      "detail": "scrollY=0"
+    },
+    {
+      "name": "desktop: sticky gallery present",
+      "ok": true,
+      "detail": "top=192"
+    },
+    {
+      "name": "desktop: 4 slides stacked",
+      "ok": true,
+      "detail": "got 4"
+    },
+    {
+      "name": "desktop: 4 rail thumbnails",
+      "ok": true,
+      "detail": "got 4"
+    },
+    {
+      "name": "desktop: first thumbnail active",
+      "ok": true,
+      "detail": "got View image 1 of 4"
+    },
+    {
+      "name": "desktop: counter 1 / 4",
+      "ok": true,
+      "detail": "got 1 / 4"
+    },
+    {
+      "name": "desktop: zoom button present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: first slide eager, rest lazy",
+      "ok": true,
+      "detail": "got [\"eager\",\"lazy\",\"lazy\",\"lazy\"]"
+    },
+    {
+      "name": "desktop: no horizontal overflow",
+      "ok": true,
+      "detail": "got 0"
+    },
+    {
+      "name": "desktop: wheeling info scrolls page",
+      "ok": true,
+      "detail": "scrollY=200"
+    },
+    {
+      "name": "desktop: gallery stays pinned (sticky)",
+      "ok": true,
+      "detail": "top 192 -> 144"
+    },
+    {
+      "name": "desktop: gallery scroller did not move",
+      "ok": true,
+      "detail": "top=0"
+    },
+    {
+      "name": "desktop: active unchanged (1 / 4)",
+      "ok": true,
+      "detail": "got 1 / 4"
+    },
+    {
+      "name": "desktop: wheel over gallery scrolls scroller",
+      "ok": true,
+      "detail": "top=556"
+    },
+    {
+      "name": "desktop: page scrollY unchanged while wheeling gallery",
+      "ok": true,
+      "detail": "200 -> 200"
+    },
+    {
+      "name": "desktop: active image 2 highlighted",
+      "ok": true,
+      "detail": "got View image 2 of 4"
+    },
+    {
+      "name": "desktop: counter 2 / 4",
+      "ok": true,
+      "detail": "got 2 / 4"
+    },
+    {
+      "name": "desktop: reaches last image (4 / 4)",
+      "ok": true,
+      "detail": "got 4 / 4"
+    },
+    {
+      "name": "desktop: last thumbnail active",
+      "ok": true,
+      "detail": "got View image 4 of 4"
+    },
+    {
+      "name": "desktop: wheel at gallery end chains to page scroll",
+      "ok": true,
+      "detail": "1000 -> 1459"
+    },
+    {
+      "name": "desktop: rail click scrolls to 3 / 4",
+      "ok": true,
+      "detail": "got 3 / 4"
+    },
+    {
+      "name": "desktop: rail click highlights thumbnail 3",
+      "ok": true,
+      "detail": "got View image 3 of 4"
+    },
+    {
+      "name": "desktop: scroller scrolled for thumb click",
+      "ok": true,
+      "detail": "top=1112"
+    },
+    {
+      "name": "desktop: ArrowDown on slide → 4 / 4",
+      "ok": true,
+      "detail": "got 4 / 4"
+    },
+    {
+      "name": "desktop: ArrowUp on slide → 3 / 4",
+      "ok": true,
+      "detail": "got 3 / 4"
+    },
+    {
+      "name": "desktop: slide click opens fullscreen",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: fullscreen counter 3 / 4",
+      "ok": true,
+      "detail": "got 3 / 4"
+    },
+    {
+      "name": "desktop: fullscreen cursor zoom-out",
+      "ok": true,
+      "detail": "got zoom-out"
+    },
+    {
+      "name": "desktop: body scroll locked",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: fullscreen ArrowRight → 4 / 4",
+      "ok": true,
+      "detail": "got 4 / 4"
+    },
+    {
+      "name": "desktop: fullscreen next chevron wraps → 1 / 4",
+      "ok": true,
+      "detail": "got 1 / 4"
+    },
+    {
+      "name": "desktop: fullscreen prev chevron → 4 / 4",
+      "ok": true,
+      "detail": "got 4 / 4"
+    },
+    {
+      "name": "desktop: click outside closes fullscreen",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: focus restored to slide",
+      "ok": true,
+      "detail": "got View image 3 of 4 in fullscreen"
+    },
+    {
+      "name": "desktop: zoom button opens fullscreen",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: ESC closes fullscreen",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: badges rendered",
+      "ok": true,
+      "detail": "got 2"
+    },
+    {
+      "name": "desktop: Add to bag present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: quantity stepper present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: accordions present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile: horizontal scroller present",
+      "ok": true,
+      "detail": "slides=4"
+    },
+    {
+      "name": "mobile: counter visible",
+      "ok": true,
+      "detail": "got 1 / 4"
+    },
+    {
+      "name": "mobile: thumbnails below image",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile: no horizontal page overflow",
+      "ok": true,
+      "detail": "got 0"
+    },
+    {
+      "name": "mobile: swipe left scrolls scroller",
+      "ok": true,
+      "detail": "left=218"
+    },
+    {
+      "name": "mobile: active image 2 after swipe",
+      "ok": true,
+      "detail": "got View image 2 of 4"
+    },
+    {
+      "name": "mobile: counter 2 / 4 after swipe",
+      "ok": true,
+      "detail": "got 2 / 4"
+    },
+    {
+      "name": "mobile: thumb tap scrolls to 3 / 4",
+      "ok": true,
+      "detail": "got 3 / 4"
+    },
+    {
+      "name": "mobile: thumb 3 highlighted",
+      "ok": true,
+      "detail": "got View image 3 of 4"
+    },
+    {
+      "name": "mobile: tap opens fullscreen",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile: fullscreen counter 3 / 4",
+      "ok": true,
+      "detail": "got 3 / 4"
+    },
+    {
+      "name": "mobile: fullscreen swipe → 4 / 4",
+      "ok": true,
+      "detail": "got 4 / 4"
+    },
+    {
+      "name": "mobile: ESC closes fullscreen",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "single image: no counter",
+      "ok": true,
+      "detail": "got null"
+    },
+    {
+      "name": "single image: no thumbnails",
+      "ok": true,
+      "detail": "got 0"
+    },
+    {
+      "name": "single image: image renders",
+      "ok": true,
+      "detail": "got 1"
+    }
+  ],
+  "consoleErrors": [],
+  "failedHttp": []
+}

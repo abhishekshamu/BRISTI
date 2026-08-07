@@ -6,7 +6,10 @@ export class PageController {
   constructor(private pageService: PageService) {}
 
   createPage = asyncHandler(async (req: Request, res: Response) => {
-    const page = await this.pageService.createPage(req.body);
+    const page = await this.pageService.createPage({
+      ...req.body,
+      createdBy: (req.user as any)?._id ?? (req.user as any)?.id,
+    });
     res.status(201).json({
       success: true,
       data: page
@@ -22,7 +25,10 @@ export class PageController {
     };
 
     const filter: any = {};
-    if (status) filter.status = status;
+    // Public listing only exposes published pages; an explicit `status=all`
+    // (admin) opts into every status.
+    if (status && status !== 'all') filter.status = status;
+    else if (!status) filter.status = 'published';
 
     const result = await this.pageService.getAllPages(filter, options);
 
@@ -41,6 +47,11 @@ export class PageController {
   getPageById = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     const page = await this.pageService.getPageById(id);
+    // Unpublished pages are only visible to authenticated admins; everyone
+    // else gets a 404 so drafts are never leaked.
+    if (page.status !== 'published' && req.authType !== 'admin') {
+      return res.status(404).json({ success: false, message: 'Page not found' });
+    }
     res.status(200).json({
       success: true,
       data: page
@@ -67,7 +78,10 @@ export class PageController {
 
   updatePage = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const page = await this.pageService.updatePage(id, req.body);
+    const page = await this.pageService.updatePage(id, {
+      ...req.body,
+      updatedBy: (req.user as any)?._id ?? (req.user as any)?.id,
+    });
     res.status(200).json({
       success: true,
       data: page
@@ -93,7 +107,7 @@ export class PageController {
 
   updateBuilder = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const page = await this.pageService.updateBuilder(id, req.body);
+    const page = await this.pageService.updateBuilder(id, req.body.sections);
     res.status(200).json({
       success: true,
       data: page

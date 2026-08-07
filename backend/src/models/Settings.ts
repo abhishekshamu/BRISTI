@@ -50,7 +50,6 @@ const SettingsSchema: Schema = new Schema({
   },
   slogan: {
     type: String,
-    default: 'Luxury Redefined',
   },
   colors: {
     primary: {
@@ -103,16 +102,12 @@ const SettingsSchema: Schema = new Schema({
   contactInfo: {
     email: {
       type: String,
-      required: true,
-      default: 'hello@bristi.com',
     },
     phone: {
       type: String,
-      default: '+1 (555) 123-4567',
     },
     address: {
       type: String,
-      default: '123 Luxury Avenue, Fashion District, New York, NY 10001',
     },
   },
   socialLinks: [{
@@ -150,15 +145,12 @@ const SettingsSchema: Schema = new Schema({
   seo: {
     defaultTitle: {
       type: String,
-      default: 'BRISTI - Luxury Clothing Brand',
     },
     defaultDescription: {
       type: String,
-      default: 'Discover timeless elegance and modern sophistication with BRISTI luxury clothing.',
     },
     defaultImage: {
       type: String,
-      default: '/og-image.jpg',
     },
   },
   currency: {
@@ -182,7 +174,6 @@ const SettingsSchema: Schema = new Schema({
   },
   maintenanceMessage: {
     type: String,
-    default: 'We are currently undergoing maintenance. Please check back soon.',
   },
   announcement: {
     enabled: {

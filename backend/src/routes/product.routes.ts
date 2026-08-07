@@ -11,7 +11,8 @@ import { CartRepository } from '../repositories/cart.repository';
 import { CouponRepository } from '../repositories/coupon.repository';
 import { NotificationService } from '../services/notification.service';
 import { NotificationRepository } from '../repositories/notification.repository';
-import { protect, authorize } from '../middleware/auth.middleware';
+import { protect, authorize, optionalAuth } from '../middleware/auth.middleware';
+import { auditLog } from '../middleware/audit.middleware';
 import { validateRequest } from '../validators';
 import { createProductValidation, updateProductValidation, searchProductsValidation } from '../validators/product.validators';
 
@@ -50,14 +51,14 @@ router.get('/search', searchProductsValidation, validateRequest, productControll
 router.get('/related/:productId', productController.getRelatedProducts);
 router.get('/category/:categoryId', productController.getProductsByCategory);
 router.get('/collection/:collectionId', productController.getProductsByCollection);
-router.get('/slug/:slug', productController.getProductBySlug);
+router.get('/slug/:slug', optionalAuth, productController.getProductBySlug);
 router.get('/:productId/reviews', productController.getProductReviews);
 router.post('/:productId/reviews', protect, productController.addProductReview);
-router.get('/:id', productController.getProductById);
+router.get('/:id', optionalAuth, productController.getProductById);
 
-router.post('/', protect, authorize('admin'), createProductValidation, validateRequest, productController.createProduct);
-router.put('/:id', protect, authorize('admin'), updateProductValidation, validateRequest, productController.updateProduct);
-router.delete('/:id', protect, authorize('admin'), productController.deleteProduct);
-router.put('/:productId/stock', protect, authorize('admin'), productController.updateProductStock);
+router.post('/', protect, authorize('admin'), auditLog('product', 'create'), createProductValidation, validateRequest, productController.createProduct);
+router.put('/:id', protect, authorize('admin'), auditLog('product', 'update'), updateProductValidation, validateRequest, productController.updateProduct);
+router.delete('/:id', protect, authorize('admin'), auditLog('product', 'delete'), productController.deleteProduct);
+router.put('/:productId/stock', protect, authorize('admin'), auditLog('product', 'update'), productController.updateProductStock);
 
 export default router;

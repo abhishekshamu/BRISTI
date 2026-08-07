@@ -2,12 +2,14 @@ import { Router } from 'express';
 import { UserController } from '../controllers/user.controller';
 import { UserService } from '../services/user.service';
 import { UserRepository } from '../repositories/user.repository';
+import { AuthRepository } from '../repositories/auth.repository';
 import { protect, authorize } from '../middleware/auth.middleware';
 import { validateRequest } from '../validators';
-import { addressIdValidation, createAddressValidation, preferencesValidation, updateAddressValidation, updateProfileValidation } from '../validators/user.validators';
+import { addressIdValidation, changePasswordValidation, createAddressValidation, preferencesValidation, updateAddressValidation, updateProfileValidation } from '../validators/user.validators';
 
 const userRepo = new UserRepository();
-const userService = new UserService(userRepo);
+const authRepo = new AuthRepository();
+const userService = new UserService(userRepo, authRepo);
 const userController = new UserController(userService);
 
 const router = Router();
@@ -18,7 +20,7 @@ router.put('/customers/:id/status', protect, authorize('admin'), userController.
 
 router.get('/profile', protect, userController.getProfile);
 router.put('/profile', protect, updateProfileValidation, validateRequest, userController.updateProfile);
-router.put('/change-password', protect, userController.changePassword);
+router.put('/change-password', protect, changePasswordValidation, validateRequest, userController.changePassword);
 router.delete('/account', protect, userController.deleteAccount);
 router.get('/addresses', protect, userController.listAddresses);
 router.post('/addresses', protect, createAddressValidation, validateRequest, userController.addAddress);

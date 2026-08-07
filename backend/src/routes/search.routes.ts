@@ -3,7 +3,7 @@ import { SearchService } from '../services/search.service';
 import { ProductRepository } from '../repositories/product.repository';
 import { CategoryRepository } from '../repositories/category.repository';
 import { CollectionRepository } from '../repositories/collection.repository';
-import { BlogPostRepository } from '../repositories/blogpost.repository';
+import { BlogRepository } from '../repositories/blog.repository';
 import { PageRepository } from '../repositories/page.repository';
 import { OrderRepository } from '../repositories/order.repository';
 import { UserRepository } from '../repositories/user.repository';
@@ -14,7 +14,7 @@ const searchService = new SearchService(
   new ProductRepository(),
   new CategoryRepository(),
   new CollectionRepository(),
-  new BlogPostRepository(),
+  new BlogRepository(),
   new PageRepository(),
   new OrderRepository(),
   new UserRepository()
