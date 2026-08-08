@@ -80,9 +80,9 @@ async function main(): Promise<void> {
   const uri = await getMongoUri();
   await mongoose.connect(uri);
 
-  const { run: runSeed } = await import('./seed');
+  const { run: runSeed } = await import('./seed.js');
   await runSeed();
-  const { run: runContentSeed } = await import('./seed-content');
+  const { run: runContentSeed } = await import('./seed-content.js');
   await runContentSeed();
   await ensureDefaultAdmin();
 
