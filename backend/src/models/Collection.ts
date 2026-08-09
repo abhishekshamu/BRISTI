@@ -99,7 +99,6 @@ const CollectionSchema: Schema = new Schema({
 });
 
 // Indexes
-CollectionSchema.index({ slug: 1 });
 CollectionSchema.index({ name: 1 });
 CollectionSchema.index({ featured: 1 });
 CollectionSchema.index({ sortOrder: 1 });

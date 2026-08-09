@@ -75,7 +75,6 @@ const BlogPostSchema: Schema = new Schema({
 });
 
 // Indexes
-BlogPostSchema.index({ slug: 1 });
 BlogPostSchema.index({ title: 'text', content: 'text' });
 BlogPostSchema.index({ status: 1 });
 BlogPostSchema.index({ featured: 1 });

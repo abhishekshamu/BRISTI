@@ -72,7 +72,6 @@ const PageSchema: Schema = new Schema({
 });
 
 // Indexes
-PageSchema.index({ slug: 1 });
 PageSchema.index({ status: 1 });
 PageSchema.index({ isInMenu: 1 });
 PageSchema.index({ createdBy: 1 });

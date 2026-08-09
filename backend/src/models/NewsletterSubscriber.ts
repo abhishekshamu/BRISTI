@@ -62,7 +62,6 @@ const NewsletterSubscriberSchema: Schema = new Schema({
 });
 
 // Indexes
-NewsletterSubscriberSchema.index({ email: 1 });
 NewsletterSubscriberSchema.index({ isActive: 1 });
 NewsletterSubscriberSchema.index({ subscribedAt: -1 });
 NewsletterSubscriberSchema.index({ source: 1 });

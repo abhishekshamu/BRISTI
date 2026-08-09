@@ -92,7 +92,6 @@ const CouponSchema: Schema = new Schema({
 });
 
 // Indexes
-CouponSchema.index({ code: 1 });
 CouponSchema.index({ type: 1 });
 CouponSchema.index({ isActive: 1 });
 CouponSchema.index({ startsAt: 1 });

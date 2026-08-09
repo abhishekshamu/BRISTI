@@ -51,9 +51,16 @@ app.set('trust proxy', process.env.TRUST_PROXY === 'true' ? 1 : false);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Support a comma-separated allow-list of origins (e.g. storefront + admin on different ports).
-// Local development origins are always allowed so a local storefront/admin can talk to a
-// deployed API; the production frontend domain(s) come from FRONTEND_URL.
+// Allowed origins are the production storefront(s) plus a comma-separated
+// allow-list via FRONTEND_URL (e.g. a custom domain or the admin panel), plus
+// local development origins so a local storefront/admin can talk to a deployed
+// API. No wildcard is used in any environment.
+const PROD_ALLOWED_ORIGINS = [
+  // Production storefront (Vercel). Always allowed so a fresh deploy works
+  // even before FRONTEND_URL is configured on the host.
+  'https://bristi-frontend.vercel.app',
+];
+
 const DEV_ALLOWED_ORIGINS = [
   'http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:3003',
   'http://localhost:3004', 'http://localhost:3005', 'http://localhost:5173', 'http://localhost:4173',
@@ -62,6 +69,7 @@ const DEV_ALLOWED_ORIGINS = [
 ];
 
 const allowedOrigins = [
+  ...PROD_ALLOWED_ORIGINS,
   ...(process.env.FRONTEND_URL || '')
     .split(',')
     .map((o) => o.trim())
@@ -72,9 +80,11 @@ const allowedOrigins = [
 app.use(cors({
   origin(origin, callback) {
     // Requests without an Origin header (curl, server-to-server, health checks)
-    // and same-origin requests are always allowed.
+    // and same-origin requests are always allowed. Disallowed origins are
+    // denied cleanly (no Access-Control-Allow-Origin header) — the browser
+    // blocks the request with a CORS error instead of a 500.
     if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
-    return callback(new Error(`Origin ${origin} is not allowed by CORS`));
+    return callback(null, false);
   },
   credentials: true,
 }));

@@ -252,7 +252,7 @@ export const getYouTubeVideoId = (url: string): string | null => {
  * Get Vimeo video ID from URL
  */
 export const getVimeoVideoId = (url: string): string | null => {
-  const regExp = /https?:\/\/(?:www\.|player\.)?vimeo.com\/(?:channels\/(?:\w+\/)?|groups\/([^\/]*)\/videos\/|album\/(\d+)\/video\/|video\/|)(\d+)(?:$|\/|\?)/;
+  const regExp = /https?:\/\/(?:www\.|player\.)?vimeo.com\/(?:channels\/(?:\w+\/)?|groups\/([^/]*)\/videos\/|album\/(\d+)\/video\/|video\/|)(\d+)(?:$|\/|\?)/;
   const match = url.match(regExp);
   return match ? match[3] : null;
 };

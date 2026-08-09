@@ -24,7 +24,6 @@ const WishlistSchema: Schema = new Schema({
 });
 
 // Indexes
-WishlistSchema.index({ userId: 1 }, { unique: true });
 WishlistSchema.index({ productIds: 1 });
 
 // Virtual for product count

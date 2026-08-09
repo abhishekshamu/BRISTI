@@ -57,7 +57,6 @@ password: {
 });
 
 // Indexes
-AdminSchema.index({ email: 1 });
 AdminSchema.index({ role: 1 });
 AdminSchema.index({ isActive: 1 });
 

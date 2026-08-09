@@ -43,7 +43,6 @@ const LayoutSchema: Schema = new Schema({
 });
 
 // Indexes
-LayoutSchema.index({ slug: 1 });
 LayoutSchema.index({ name: 1 });
 LayoutSchema.index({ isActive: 1 });
 
