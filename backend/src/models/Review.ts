@@ -1,6 +1,6 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import mongoose, { Schema, Document } from 'mongoose';
-import { IReview } from 'shared/types';
+import { IReview } from '../../shared/types';
 
 export interface IReviewDoc extends Omit<IReview, '_id'>, Document {}
 

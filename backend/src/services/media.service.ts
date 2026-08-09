@@ -17,8 +17,8 @@ import { PageModel } from '../models/Page';
 import { ReviewModel } from '../models/Review';
 import { LayoutModel } from '../models/Layout';
 import { SettingsModel } from '../models/Settings';
-import { MediaUsageEntry } from 'shared/types';
-import { detectRatio } from 'shared/utils';
+import { MediaUsageEntry } from '../../shared/types';
+import { detectRatio } from '../../shared/utils';
 
 type MulterFile = NonNullable<Express.Request['file']>;
 

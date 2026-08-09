@@ -1,6 +1,6 @@
 import { UserRepository } from '../repositories/user.repository';
 import { AuthRepository } from '../repositories/auth.repository';
-import { IUser } from 'shared/types';
+import { IUser } from '../../shared/types';
 import { ValidationError, NotFoundError, BadRequestError } from '../utils/exceptions';
 import { randomUUID } from 'crypto';
 

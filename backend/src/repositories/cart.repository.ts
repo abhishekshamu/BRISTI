@@ -1,6 +1,6 @@
 import { CartModel } from '../models/Cart';
 import { BaseRepository } from './base.repository';
-import { ICart } from 'shared/types';
+import { ICart } from '../../shared/types';
 
 export class CartRepository extends BaseRepository<ICart> {
   constructor() {

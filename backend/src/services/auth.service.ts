@@ -10,7 +10,7 @@ import { GoogleService, GoogleProfile } from './google.service';
 import { NotificationService } from './notification.service';
 import { NotificationRepository } from '../repositories/notification.repository';
 import { notifyAdmins } from './admin-notifier';
-import { IUser } from 'shared/types';
+import { IUser } from '../../shared/types';
 import { BadRequestException, UnauthorizedError, NotFoundException } from '../utils/exceptions';
 import crypto from 'crypto';
 
@@ -95,7 +95,7 @@ export class AuthService {
     let profile: GoogleProfile;
     try {
       profile = await this.googleService.verifyIdToken(credential);
-    } catch (err: any) {
+    } catch (_err: any) {
       await this.recordLogin({
         method: 'google',
         success: false,

@@ -1,6 +1,6 @@
 import { OrderModel } from '../models/Order';
 import { BaseRepository } from './base.repository';
-import { IOrder } from 'shared/types';
+import { IOrder } from '../../shared/types';
 
 export class OrderRepository extends BaseRepository<IOrder> {
   constructor() {

@@ -1,6 +1,6 @@
 import { PaymentRepository } from '../repositories/payment.repository';
 import { OrderRepository } from '../repositories/order.repository';
-import { IPayment } from 'shared/types';
+import { IPayment } from '../../shared/types';
 import { NotFoundError, BadRequestException, ForbiddenError } from '../utils/exceptions';
 import Stripe from 'stripe';
 import Razorpay from 'razorpay';

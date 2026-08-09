@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { AuditLogModel } from '../models/AuditLog';
 import { BaseRepository } from './base.repository';
-import { IAuditLog } from 'shared/types';
+import { IAuditLog } from '../../shared/types';
 
 export class AuditLogRepository extends BaseRepository<IAuditLog> {
   constructor() {

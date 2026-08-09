@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { HeroBlock, HeroBlockStatus, HeroLinkType, HeroSlideAnimationType } from 'shared/types';
+import { HeroBlock, HeroBlockStatus, HeroLinkType, HeroSlideAnimationType } from '../../shared/types';
 
 export interface IHeroBlockDoc extends Omit<HeroBlock, '_id'>, Document {}
 

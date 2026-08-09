@@ -1,6 +1,6 @@
 import { PageModel } from '../models/Page';
 import { BaseRepository } from './base.repository';
-import { IPage } from 'shared/types';
+import { IPage } from '../../shared/types';
 
 export class PageRepository extends BaseRepository<IPage> {
   constructor() {

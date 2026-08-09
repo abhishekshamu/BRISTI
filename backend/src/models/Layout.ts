@@ -1,6 +1,6 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import mongoose, { Schema, Document } from 'mongoose';
-import { ILayout } from 'shared/types';
+import { ILayout } from '../../shared/types';
 
 export interface ILayoutDoc extends Omit<ILayout, '_id'>, Document {}
 

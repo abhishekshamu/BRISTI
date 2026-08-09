@@ -1,7 +1,7 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import mongoose, { Schema, Document } from 'mongoose';
 import bcrypt from 'bcryptjs';
-import { IUser } from 'shared/types';
+import { IUser } from '../../shared/types';
 
 export interface IUserDoc extends Omit<IUser, '_id'>, Document {
   comparePassword(candidatePassword: string): Promise<boolean>;

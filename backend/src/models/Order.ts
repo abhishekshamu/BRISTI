@@ -1,6 +1,6 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import mongoose, { Schema, Document } from 'mongoose';
-import { IOrder } from 'shared/types';
+import { IOrder } from '../../shared/types';
 
 export interface IOrderDoc extends Omit<IOrder, '_id'>, Document {}
 

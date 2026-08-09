@@ -1,5 +1,5 @@
 import { CouponRepository } from '../repositories/coupon.repository';
-import { ICoupon } from 'shared/types';
+import { ICoupon } from '../../shared/types';
 import { Types } from 'mongoose';
 import { ValidationError, NotFoundError, BadRequestError } from '../utils/exceptions';
 

@@ -1,6 +1,6 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import mongoose, { Schema, Document } from 'mongoose';
-import { IPayment } from 'shared/types';
+import { IPayment } from '../../shared/types';
 
 export interface IPaymentDoc extends Omit<IPayment, '_id'>, Document {}
 

@@ -1,6 +1,6 @@
 import { SettingsModel } from '../models/Settings';
 import { BaseRepository } from './base.repository';
-import { ISiteSettings } from 'shared/types';
+import { ISiteSettings } from '../../shared/types';
 
 export class SettingsRepository extends BaseRepository<ISiteSettings> {
   constructor() {

@@ -1,7 +1,7 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import mongoose, { Schema, Document } from 'mongoose';
 import bcrypt from 'bcryptjs';
-import { IAdmin } from 'shared/types';
+import { IAdmin } from '../../shared/types';
 
 export interface IAdminDoc extends Omit<IAdmin, '_id'>, Document {
   comparePassword(candidatePassword: string): Promise<boolean>;

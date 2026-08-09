@@ -80,7 +80,7 @@ export const protect = async (
       req.user = user;
       req.authType = 'user';
       next();
-    } catch (err) {
+    } catch (_err) {
       return res.status(401).json({
         success: false,
         message: 'Not authorized to access this route'

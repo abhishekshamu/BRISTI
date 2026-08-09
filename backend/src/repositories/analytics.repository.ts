@@ -1,6 +1,6 @@
 import { AnalyticsEventModel } from '../models/AnalyticsEvent';
 import { BaseRepository } from './base.repository';
-import { IAnalyticsEvent } from 'shared/types';
+import { IAnalyticsEvent } from '../../shared/types';
 
 export class AnalyticsRepository extends BaseRepository<IAnalyticsEvent> {
   constructor() {

@@ -1,5 +1,5 @@
 import { FAQRepository } from '../repositories/faq.repository';
-import { IFAQ } from 'shared/types';
+import { IFAQ } from '../../shared/types';
 
 export class FAQService {
   constructor(private faqRepo: FAQRepository) {}

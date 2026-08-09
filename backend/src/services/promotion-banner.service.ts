@@ -1,5 +1,5 @@
 import { PromotionBannerRepository } from '../repositories/promotion-banner.repository';
-import { PromotionBanner } from 'shared/types';
+import { PromotionBanner } from '../../shared/types';
 import { NotFoundError } from '../utils/exceptions';
 
 export class PromotionBannerService {

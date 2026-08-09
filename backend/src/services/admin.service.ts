@@ -2,9 +2,9 @@ import bcrypt from 'bcryptjs';
 import { AdminRepository } from '../repositories/admin.repository';
 import { AuthRepository } from '../repositories/auth.repository';
 import { JwtService } from './jwt.service';
-import { IAdmin } from 'shared/types';
+import { IAdmin } from '../../shared/types';
 import { BadRequestException, UnauthorizedError, NotFoundException, ForbiddenError } from '../utils/exceptions';
-import { ROLE_PERMISSIONS } from 'shared/constants';
+import { ROLE_PERMISSIONS } from '../../shared/constants';
 
 export class AdminService {
   private static readonly ALLOWED_ROLES = ['super_admin', 'admin', 'moderator', 'content_editor', 'support'];

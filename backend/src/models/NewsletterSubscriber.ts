@@ -1,6 +1,6 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import mongoose, { Schema, Document } from 'mongoose';
-import { INewsletterSubscriber } from 'shared/types';
+import { INewsletterSubscriber } from '../../shared/types';
 
 export interface INewsletterSubscriberDoc extends Omit<INewsletterSubscriber, '_id'>, Document {}
 

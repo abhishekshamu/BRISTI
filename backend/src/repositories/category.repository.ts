@@ -1,6 +1,6 @@
 import { CategoryModel } from '../models/Category';
 import { BaseRepository } from './base.repository';
-import { ICategory } from 'shared/types';
+import { ICategory } from '../../shared/types';
 
 export class CategoryRepository extends BaseRepository<ICategory> {
   constructor() {

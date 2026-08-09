@@ -1,6 +1,6 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import mongoose, { Schema, Document } from 'mongoose';
-import { ICategory } from 'shared/types';
+import { ICategory } from '../../shared/types';
 
 export interface ICategoryDoc extends Omit<ICategory, '_id'>, Document {}
 

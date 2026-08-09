@@ -1,7 +1,7 @@
 import { PageRepository } from '../repositories/page.repository';
-import { IPage } from 'shared/types';
+import { IPage } from '../../shared/types';
 import { NotFoundError, BadRequestException } from '../utils/exceptions';
-import { slugify } from 'shared/utils';
+import { slugify } from '../../shared/utils';
 import { normalizeSeo } from '../utils/seo';
 import { sanitizeRichText } from '../utils/sanitize';
 

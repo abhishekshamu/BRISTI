@@ -1,5 +1,5 @@
 import { SettingsRepository } from '../repositories/settings.repository';
-import { ISiteSettings } from 'shared/types';
+import { ISiteSettings } from '../../shared/types';
 
 export class SettingsService {
   constructor(private settingsRepo: SettingsRepository) {}

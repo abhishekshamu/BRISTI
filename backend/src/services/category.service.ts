@@ -1,9 +1,9 @@
 import { CategoryRepository } from '../repositories/category.repository';
 import { ProductRepository } from '../repositories/product.repository';
 import { CouponRepository } from '../repositories/coupon.repository';
-import { ICategory } from 'shared/types';
+import { ICategory } from '../../shared/types';
 import { NotFoundError, BadRequestException } from '../utils/exceptions';
-import { slugify } from 'shared/utils';
+import { slugify } from '../../shared/utils';
 
 export class CategoryService {
   constructor(

@@ -1,6 +1,6 @@
 import { CollectionModel } from '../models/Collection';
 import { BaseRepository } from './base.repository';
-import { ICollection } from 'shared/types';
+import { ICollection } from '../../shared/types';
 import { Types } from 'mongoose';
 
 export class CollectionRepository extends BaseRepository<ICollection> {

@@ -7,7 +7,7 @@ import { ProductModel } from '../models/Product';
 import { CollectionModel } from '../models/Collection';
 import { InventoryItemModel } from '../models/InventoryItem';
 import { NotificationModel } from '../models/Notification';
-import { MARKETING_COLLECTION_SLUGS } from 'shared/constants';
+import { MARKETING_COLLECTION_SLUGS } from '../../shared/constants';
 
 dotenv.config();
 
