@@ -2,7 +2,6 @@ import bcrypt from 'bcryptjs';
 import { AdminRepository } from '../repositories/admin.repository';
 import { AuthRepository } from '../repositories/auth.repository';
 import { JwtService } from './jwt.service';
-import { EmailService } from './email.service';
 import { IAdmin } from 'shared/types';
 import { BadRequestException, UnauthorizedError, NotFoundException, ForbiddenError } from '../utils/exceptions';
 import { ROLE_PERMISSIONS } from 'shared/constants';
@@ -13,7 +12,6 @@ export class AdminService {
   constructor(
     private adminRepo: AdminRepository,
     private jwtService: JwtService,
-    private emailService: EmailService,
     private authRepo?: AuthRepository
   ) {}
 

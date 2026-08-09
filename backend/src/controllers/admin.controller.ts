@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import { AdminService } from '../services/admin.service';
-import { UserService } from '../services/user.service';
 import { AuthService } from '../services/auth.service';
 import { UserRepository } from '../repositories/user.repository';
 import { ProductRepository } from '../repositories/product.repository';
@@ -12,7 +11,6 @@ import { clearAuthCookies, REFRESH_TOKEN_COOKIE, setAuthCookies } from '../confi
 export class AdminController {
   constructor(
     private adminService: AdminService,
-    private userService: UserService,
     private userRepo: UserRepository,
     private productRepo: ProductRepository,
     private orderRepo: OrderRepository,

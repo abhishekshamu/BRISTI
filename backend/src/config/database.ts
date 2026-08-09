@@ -1,7 +1,6 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import { MongoMemoryServer } from 'mongodb-memory-server';
-import { MongoMemoryReplSet } from 'mongodb-memory-server';
+import type { MongoMemoryServer, MongoMemoryReplSet } from 'mongodb-memory-server';
 import dns from 'node:dns';
 
 dotenv.config();
@@ -29,6 +28,9 @@ const refuseInMemoryInProduction = (): void => {
 const startMemoryMongo = async (): Promise<MongoMemoryServer | MongoMemoryReplSet> => {
   refuseInMemoryInProduction();
   console.log('MONGODB_URI not set — starting in-memory MongoDB (development fallback)');
+  // mongodb-memory-server is a dev-only dependency: it is loaded lazily here so
+  // production never requires it (production either has MONGODB_URI or exits).
+  const { MongoMemoryServer, MongoMemoryReplSet } = await import('mongodb-memory-server');
   // MEMORY_REPLSET=1 starts a single-node replica set so transactional code
   // (e.g. order placement) works against the in-memory database.
   if (process.env.MEMORY_REPLSET === '1') {

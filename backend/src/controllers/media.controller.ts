@@ -3,17 +3,19 @@ import { asyncHandler } from '../middleware/async';
 import { MediaService } from '../services/media.service';
 import { BadRequestError } from '../utils/exceptions';
 
+type MulterFile = NonNullable<Express.Request['file']>;
+
 export class MediaController {
   constructor(private readonly mediaService: MediaService) {}
 
   upload = asyncHandler(async (req: Request, res: Response) => {
-    const files = req.files as Express.Multer.File[] | undefined;
+    const files = req.files as MulterFile[] | undefined;
     if (files && files.length > 1) {
       const results = await this.mediaService.uploadMany(files, req.user!.id, req.body);
       res.status(201).json({ success: true, data: results });
       return;
     }
-    const file = files?.[0] ?? (req as any).file as Express.Multer.File | undefined;
+    const file = files?.[0] ?? (req as any).file as MulterFile | undefined;
     const media = await this.mediaService.upload(file, req.user!.id, req.body);
     res.status(201).json({ success: true, data: media });
   });
@@ -73,8 +75,8 @@ export class MediaController {
   });
 
   replace = asyncHandler(async (req: Request, res: Response) => {
-    const files = req.files as Express.Multer.File[] | undefined;
-    const file = files?.[0] ?? (req as any).file as Express.Multer.File | undefined;
+    const files = req.files as MulterFile[] | undefined;
+    const file = files?.[0] ?? (req as any).file as MulterFile | undefined;
     const media = await this.mediaService.replace(req.params.id, file, req.user!.id, req.body);
     res.json({ success: true, data: media });
   });
