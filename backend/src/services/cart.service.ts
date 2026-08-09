@@ -1,7 +1,7 @@
 import { CartRepository } from '../repositories/cart.repository';
 import { ProductRepository } from '../repositories/product.repository';
 import { CouponRepository } from '../repositories/coupon.repository';
-import { ICart } from 'shared/types';
+import { ICart } from '../../shared/types';
 import { NotFoundException, BadRequestException } from '../utils/exceptions';
 
 export class CartService {

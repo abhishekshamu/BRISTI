@@ -1,5 +1,5 @@
 import { NotificationRepository } from '../repositories/notification.repository';
-import { INotification } from 'shared/types';
+import { INotification } from '../../shared/types';
 
 export class NotificationService {
   constructor(private notificationRepo: NotificationRepository) {}

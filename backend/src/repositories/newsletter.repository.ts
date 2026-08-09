@@ -1,6 +1,6 @@
 import { NewsletterSubscriberModel } from '../models/NewsletterSubscriber';
 import { BaseRepository } from './base.repository';
-import { INewsletterSubscriber } from 'shared/types';
+import { INewsletterSubscriber } from '../../shared/types';
 
 export class NewsletterRepository extends BaseRepository<INewsletterSubscriber> {
   constructor() {

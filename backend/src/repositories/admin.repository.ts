@@ -1,6 +1,6 @@
 import { AdminModel } from '../models/Admin';
 import { BaseRepository } from './base.repository';
-import { IAdmin } from 'shared/types';
+import { IAdmin } from '../../shared/types';
 import bcrypt from 'bcryptjs';
 
 export class AdminRepository extends BaseRepository<IAdmin> {

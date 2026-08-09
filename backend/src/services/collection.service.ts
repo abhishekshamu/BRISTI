@@ -1,7 +1,7 @@
 import { CollectionRepository } from '../repositories/collection.repository';
 import { ProductRepository } from '../repositories/product.repository';
 import { CouponModel } from '../models/Coupon';
-import { ICollection } from 'shared/types';
+import { ICollection } from '../../shared/types';
 import { Types } from 'mongoose';
 import { AppError, NotFoundError } from '../utils/exceptions';
 

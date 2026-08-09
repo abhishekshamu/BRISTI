@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import { HeroBlockModel } from '../models/HeroBlock';
 import { getMongoUri, stopMemoryMongo } from '../config/database';
-import type { HeroBlock, HeroSlide } from 'shared/types';
+import type { HeroBlock, HeroSlide } from '../../shared/types';
 
 dotenv.config();
 

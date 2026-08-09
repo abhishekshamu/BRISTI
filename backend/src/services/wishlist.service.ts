@@ -1,7 +1,7 @@
 import { WishlistRepository } from '../repositories/wishlist.repository';
 import { ProductRepository } from '../repositories/product.repository';
 import { UserRepository } from '../repositories/user.repository';
-import { IWishlist } from 'shared/types';
+import { IWishlist } from '../../shared/types';
 import { NotFoundException } from '../utils/exceptions';
 
 export class WishlistService {

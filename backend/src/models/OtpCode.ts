@@ -1,6 +1,6 @@
 // @ts-nocheck
 import mongoose, { Schema, Document } from 'mongoose';
-import { OtpCode } from 'shared/types';
+import { OtpCode } from '../../shared/types';
 
 export interface IOtpCodeDoc extends Omit<OtpCode, '_id'>, Document {}
 

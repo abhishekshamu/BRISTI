@@ -1,6 +1,6 @@
 import { ProductModel } from '../models/Product';
 import { BaseRepository } from './base.repository';
-import { IProduct } from 'shared/types';
+import { IProduct } from '../../shared/types';
 import { Types } from 'mongoose';
 
 export class ProductRepository extends BaseRepository<any> {

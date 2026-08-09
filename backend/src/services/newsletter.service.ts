@@ -1,8 +1,8 @@
 import { NewsletterRepository } from '../repositories/newsletter.repository';
 import { EmailService } from './email.service';
-import { INewsletterSubscriber } from 'shared/types';
+import { INewsletterSubscriber } from '../../shared/types';
 import { BadRequestException, NotFoundError } from '../utils/exceptions';
-import { isValidEmail } from 'shared/utils';
+import { isValidEmail } from '../../shared/utils';
 
 export class NewsletterService {
   constructor(

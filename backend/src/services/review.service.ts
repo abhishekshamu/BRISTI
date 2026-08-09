@@ -5,7 +5,7 @@ import { OrderRepository } from '../repositories/order.repository';
 import { NotificationService } from './notification.service';
 import { NotificationRepository } from '../repositories/notification.repository';
 import { notifyAdmins } from './admin-notifier';
-import { IReview } from 'shared/types';
+import { IReview } from '../../shared/types';
 import { NotFoundException, BadRequestException, ForbiddenError } from '../utils/exceptions';
 
 const REVIEW_STATUSES = ['pending', 'approved', 'rejected'];

@@ -10,7 +10,7 @@ import { MediaRepository } from '../repositories/media.repository';
 import { NotificationService } from './notification.service';
 import { notifyAdmins } from './admin-notifier';
 import { UserModel } from '../models/User';
-import { IProduct, IReview } from 'shared/types';
+import { IProduct, IReview } from '../../shared/types';
 import { Types } from 'mongoose';
 import { NotFoundException, BadRequestException } from '../utils/exceptions';
 import { normalizeSeo } from '../utils/seo';

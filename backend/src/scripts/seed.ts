@@ -8,8 +8,8 @@ import { UserModel } from '../models/User';
 import { SettingsModel } from '../models/Settings';
 import { HeroBlockModel } from '../models/HeroBlock';
 import { getMongoUri, stopMemoryMongo } from '../config/database';
-import { MARKETING_COLLECTION_SLUGS } from 'shared/constants';
-import type { HeroSlide } from 'shared/types';
+import { MARKETING_COLLECTION_SLUGS } from '../../shared/constants';
+import type { HeroSlide } from '../../shared/types';
 
 dotenv.config();
 

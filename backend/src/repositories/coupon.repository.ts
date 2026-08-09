@@ -1,6 +1,6 @@
 import { CouponModel } from '../models/Coupon';
 import { BaseRepository } from './base.repository';
-import { ICoupon } from 'shared/types';
+import { ICoupon } from '../../shared/types';
 
 export class CouponRepository extends BaseRepository<ICoupon> {
   constructor() {

@@ -1,6 +1,6 @@
 import { NotificationModel } from '../models/Notification';
 import { BaseRepository } from './base.repository';
-import { INotification } from 'shared/types';
+import { INotification } from '../../shared/types';
 
 export class NotificationRepository extends BaseRepository<INotification> {
   constructor() {

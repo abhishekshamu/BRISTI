@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { AdminModel } from '../models/Admin';
-import { ROLE_PERMISSIONS } from 'shared/constants';
+import { ROLE_PERMISSIONS } from '../../shared/constants';
 import { getMongoUri, stopMemoryMongo } from '../config/database';
 
 // Development-only fallback credentials. In production the admin must be

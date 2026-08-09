@@ -1,7 +1,7 @@
 import { ContactRepository } from '../repositories/contact.repository';
-import { ContactMessage } from 'shared/types';
+import { ContactMessage } from '../../shared/types';
 import { BadRequestException, NotFoundError } from '../utils/exceptions';
-import { isValidEmail } from 'shared/utils';
+import { isValidEmail } from '../../shared/utils';
 
 const MESSAGE_STATUSES = ['pending', 'read', 'responded', 'archived'] as const;
 

@@ -1,6 +1,6 @@
 import { WishlistModel } from '../models/Wishlist';
 import { BaseRepository } from './base.repository';
-import { IWishlist } from 'shared/types';
+import { IWishlist } from '../../shared/types';
 
 export class WishlistRepository extends BaseRepository<IWishlist> {
   constructor() {

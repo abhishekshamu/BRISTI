@@ -1,6 +1,6 @@
 // @ts-nocheck
 import mongoose, { Schema, Document } from 'mongoose';
-import { UserSession } from 'shared/types';
+import { UserSession } from '../../shared/types';
 
 export interface IUserSessionDoc extends Omit<UserSession, '_id'>, Document {}
 

@@ -1,6 +1,6 @@
 // @ts-nocheck
 import mongoose, { Schema, Document } from 'mongoose';
-import { ContactMessage } from 'shared/types';
+import { ContactMessage } from '../../shared/types';
 
 export interface IContactMessageDoc extends Omit<ContactMessage, '_id'>, Document {}
 

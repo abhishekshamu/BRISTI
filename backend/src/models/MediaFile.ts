@@ -1,6 +1,6 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import mongoose, { Schema, Document } from 'mongoose';
-import { IMediaFile } from 'shared/types';
+import { IMediaFile } from '../../shared/types';
 
 export interface IMediaFileDoc extends Omit<IMediaFile, '_id'>, Document {}
 

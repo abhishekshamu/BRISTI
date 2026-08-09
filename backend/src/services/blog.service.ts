@@ -1,7 +1,7 @@
 import { BlogRepository } from '../repositories/blog.repository';
-import { IBlogPost } from 'shared/types';
+import { IBlogPost } from '../../shared/types';
 import { NotFoundError, BadRequestException } from '../utils/exceptions';
-import { slugify } from 'shared/utils';
+import { slugify } from '../../shared/utils';
 import { normalizeSeo, normalizeTags } from '../utils/seo';
 import { sanitizeRichText } from '../utils/sanitize';
 

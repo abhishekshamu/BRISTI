@@ -1,6 +1,6 @@
 // @ts-nocheck
 import mongoose, { Schema, Document } from 'mongoose';
-import { LoginHistoryEntry } from 'shared/types';
+import { LoginHistoryEntry } from '../../shared/types';
 
 export interface ILoginHistoryDoc extends Omit<LoginHistoryEntry, '_id'>, Document {}
 

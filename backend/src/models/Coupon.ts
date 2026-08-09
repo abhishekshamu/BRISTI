@@ -1,6 +1,6 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import mongoose, { Schema, Document } from 'mongoose';
-import { ICoupon } from 'shared/types';
+import { ICoupon } from '../../shared/types';
 
 export interface ICouponDoc extends Omit<ICoupon, '_id'>, Document {}
 

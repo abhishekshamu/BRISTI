@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { InventoryItemRepository } from '../repositories/inventory-item.repository';
 import { ProductRepository } from '../repositories/product.repository';
-import { IInventoryItem } from 'shared/types';
+import { IInventoryItem } from '../../shared/types';
 import { NotFoundException, BadRequestException } from '../utils/exceptions';
 
 interface TransferPayload {

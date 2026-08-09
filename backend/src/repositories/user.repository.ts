@@ -1,6 +1,6 @@
 import { UserModel } from '../models/User';
 import { BaseRepository } from './base.repository';
-import { IUser } from 'shared/types';
+import { IUser } from '../../shared/types';
 
 export class UserRepository extends BaseRepository<any> {
   constructor() {

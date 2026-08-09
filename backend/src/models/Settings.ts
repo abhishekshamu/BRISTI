@@ -1,6 +1,6 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import mongoose, { Schema, Document } from 'mongoose';
-import { ISiteSettings } from 'shared/types';
+import { ISiteSettings } from '../../shared/types';
 
 export interface ISettingsDoc extends Omit<ISiteSettings, '_id'>, Document {}
 

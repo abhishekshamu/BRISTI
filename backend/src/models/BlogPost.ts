@@ -1,6 +1,6 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import mongoose, { Schema, Document } from 'mongoose';
-import { IBlogPost } from 'shared/types';
+import { IBlogPost } from '../../shared/types';
 
 export interface IBlogPostDoc extends Omit<IBlogPost, '_id'>, Document {}
 

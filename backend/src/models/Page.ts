@@ -1,6 +1,6 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import mongoose, { Schema, Document } from 'mongoose';
-import { IPage } from 'shared/types';
+import { IPage } from '../../shared/types';
 
 export interface IPageDoc extends Omit<IPage, '_id'>, Document {}
 

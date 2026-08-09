@@ -1,6 +1,6 @@
 // @ts-nocheck
 import mongoose, { Schema, Document } from 'mongoose';
-import { PromotionBanner } from 'shared/types';
+import { PromotionBanner } from '../../shared/types';
 
 export interface IPromotionBannerDoc extends Omit<PromotionBanner, '_id'>, Document {}
 

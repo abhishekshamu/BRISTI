@@ -1,6 +1,6 @@
 import { ReviewModel } from '../models/Review';
 import { BaseRepository } from './base.repository';
-import { IReview } from 'shared/types';
+import { IReview } from '../../shared/types';
 import { Types } from 'mongoose';
 
 export class ReviewRepository extends BaseRepository<IReview> {

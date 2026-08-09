@@ -1,6 +1,6 @@
 import { MediaFileModel } from '../models/MediaFile';
 import { BaseRepository } from './base.repository';
-import { IMediaFile } from 'shared/types';
+import { IMediaFile } from '../../shared/types';
 
 export class MediaRepository extends BaseRepository<IMediaFile> {
   constructor() { super(MediaFileModel as any); }

@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { InventoryItemModel } from '../models/InventoryItem';
 import { BaseRepository } from './base.repository';
-import { IInventoryItem } from 'shared/types';
+import { IInventoryItem } from '../../shared/types';
 
 export class InventoryItemRepository extends BaseRepository<IInventoryItem> {
   constructor() {

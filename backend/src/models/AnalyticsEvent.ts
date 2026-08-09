@@ -1,6 +1,6 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import mongoose, { Schema, Document } from 'mongoose';
-import { IAnalyticsEvent } from 'shared/types';
+import { IAnalyticsEvent } from '../../shared/types';
 
 export interface IAnalyticsEventDoc extends Omit<IAnalyticsEvent, '_id'>, Document {}
 

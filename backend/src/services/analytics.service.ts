@@ -1,5 +1,5 @@
 import { AnalyticsRepository } from '../repositories/analytics.repository';
-import { IAnalyticsEvent } from 'shared/types';
+import { IAnalyticsEvent } from '../../shared/types';
 
 export class AnalyticsService {
   constructor(private analyticsRepo: AnalyticsRepository) {}

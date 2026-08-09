@@ -1,6 +1,6 @@
 import { PaymentModel } from '../models/Payment';
 import { BaseRepository } from './base.repository';
-import { IPayment } from 'shared/types';
+import { IPayment } from '../../shared/types';
 
 export class PaymentRepository extends BaseRepository<IPayment> {
   constructor() {

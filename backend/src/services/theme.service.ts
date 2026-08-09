@@ -1,6 +1,6 @@
 import { ThemeRepository } from '../repositories/theme.repository';
-import { IThemeSettings } from 'shared/types';
-import { mergeThemeWithDefaults, resolvePreset, ThemePresetName } from 'shared/theme';
+import { IThemeSettings } from '../../shared/types';
+import { mergeThemeWithDefaults, resolvePreset, ThemePresetName } from '../../shared/theme';
 import { NotFoundError } from '../utils/exceptions';
 
 export class ThemeService {

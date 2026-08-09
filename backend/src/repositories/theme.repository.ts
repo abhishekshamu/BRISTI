@@ -1,6 +1,6 @@
 import { ThemeModel } from '../models/Theme';
 import { BaseRepository } from './base.repository';
-import { IThemeSettings } from 'shared/types';
+import { IThemeSettings } from '../../shared/types';
 
 export class ThemeRepository extends BaseRepository<IThemeSettings> {
   constructor() {

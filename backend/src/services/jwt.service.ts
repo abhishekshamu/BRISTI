@@ -1,6 +1,6 @@
 import jwt, { SignOptions } from 'jsonwebtoken';
 import { randomUUID, randomBytes } from 'crypto';
-import { IUser } from 'shared/types';
+import { IUser } from '../../shared/types';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -46,7 +46,7 @@ class JwtService {
   verifyAccessToken(token: string): any {
     try {
       return jwt.verify(token, this.jwtSecret);
-    } catch (error) {
+} catch (_error) {
       return null;
     }
   }
@@ -54,7 +54,7 @@ class JwtService {
   verifyRefreshToken(token: string): any {
     try {
       return jwt.verify(token, this.jwtRefreshSecret);
-    } catch (error) {
+    } catch (_error) {
       return null;
     }
   }

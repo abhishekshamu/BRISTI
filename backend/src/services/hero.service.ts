@@ -1,5 +1,5 @@
 import { HeroBlockModel, IHeroBlockDoc } from '../models/HeroBlock';
-import { HeroBlock, HeroSlide } from 'shared/types';
+import { HeroBlock, HeroSlide } from '../../shared/types';
 import { heroBus, HERO_CHANGED } from '../events/heroBus';
 import { NotFoundError } from '../utils/exceptions';
 

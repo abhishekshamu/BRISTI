@@ -1,6 +1,6 @@
 import { BlogPostModel } from '../models/BlogPost';
 import { BaseRepository } from './base.repository';
-import { IBlogPost } from 'shared/types';
+import { IBlogPost } from '../../shared/types';
 
 export class BlogRepository extends BaseRepository<IBlogPost> {
   constructor() {

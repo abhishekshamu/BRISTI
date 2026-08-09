@@ -1,6 +1,6 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import mongoose, { Schema, Document } from 'mongoose';
-import { INotification } from 'shared/types';
+import { INotification } from '../../shared/types';
 
 export interface INotificationDoc extends Omit<INotification, '_id'>, Document {}
 

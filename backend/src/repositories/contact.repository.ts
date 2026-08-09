@@ -1,6 +1,6 @@
 import { ContactMessageModel } from '../models/ContactMessage';
 import { BaseRepository } from './base.repository';
-import { ContactMessage } from 'shared/types';
+import { ContactMessage } from '../../shared/types';
 
 export class ContactRepository extends BaseRepository<ContactMessage> {
   constructor() {

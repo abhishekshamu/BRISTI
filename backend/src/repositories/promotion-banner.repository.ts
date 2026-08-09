@@ -1,6 +1,6 @@
 import { PromotionBannerModel } from '../models/PromotionBanner';
 import { BaseRepository } from './base.repository';
-import { PromotionBanner } from 'shared/types';
+import { PromotionBanner } from '../../shared/types';
 
 export class PromotionBannerRepository extends BaseRepository<PromotionBanner> {
   constructor() {

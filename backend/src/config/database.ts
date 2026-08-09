@@ -1,6 +1,5 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import type { MongoMemoryServer, MongoMemoryReplSet } from 'mongodb-memory-server';
 import dns from 'node:dns';
 
 dotenv.config();
@@ -14,7 +13,20 @@ const RESOLVER_SETS: string[][] = [
 
 const SYSTEM_SERVERS: string[] = dns.getServers();
 
-let memMongo: MongoMemoryServer | MongoMemoryReplSet | null = null;
+/**
+ * Minimal structural type for the in-memory MongoDB handle.
+ *
+ * mongodb-memory-server is a dev-only dependency and is loaded lazily at
+ * runtime (never at module load). It is intentionally not imported as a type
+ * here so that neither the production build nor the production runtime ever
+ * requires the package to be resolvable or installed.
+ */
+interface MemoryMongoHandle {
+  getUri: (dbName?: string) => string;
+  stop: () => Promise<void>;
+}
+
+let memMongo: MemoryMongoHandle | null = null;
 
 // An ephemeral in-memory database is a development-only convenience. In
 // production it would silently discard all data on restart, so fail fast.
@@ -25,12 +37,17 @@ const refuseInMemoryInProduction = (): void => {
   }
 };
 
-const startMemoryMongo = async (): Promise<MongoMemoryServer | MongoMemoryReplSet> => {
+const startMemoryMongo = async (): Promise<MemoryMongoHandle> => {
   refuseInMemoryInProduction();
   console.log('MONGODB_URI not set — starting in-memory MongoDB (development fallback)');
   // mongodb-memory-server is a dev-only dependency: it is loaded lazily here so
   // production never requires it (production either has MONGODB_URI or exits).
-  const { MongoMemoryServer, MongoMemoryReplSet } = await import('mongodb-memory-server');
+  // Cast via `unknown`: the module's own types may not be installed (dev-only
+  // dependency) and must never leak into the production type graph.
+  const { MongoMemoryServer, MongoMemoryReplSet } = (await import('mongodb-memory-server')) as unknown as {
+    MongoMemoryServer: { create: (options?: Record<string, unknown>) => MemoryMongoHandle };
+    MongoMemoryReplSet: { create: (options?: Record<string, unknown>) => MemoryMongoHandle };
+  };
   // MEMORY_REPLSET=1 starts a single-node replica set so transactional code
   // (e.g. order placement) works against the in-memory database.
   if (process.env.MEMORY_REPLSET === '1') {
@@ -94,6 +111,9 @@ const connectDB = async () => {
     console.log('MONGODB_URI not set — starting in-memory MongoDB (development fallback)');
   }
 
+  // The in-memory fallback only ever runs in local development: production with
+  // no MONGODB_URI (or with unreachable DNS) refuses to boot above.
+  refuseInMemoryInProduction();
   try {
     memMongo = await startMemoryMongo();
     const uri = memMongo.getUri('bristi');

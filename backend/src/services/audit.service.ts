@@ -1,5 +1,5 @@
 import { AuditLogRepository } from '../repositories/audit.repository';
-import { IAuditLog } from 'shared/types';
+import { IAuditLog } from '../../shared/types';
 
 export class AuditService {
   constructor(private auditRepo: AuditLogRepository) {}

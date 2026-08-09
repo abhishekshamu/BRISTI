@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { FAQModel } from '../models/FAQ';
 import { BaseRepository } from './base.repository';
-import { IFAQ } from 'shared/types';
+import { IFAQ } from '../../shared/types';
 
 export class FAQRepository extends BaseRepository<IFAQ> {
   constructor() {

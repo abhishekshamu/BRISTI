@@ -10,7 +10,7 @@ import { AdminRepository } from '../repositories/admin.repository';
 import { NotificationService } from './notification.service';
 import { EmailService } from './email.service';
 import { ProductModel } from '../models/Product';
-import { IOrder } from 'shared/types';
+import { IOrder } from '../../shared/types';
 import { NotFoundException, BadRequestException } from '../utils/exceptions';
 
 export class OrderService {
