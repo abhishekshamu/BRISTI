@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import dns from 'node:dns';
+import { createRequire } from 'node:module';
 
 dotenv.config();
 
@@ -17,9 +18,11 @@ const SYSTEM_SERVERS: string[] = dns.getServers();
  * Minimal structural type for the in-memory MongoDB handle.
  *
  * mongodb-memory-server is a dev-only dependency and is loaded lazily at
- * runtime (never at module load). It is intentionally not imported as a type
- * here so that neither the production build nor the production runtime ever
- * requires the package to be resolvable or installed.
+ * runtime (never at module load). It is intentionally not imported here — the
+ * dev fallback uses `createRequire(...)('mongodb-memory-server')` instead, which
+ * TypeScript never resolves at compile time. The production build therefore
+ * works even when the package is not installed, and the production runtime
+ * never loads the module.
  */
 interface MemoryMongoHandle {
   getUri: (dbName?: string) => string;
@@ -32,7 +35,7 @@ let memMongo: MemoryMongoHandle | null = null;
 // production it would silently discard all data on restart, so fail fast.
 const refuseInMemoryInProduction = (): void => {
   if (process.env.NODE_ENV === 'production') {
-    console.error('Refusing to start an in-memory MongoDB fallback in production. Set a valid MONGODB_URI.');
+    console.error('MONGODB_URI is required in production. Set MONGODB_URI to a valid MongoDB Atlas connection string — refusing to start an in-memory MongoDB fallback.');
     process.exit(1);
   }
 };
@@ -40,13 +43,12 @@ const refuseInMemoryInProduction = (): void => {
 const startMemoryMongo = async (): Promise<MemoryMongoHandle> => {
   refuseInMemoryInProduction();
   console.log('MONGODB_URI not set — starting in-memory MongoDB (development fallback)');
-  // mongodb-memory-server is a dev-only dependency: it is loaded lazily here so
-  // production never requires it (production either has MONGODB_URI or exits).
-  // Cast via `unknown`: the module's own types may not be installed (dev-only
-  // dependency) and must never leak into the production type graph.
-  const { MongoMemoryServer, MongoMemoryReplSet } = (await import('mongodb-memory-server')) as unknown as {
-    MongoMemoryServer: { create: (options?: Record<string, unknown>) => MemoryMongoHandle };
-    MongoMemoryReplSet: { create: (options?: Record<string, unknown>) => MemoryMongoHandle };
+  // Local-development-only: loaded lazily via CommonJS require so the package
+  // is never resolved at build time and is never required in production.
+  const nodeRequire = createRequire(__filename);
+  const { MongoMemoryServer, MongoMemoryReplSet } = nodeRequire('mongodb-memory-server') as {
+    MongoMemoryServer: { create: (options?: Record<string, unknown>) => Promise<MemoryMongoHandle> };
+    MongoMemoryReplSet: { create: (options?: Record<string, unknown>) => Promise<MemoryMongoHandle> };
   };
   // MEMORY_REPLSET=1 starts a single-node replica set so transactional code
   // (e.g. order placement) works against the in-memory database.
@@ -93,7 +95,12 @@ async function tryConnect(resolverSet: string[]): Promise<boolean> {
 const connectDB = async () => {
   const configured = process.env.MONGODB_URI?.trim();
 
-  if (configured) {
+  if (!configured) {
+    // Production must always connect to MongoDB Atlas via MONGODB_URI; the
+    // in-memory fallback below is strictly a local-development convenience.
+    refuseInMemoryInProduction();
+    console.log('MONGODB_URI not set — starting in-memory MongoDB (development fallback)');
+  } else {
     const seen = new Set<string>();
     const sets = [...RESOLVER_SETS, SYSTEM_SERVERS]
       .map((set) => set.filter(Boolean))
@@ -107,13 +114,11 @@ const connectDB = async () => {
       if (await tryConnect(set)) return;
     }
     console.error('All DNS resolver sets failed — falling back to in-memory MongoDB (development fallback)...');
-  } else {
-    console.log('MONGODB_URI not set — starting in-memory MongoDB (development fallback)');
+    refuseInMemoryInProduction();
   }
 
-  // The in-memory fallback only ever runs in local development: production with
-  // no MONGODB_URI (or with unreachable DNS) refuses to boot above.
-  refuseInMemoryInProduction();
+  // Only reached in local development: MONGODB_URI is absent, or Atlas was
+  // unreachable with NODE_ENV !== 'production'.
   try {
     memMongo = await startMemoryMongo();
     const uri = memMongo.getUri('bristi');
