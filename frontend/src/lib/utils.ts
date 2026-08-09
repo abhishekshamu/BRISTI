@@ -27,21 +27,39 @@ export function formatPriceFromCents(cents: number, currency = 'USD'): string {
 }
 
 // Origin that serves uploaded files (/uploads/*). Override in production via
-// VITE_API_URL; defaults to the local API during development.
-const API_ORIGIN: string =
-  (import.meta as any).env?.VITE_API_URL?.replace(/\/$/, '') || 'http://localhost:5000';
+// VITE_API_BASE_URL (preferred) or the legacy VITE_API_URL; defaults to the
+// same origin so the Vite dev proxy / host serves the files.
+const API_ORIGIN: string = String(
+  (import.meta as any).env?.VITE_API_BASE_URL || (import.meta as any).env?.VITE_API_URL || '',
+).replace(/\/+$/, '');
 
 /**
  * Resolve an image URL for <img> use.
- * - Absolute http(s) URLs are used unchanged.
+ * - Absolute http(s) URLs pointing at a dev host (localhost/127.0.0.1) are
+ *   rewritten to the configured API origin — media stored while the backend
+ *   ran locally embeds such URLs and they 404 everywhere else.
+ * - Other absolute http(s) URLs are used unchanged (e.g. Cloudinary).
  * - Backend-served relative paths (/uploads/...) get the API origin prepended,
  *   otherwise they would resolve to the storefront origin and 404.
  * - Any other relative path is left untouched (frontend public assets).
  */
 export function getImageUrl(url?: string): string | null {
   if (!url) return null;
-  if (url.startsWith('http://') || url.startsWith('https://')) return url;
-  if (url.startsWith('/uploads/')) return `${API_ORIGIN}${url}`;
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    try {
+      const parsed = new URL(url);
+      const isDevHost =
+        parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.hostname === '0.0.0.0';
+      if (isDevHost) {
+        const path = parsed.pathname + parsed.search;
+        return API_ORIGIN ? `${API_ORIGIN}${path}` : path;
+      }
+    } catch {
+      /* fall through to default handling */
+    }
+    return url;
+  }
+  if (url.startsWith('/uploads/')) return API_ORIGIN ? `${API_ORIGIN}${url}` : url;
   if (url.startsWith('/')) return url;
   return url;
 }

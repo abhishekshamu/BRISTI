@@ -41,7 +41,12 @@ const ALLOWED_MIMES: Record<string, string> = {
 
 const RASTER_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
 
-const API_BASE = () => (process.env.API_URL ? process.env.API_URL.replace(/\/$/, '') : `http://localhost:${process.env.PORT || 5000}`);
+// URLs stored in the DB are relative (e.g. /uploads/...) so they work on any
+// host the API is deployed to; the frontend resolves them against its API origin.
+// Server-side fetch (fit/crop) resolves relative URLs against this instance.
+const API_BASE = () => (process.env.API_URL ? process.env.API_URL.replace(/\/$/, '') : '');
+const SERVER_BASE = () =>
+  process.env.API_URL ? process.env.API_URL.replace(/\/$/, '') : `http://localhost:${process.env.PORT || 5000}`;
 
 const isCloudinary = () => Boolean(process.env.CLOUDINARY_URL);
 
@@ -522,7 +527,7 @@ export class MediaService {
       if (fs.existsSync(filePath)) return fs.readFileSync(filePath);
     }
     if (media.url && (media.url.startsWith('http') || media.url.startsWith('/'))) {
-      const absolute = media.url.startsWith('/') ? `${API_BASE()}${media.url}` : media.url;
+      const absolute = media.url.startsWith('/') ? `${SERVER_BASE()}${media.url}` : media.url;
       try {
         const res = await fetch(absolute, { redirect: 'follow' });
         if (res.ok) return Buffer.from(await res.arrayBuffer());

@@ -6,8 +6,13 @@ export function notifyAuthExpired(): void {
   window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
 }
 
+// Origin of the backend API. In production / when the API is hosted separately,
+// set VITE_API_BASE_URL (e.g. https://bristi-backend.onrender.com); otherwise the
+// same-origin /api path is used (dev: proxied by Vite).
+const API_ORIGIN: string = String((import.meta as any).env?.VITE_API_BASE_URL || '').replace(/\/+$/, '');
+
 export const api: AxiosInstance = axios.create({
-  baseURL: '/api',
+  baseURL: API_ORIGIN ? `${API_ORIGIN}/api` : '/api',
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true,
   timeout: 30000,
@@ -56,6 +61,12 @@ api.interceptors.response.use(
         return api(original);
       }
     }
+    // Diagnostics: surface failed requests so API integration issues are easy to spot.
+    console.error(
+      `[API ${original?.method?.toUpperCase() ?? 'REQ'} ${original?.baseURL ?? ''}${url}]`,
+      error.response ? `HTTP ${error.response.status}` : error.message,
+      error.response?.data ?? '',
+    );
     return Promise.reject(error);
   },
 );

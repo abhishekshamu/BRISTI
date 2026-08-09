@@ -7,10 +7,18 @@ export const CSRF_COOKIE = 'bristi_xsrf';
 
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
+// Cross-site deployments (storefront and API on different origins) require
+// SameSite=None cookies. Set COOKIE_SAME_SITE=none on the API host for that.
+const sameSite = (): CookieOptions['sameSite'] => {
+  const configured = (process.env.COOKIE_SAME_SITE || 'lax').toLowerCase();
+  if (configured === 'none' || configured === 'strict') return configured;
+  return 'lax';
+};
+
 const secureOptions = (httpOnly: boolean, maxAge: number): CookieOptions => ({
   httpOnly,
   secure: IS_PRODUCTION,
-  sameSite: 'lax',
+  sameSite: sameSite(),
   path: '/',
   maxAge,
 });
@@ -29,7 +37,7 @@ const refreshMaxAge = (): number =>
 export const csrfCookieOptions = (): CookieOptions => ({
   httpOnly: false,
   secure: IS_PRODUCTION,
-  sameSite: 'lax',
+  sameSite: sameSite(),
   path: '/',
 });
 
