@@ -2,7 +2,19 @@ import axios from 'axios';
 
 export const FRONTEND_URL: string = (import.meta as any).env?.VITE_FRONTEND_URL ?? 'http://localhost:3000';
 
-export const API_BASE_URL = '/api';
+// Origin of the backend API. In production set VITE_API_URL (e.g.
+// https://bristi-backend.onrender.com); when empty the same-origin /api path is
+// used, which the Vite dev server proxies to the local backend (localhost:5000).
+const API_ORIGIN: string = String((import.meta as any).env?.VITE_API_URL || '').replace(/\/+$/, '');
+
+// Resolves to `${VITE_API_URL}/api` in production, or '/api' in development.
+// A trailing /api in VITE_API_URL is tolerated — never produces /api/api.
+function resolveApiBaseUrl(): string {
+  if (!API_ORIGIN) return '/api';
+  return `${API_ORIGIN.replace(/\/api$/i, '')}/api`;
+}
+
+export const API_BASE_URL = resolveApiBaseUrl();
 
 export const api = axios.create({
   baseURL: API_BASE_URL,

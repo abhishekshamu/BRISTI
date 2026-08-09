@@ -59,6 +59,8 @@ const PROD_ALLOWED_ORIGINS = [
   // Production storefront (Vercel). Always allowed so a fresh deploy works
   // even before FRONTEND_URL is configured on the host.
   'https://bristi-frontend.vercel.app',
+  // Production admin panel (Vercel).
+  'https://bristi-admin.vercel.app',
 ];
 
 const DEV_ALLOWED_ORIGINS = [
