@@ -51,14 +51,32 @@ app.set('trust proxy', process.env.TRUST_PROXY === 'true' ? 1 : false);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Support a comma-separated allow-list of origins (e.g. storefront + admin on different ports)
-const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:3000')
-  .split(',')
-  .map((o) => o.trim())
-  .filter(Boolean);
+// Support a comma-separated allow-list of origins (e.g. storefront + admin on different ports).
+// Local development origins are always allowed so a local storefront/admin can talk to a
+// deployed API; the production frontend domain(s) come from FRONTEND_URL.
+const DEV_ALLOWED_ORIGINS = [
+  'http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:3003',
+  'http://localhost:3004', 'http://localhost:3005', 'http://localhost:5173', 'http://localhost:4173',
+  'http://127.0.0.1:3000', 'http://127.0.0.1:3001', 'http://127.0.0.1:3002', 'http://127.0.0.1:3003',
+  'http://127.0.0.1:3004', 'http://127.0.0.1:3005', 'http://127.0.0.1:5173', 'http://127.0.0.1:4173',
+];
+
+const allowedOrigins = [
+  ...(process.env.FRONTEND_URL || '')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean),
+  ...DEV_ALLOWED_ORIGINS,
+];
+
 app.use(cors({
-  origin: allowedOrigins.length === 1 ? allowedOrigins[0] : allowedOrigins,
-  credentials: true
+  origin(origin, callback) {
+    // Requests without an Origin header (curl, server-to-server, health checks)
+    // and same-origin requests are always allowed.
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error(`Origin ${origin} is not allowed by CORS`));
+  },
+  credentials: true,
 }));
 app.use(helmet({
   // The storefront and admin run on different origins/ports and embed
