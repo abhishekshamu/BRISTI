@@ -4,13 +4,13 @@
   "description": "BRISTI - Premium Luxury Clothing Brand E-commerce Platform",
   "private": true,
   "workspaces": [
+    "shared",
     "frontend",
     "admin",
-    "backend",
-    "shared"
+    "backend"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"npm run dev:admin\"",
+    "dev": "npm run build --workspace=shared && concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"npm run dev:admin\"",
     "dev:frontend": "npm run dev --workspace=frontend",
     "dev:admin": "npm run dev --workspace=admin",
     "dev:backend": "npm run dev --workspace=backend",

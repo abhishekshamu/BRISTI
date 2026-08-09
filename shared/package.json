@@ -1,11 +1,31 @@
 {
   "name": "shared",
   "version": "1.0.0",
-  "type": "module",
-  "main": "index.ts",
-  "types": "index.ts",
+  "type": "commonjs",
+  "exports": {
+    "./types": {
+      "types": "./dist/types/index.d.ts",
+      "require": "./dist/types/index.js",
+      "default": "./dist/types/index.js"
+    },
+    "./constants": {
+      "types": "./dist/constants/index.d.ts",
+      "require": "./dist/constants/index.js",
+      "default": "./dist/constants/index.js"
+    },
+    "./utils": {
+      "types": "./dist/utils/index.d.ts",
+      "require": "./dist/utils/index.js",
+      "default": "./dist/utils/index.js"
+    },
+    "./theme": {
+      "types": "./dist/theme/index.d.ts",
+      "require": "./dist/theme/index.js",
+      "default": "./dist/theme/index.js"
+    }
+  },
   "scripts": {
-    "build": "tsc --noEmit",
+    "build": "tsc",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit"
   },

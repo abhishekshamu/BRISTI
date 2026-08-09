@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { AdminController } from '../controllers/admin.controller';
 import { AdminService } from '../services/admin.service';
-import { UserService } from '../services/user.service';
 import { AuthService } from '../services/auth.service';
 import { AdminRepository } from '../repositories/admin.repository';
 import { UserRepository } from '../repositories/user.repository';
@@ -23,10 +22,9 @@ const emailService = new EmailService();
 const authRepo = new AuthRepository();
 const sessionRepo = new SessionRepository();
 const loginHistoryRepo = new LoginHistoryRepository();
-const adminService = new AdminService(adminRepo, jwtService, emailService, authRepo);
-const userService = new UserService(userRepo);
+const adminService = new AdminService(adminRepo, jwtService, authRepo);
 const authService = new AuthService(userRepo, authRepo, jwtService, emailService, undefined, undefined, sessionRepo, loginHistoryRepo, adminRepo);
-const adminController = new AdminController(adminService, userService, userRepo, productRepo, orderRepo, authRepo, authService);
+const adminController = new AdminController(adminService, userRepo, productRepo, orderRepo, authRepo, authService);
 
 const router = Router();
 

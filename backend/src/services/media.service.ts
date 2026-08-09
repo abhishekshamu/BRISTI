@@ -20,6 +20,8 @@ import { SettingsModel } from '../models/Settings';
 import { MediaUsageEntry } from 'shared/types';
 import { detectRatio } from 'shared/utils';
 
+type MulterFile = NonNullable<Express.Request['file']>;
+
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
 
@@ -311,7 +313,7 @@ export class MediaService {
 
   // -- Upload ---------------------------------------------------------------
 
-  async upload(file: Express.Multer.File, userId: string, options: any = {}) {
+  async upload(file: MulterFile, userId: string, options: any = {}) {
     if (!file?.buffer) throw new BadRequestError('A file is required');
     if (file.size > MAX_UPLOAD_BYTES) throw new BadRequestError('File exceeds the 25 MB upload limit');
     const ext = ALLOWED_MIMES[file.mimetype];
@@ -405,7 +407,7 @@ export class MediaService {
     return doc;
   }
 
-  async uploadMany(files: Express.Multer.File[], userId: string, options: any = {}) {
+  async uploadMany(files: MulterFile[], userId: string, options: any = {}) {
     if (!Array.isArray(files) || files.length === 0) throw new BadRequestError('No files received');
     const results = [];
     for (const file of files.slice(0, 20)) {
@@ -594,7 +596,7 @@ export class MediaService {
 
   // -- Replace & version history ------------------------------------------
 
-  async replace(id: string, file: Express.Multer.File, userId: string, options: any = {}) {
+  async replace(id: string, file: MulterFile, userId: string, options: any = {}) {
     const media: any = await this.get(id, userId);
     if (!file?.buffer) throw new BadRequestError('A replacement file is required');
     if (file.size > MAX_UPLOAD_BYTES) throw new BadRequestError('File exceeds the 25 MB upload limit');
