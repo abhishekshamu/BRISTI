@@ -107,7 +107,6 @@ const InventoryItemSchema: Schema = new Schema({
 // Indexes
 InventoryItemSchema.index({ productId: 1 });
 InventoryItemSchema.index({ variantId: 1 });
-InventoryItemSchema.index({ sku: 1 });
 InventoryItemSchema.index({ location: 1 });
 InventoryItemSchema.index({ 'location.warehouse': 1 });
 InventoryItemSchema.index({ 'reorderPoint': 1 });

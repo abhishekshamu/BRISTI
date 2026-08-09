@@ -264,9 +264,6 @@ const ProductSchema: Schema = new Schema({
 
 // Indexes
 ProductSchema.index({ name: 'text', description: 'text', tags: 'text' });
-ProductSchema.index({ slug: 1 });
-ProductSchema.index({ sku: 1 });
-ProductSchema.index({ barcode: 1 });
 ProductSchema.index({ category: 1 });
 ProductSchema.index({ collection: 1 });
 ProductSchema.index({ collections: 1 });

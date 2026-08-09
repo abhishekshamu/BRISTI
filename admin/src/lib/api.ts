@@ -40,12 +40,27 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    const config = error.config;
     if (error.response?.status === 401) {
-      const bootRequest = (error.config?.url ?? '').includes('/admin/me');
+      const bootRequest = (config?.url ?? '').includes('/admin/me');
       if (!bootRequest && window.location.pathname !== '/login') {
         localStorage.removeItem('admin_user');
         window.location.href = '/login';
       }
+    }
+    // Diagnostics for network/CORS failures (login "Network Error" etc.).
+    // Logs the request target and outcome — never cookies, tokens or bodies.
+    if (!error.response) {
+      console.error(
+        '[API] request failed before receiving a response',
+        {
+          method: config?.method?.toUpperCase(),
+          url: `${config?.baseURL ?? ''}${config?.url ?? ''}`,
+          withCredentials: config?.withCredentials,
+          code: error.code,
+          message: error.message,
+        },
+      );
     }
     return Promise.reject(error);
   }
