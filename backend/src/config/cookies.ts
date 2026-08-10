@@ -7,13 +7,22 @@ export const CSRF_COOKIE = 'bristi_xsrf';
 
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
-// Cross-site deployments (storefront and API on different origins) require
-// SameSite=None cookies. Set COOKIE_SAME_SITE=none on the API host for that.
+// Cross-site deployments (storefront/admin on Vercel, API on Render) require
+// SameSite=None cookies. Production defaults to 'none' so authentication works
+// cross-site out of the box; set COOKIE_SAME_SITE=lax|strict to override.
 const sameSite = (): CookieOptions['sameSite'] => {
-  const configured = (process.env.COOKIE_SAME_SITE || 'lax').toLowerCase();
-  if (configured === 'none' || configured === 'strict') return configured;
-  return 'lax';
+  const configured = (process.env.COOKIE_SAME_SITE || '').toLowerCase();
+  if (configured === 'none' || configured === 'strict' || configured === 'lax') {
+    return configured;
+  }
+  return IS_PRODUCTION ? 'none' : 'lax';
 };
+
+export const getCookieConfig = () => ({
+  sameSite: sameSite(),
+  secure: IS_PRODUCTION,
+  httpOnly: true,
+});
 
 const secureOptions = (httpOnly: boolean, maxAge: number): CookieOptions => ({
   httpOnly,
