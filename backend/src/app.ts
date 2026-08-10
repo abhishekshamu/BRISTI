@@ -47,14 +47,9 @@ const app: Express = express();
 // Keeps rate limiting and req.ip correct in proxied deployments.
 app.set('trust proxy', process.env.TRUST_PROXY === 'true' ? 1 : false);
 
-// Middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Allowed origins are the production storefront(s) plus a comma-separated
-// allow-list via FRONTEND_URL (e.g. a custom domain or the admin panel), plus
-// local development origins so a local storefront/admin can talk to a deployed
-// API. No wildcard is used in any environment.
+// Allowed origins are the production storefront/admin panels plus a
+// comma-separated allow-list via FRONTEND_URL (e.g. a custom domain), plus
+// local development origins. No wildcard is used in any environment.
 const PROD_ALLOWED_ORIGINS = [
   // Production storefront (Vercel). Always allowed so a fresh deploy works
   // even before FRONTEND_URL is configured on the host.
@@ -79,6 +74,9 @@ const allowedOrigins = [
   ...DEV_ALLOWED_ORIGINS,
 ];
 
+// CORS is registered BEFORE every other middleware (body parsers, routes,
+// authentication, error handling) so OPTIONS preflights and all responses —
+// including 4xx/5xx — always carry the CORS headers for allowed origins.
 app.use(cors({
   origin(origin, callback) {
     // Requests without an Origin header (curl, server-to-server, health checks)
@@ -88,8 +86,15 @@ app.use(cors({
     if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
     return callback(null, false);
   },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-XSRF-TOKEN'],
   credentials: true,
 }));
+
+// Middleware
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
 app.use(helmet({
   // The storefront and admin run on different origins/ports and embed
   // images served from this API (/uploads). Helmet's default
