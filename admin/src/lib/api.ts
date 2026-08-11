@@ -32,6 +32,7 @@ export const api = axios.create({
 // same-origin development the axios cookie reader still works and both paths
 // carry the identical value.
 let csrfToken: string | null = null;
+let csrfBootstrap: Promise<string | null> | null = null;
 
 function captureCsrfToken(response?: { headers?: Record<string, unknown> }): void {
   const echoed = response?.headers?.['x-bristi-csrf-token'];
@@ -40,7 +41,29 @@ function captureCsrfToken(response?: { headers?: Record<string, unknown> }): voi
   }
 }
 
-api.interceptors.request.use((config) => {
+// Obtains the CSRF token before the first state-changing request if it has not
+// been captured yet (e.g. upload fired before any API response was received).
+// Uses the authenticated boot endpoint — a safe GET whose response always
+// echoes X-Bristi-Csrf-Token. The X-Skip-Csrf-Bootstrap header prevents
+// recursion and is stripped before the request leaves the app.
+async function ensureCsrfToken(): Promise<string | null> {
+  if (csrfToken) return csrfToken;
+  if (!csrfBootstrap) {
+    csrfBootstrap = (async () => {
+      try {
+        await api.get('/admin/me', { headers: { 'X-Skip-Csrf-Bootstrap': '1' } });
+      } catch {
+        // A 401 on the boot check still echoes X-Bristi-Csrf-Token; ignore errors.
+      }
+      return csrfToken;
+    })().finally(() => {
+      csrfBootstrap = null;
+    });
+  }
+  return csrfBootstrap;
+}
+
+api.interceptors.request.use(async (config) => {
   // Never force a JSON Content-Type by default. Axios auto-serializes objects
   // to JSON and adds application/json itself; for FormData (multipart uploads)
   // the browser must set the multipart/form-data + boundary header instead.
@@ -49,8 +72,16 @@ api.interceptors.request.use((config) => {
   if (config.data instanceof FormData) {
     delete config.headers['Content-Type'];
   }
-  if (csrfToken) {
-    config.headers['X-XSRF-TOKEN'] = csrfToken;
+  if (config.headers['X-Skip-Csrf-Bootstrap']) {
+    delete config.headers['X-Skip-Csrf-Bootstrap'];
+    return config;
+  }
+  const token = csrfToken ?? (await ensureCsrfToken());
+  if (token) {
+    config.headers['X-XSRF-TOKEN'] = token;
+  } else {
+    // Safe diagnostics: presence only — never the token value.
+    console.log(`[api] csrf-present=false method=${(config.method ?? 'GET').toUpperCase()} url=${config.url ?? ''}`);
   }
   return config;
 });
