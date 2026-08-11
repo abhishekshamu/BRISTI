@@ -18,16 +18,30 @@ const sameSite = (): CookieOptions['sameSite'] => {
   return IS_PRODUCTION ? 'none' : 'lax';
 };
 
+// Modern browsers block third-party cookies by default (Chrome, Safari ITP,
+// Firefox ETP). For cross-site SameSite=None cookies that is fatal: the
+// browser silently drops the Set-Cookie and the session never persists.
+// The `Partitioned` (CHIPS) attribute fixes this — the cookie is stored and
+// sent per top-level site, so an admin session set while the top-level site
+// is the admin panel survives third-party cookie blocking. Browsers that do
+// not support Partitioned (pre-2023) ignore the attribute and treat it as a
+// regular SameSite=None cookie, which they still accept.
+const isCrossSite = (): boolean => sameSite() === 'none';
+
+const partitioned = (): boolean | undefined => (isCrossSite() ? true : undefined);
+
 export const getCookieConfig = () => ({
   sameSite: sameSite(),
   secure: IS_PRODUCTION,
   httpOnly: true,
+  partitioned: partitioned(),
 });
 
 const secureOptions = (httpOnly: boolean, maxAge: number): CookieOptions => ({
   httpOnly,
   secure: IS_PRODUCTION,
   sameSite: sameSite(),
+  partitioned: partitioned(),
   path: '/',
   maxAge,
 });
@@ -47,6 +61,7 @@ export const csrfCookieOptions = (): CookieOptions => ({
   httpOnly: false,
   secure: IS_PRODUCTION,
   sameSite: sameSite(),
+  partitioned: partitioned(),
   path: '/',
 });
 
@@ -56,6 +71,9 @@ export const setAuthCookies = (res: Response, accessToken: string, refreshToken:
 };
 
 export const clearAuthCookies = (res: Response): void => {
-  res.clearCookie(ACCESS_TOKEN_COOKIE, { path: '/' });
-  res.clearCookie(REFRESH_TOKEN_COOKIE, { path: '/' });
+  // Deleting a cookie requires the exact same attributes it was set with —
+  // including Partitioned — or the browser cannot match and remove it.
+  const opts: CookieOptions = { path: '/', partitioned: partitioned() };
+  res.clearCookie(ACCESS_TOKEN_COOKIE, opts);
+  res.clearCookie(REFRESH_TOKEN_COOKIE, opts);
 };

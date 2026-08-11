@@ -27,6 +27,26 @@ export const api: AxiosInstance = axios.create({
 
 let refreshPromise: Promise<boolean> | null = null;
 
+// Cross-site (frontend on Vercel, API on Render): the bistr_xsrf cookie is
+// host-only on the API host, so document.cookie never exposes it to this app.
+// The backend echoes the same value in the X-Bristi-Csrf-Token response header
+// (CORS-exposed); capture it here and double-submit it on every request.
+let csrfToken: string | null = null;
+
+function captureCsrfToken(response?: { headers?: Record<string, unknown> }): void {
+  const echoed = response?.headers?.['x-bristi-csrf-token'];
+  if (typeof echoed === 'string' && echoed.length > 0) {
+    csrfToken = echoed;
+  }
+}
+
+api.interceptors.request.use((config) => {
+  if (csrfToken) {
+    config.headers['X-XSRF-TOKEN'] = csrfToken;
+  }
+  return config;
+});
+
 async function refreshAccessToken(): Promise<boolean> {
   try {
     // The refresh token is an httpOnly cookie; the server rotates both cookies.
@@ -39,8 +59,12 @@ async function refreshAccessToken(): Promise<boolean> {
 }
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    captureCsrfToken(response as { headers?: Record<string, unknown> });
+    return response;
+  },
   async (error: AxiosError) => {
+    captureCsrfToken(error.response);
     const original = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
     const url = original?.url ?? '';
     const anonymousProbe = /\/auth\/me$|\/users\/profile$/.test(url);

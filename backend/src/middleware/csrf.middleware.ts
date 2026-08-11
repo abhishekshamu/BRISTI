@@ -33,11 +33,20 @@ function safeEqual(a: string, b: string): boolean {
  */
 export const csrfProtection = (req: Request, res: Response, next: NextFunction) => {
   const existing = req.cookies?.[CSRF_COOKIE];
-  if (typeof existing === 'string' && existing.length > 0) {
-    res.cookie(CSRF_COOKIE, existing, csrfCookieOptions());
-  } else {
-    res.cookie(CSRF_COOKIE, crypto.randomBytes(32).toString('hex'), csrfCookieOptions());
-  }
+  const token =
+    typeof existing === 'string' && existing.length > 0
+      ? existing
+      : crypto.randomBytes(32).toString('hex');
+
+  res.cookie(CSRF_COOKIE, token, csrfCookieOptions());
+
+  // The double-submit cookie is host-only on the API (e.g. onrender.com), so
+  // JavaScript on a cross-site frontend (e.g. vercel.app) can never read it
+  // via document.cookie. Echo the same value in a CORS-exposed response
+  // header — the client sends it back as X-XSRF-TOKEN and the check below
+  // still verifies it against the cookie. No security is weakened: the cookie
+  // still must arrive, and only the allowed CORS origins can read the header.
+  res.setHeader('X-Bristi-Csrf-Token', token);
 
   if (SAFE_METHODS.has(req.method)) {
     return next();

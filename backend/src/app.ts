@@ -122,6 +122,9 @@ app.use(cors({
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-XSRF-TOKEN'],
+  // X-Bristi-Csrf-Token is the cross-site double-submit token echo (see
+  // csrf.middleware.ts); X-Bristi-Commit identifies the deployed build.
+  exposedHeaders: ['X-Bristi-Csrf-Token', 'X-Bristi-Commit'],
   credentials: true,
 }));
 
@@ -251,6 +254,7 @@ app.get('/api/deploy-info', (req: Request, res: Response) => {
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-XSRF-TOKEN'],
+      exposedHeaders: ['X-Bristi-Csrf-Token', 'X-Bristi-Commit'],
     },
     cookies: {
       ...getCookieConfig(),

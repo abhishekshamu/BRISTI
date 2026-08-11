@@ -54,12 +54,18 @@ export const protect = async (
       if (!user) {
         const admin = await adminRepo.findById(decoded.id);
         if (!admin) {
+          console.log(
+            `[auth] 401 ${req.method} ${req.originalUrl} reason=principal-not-found origin=${req.headers.origin || 'none'}`
+          );
           return res.status(401).json({
             success: false,
             message: 'Not authorized to access this route'
           });
         }
         if (!isActivePrincipal(admin)) {
+          console.log(
+            `[auth] 403 ${req.method} ${req.originalUrl} reason=admin-inactive origin=${req.headers.origin || 'none'}`
+          );
           return res.status(403).json({
             success: false,
             message: 'Account is not active'
@@ -71,6 +77,9 @@ export const protect = async (
       }
 
       if (!isActivePrincipal(user)) {
+        console.log(
+          `[auth] 403 ${req.method} ${req.originalUrl} reason=user-inactive origin=${req.headers.origin || 'none'}`
+        );
         return res.status(403).json({
           success: false,
           message: 'Account is not active'
@@ -81,6 +90,9 @@ export const protect = async (
       req.authType = 'user';
       next();
     } catch (_err) {
+      console.log(
+        `[auth] 401 ${req.method} ${req.originalUrl} reason=invalid-token origin=${req.headers.origin || 'none'}`
+      );
       return res.status(401).json({
         success: false,
         message: 'Not authorized to access this route'
@@ -89,6 +101,9 @@ export const protect = async (
   }
 
   if (!token) {
+    console.log(
+      `[auth] 401 ${req.method} ${req.originalUrl} reason=missing-token origin=${req.headers.origin || 'none'}`
+    );
     return res.status(401).json({
       success: false,
       message: 'Not authorized to access this route'

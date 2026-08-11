@@ -22,6 +22,11 @@ export class AdminController {
     const { email, password } = req.body;
     const { admin, accessToken, refreshToken } = await this.adminService.login(email, password);
     setAuthCookies(res, accessToken, refreshToken);
+    // Safe diagnostic: email identifier only — never the password, tokens or
+    // full cookie contents.
+    console.log(
+      `[admin-login] success email=${admin?.email || 'unknown'} origin=${req.headers.origin || 'none'} auth-cookies-set=true`
+    );
     res.status(200).json({
       success: true,
       data: {
