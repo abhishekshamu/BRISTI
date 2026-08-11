@@ -25,6 +25,21 @@ export const api = axios.create({
   xsrfHeaderName: 'X-XSRF-TOKEN',
 });
 
+// Cross-site (admin on vercel.app, API on onrender.com): the bistr_xsrf cookie
+// is host-only on the API, so document.cookie never exposes it to this app.
+// The backend echoes the same value in the X-Bristi-Csrf-Token response header
+// (CORS-exposed); capture it here and double-submit it on every request. In
+// same-origin development the axios cookie reader still works and both paths
+// carry the identical value.
+let csrfToken: string | null = null;
+
+function captureCsrfToken(response?: { headers?: Record<string, unknown> }): void {
+  const echoed = response?.headers?.['x-bristi-csrf-token'];
+  if (typeof echoed === 'string' && echoed.length > 0) {
+    csrfToken = echoed;
+  }
+}
+
 api.interceptors.request.use((config) => {
   // Never force a JSON Content-Type by default. Axios auto-serializes objects
   // to JSON and adds application/json itself; for FormData (multipart uploads)
@@ -34,12 +49,19 @@ api.interceptors.request.use((config) => {
   if (config.data instanceof FormData) {
     delete config.headers['Content-Type'];
   }
+  if (csrfToken) {
+    config.headers['X-XSRF-TOKEN'] = csrfToken;
+  }
   return config;
 });
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    captureCsrfToken(response as { headers?: Record<string, unknown> });
+    return response;
+  },
   (error) => {
+    captureCsrfToken(error.response);
     const config = error.config;
     if (error.response?.status === 401) {
       const bootRequest = (config?.url ?? '').includes('/admin/me');
