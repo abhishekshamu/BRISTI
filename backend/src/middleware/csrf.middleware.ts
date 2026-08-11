@@ -66,6 +66,15 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction) 
     typeof cookieToken !== 'string' ||
     !safeEqual(headerToken, cookieToken)
   ) {
+    // Safe diagnostics: presence flags only — never the token values, the
+    // cookie contents, or any credential material.
+    console.log(
+      `[csrf] check-failed method=${req.method} path=${req.originalUrl} ` +
+      `csrf-header-present=${typeof headerToken === 'string' && headerToken.length > 0} ` +
+      `csrf-cookie-present=${typeof cookieToken === 'string' && cookieToken.length > 0} ` +
+      `session-cookie-present=${hasSessionCookie} ` +
+      `origin=${req.headers.origin || 'none'}`
+    );
     return res.status(403).json({ success: false, message: 'Invalid or missing CSRF token' });
   }
 
