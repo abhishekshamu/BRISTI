@@ -68,8 +68,13 @@ const DEV_ALLOWED_ORIGINS = [
 
 const allowedOrigins = Array.from(new Set([
   ...PROD_ALLOWED_ORIGINS,
-  ...(process.env.FRONTEND_URL || '')
-    .split(',')
+  // ALLOWED_ORIGINS is the canonical env override: comma-separated list of
+  // production origins (storefront, admin, custom domains). FRONTEND_URL is
+  // kept as a legacy alias — both are read, so either works.
+  ...[
+    ...(process.env.ALLOWED_ORIGINS || '').split(','),
+    ...(process.env.FRONTEND_URL || '').split(','),
+  ]
     .map((o) => o.trim())
     .filter(Boolean),
   ...DEV_ALLOWED_ORIGINS,
@@ -221,12 +226,15 @@ const uploadsDir = path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 app.use('/uploads', express.static(uploadsDir));
 
-// Health check endpoint
-app.get('/health', (req: Request, res: Response) => {
+// Health check endpoints — /health (root) and /api/health (same-origin /api
+// prefix used by storefront/admin clients).
+app.get(['/health', '/api/health'], (req: Request, res: Response) => {
   res.status(200).json({
+    success: true,
+    message: 'BRISTI backend is running',
     status: 'OK',
+    service: 'BRISTI API',
     timestamp: new Date().toISOString(),
-    service: 'BRISTI API'
   });
 });
 

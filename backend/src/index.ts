@@ -5,12 +5,14 @@ import { ensureDefaultAdmin } from './scripts/ensure-default-admin';
 
 dotenv.config();
 
-const PORT = process.env.PORT || 5000;
+const PORT = Number(process.env.PORT) || 5000;
 
 connectDB()
   .then(() => ensureDefaultAdmin())
   .then(() => {
-    app.listen(PORT, () => {
+    // Bind to 0.0.0.0 so the server accepts connections from any interface
+    // (required by Render/Railway/Fly containers; harmless on bare hosts).
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
     });
   })

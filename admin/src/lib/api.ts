@@ -75,7 +75,16 @@ export function getApiError(error: unknown, fallback = 'Something went wrong'): 
   if (Array.isArray(data?.errors) && data.errors.length && typeof data.errors[0]?.msg === 'string') {
     return data.errors[0].msg;
   }
-  if (typeof err?.message === 'string' && err.message) return err.message;
+  if (err?.response) {
+    const status = err.response.status;
+    if (status === 401) return 'Invalid email or password';
+    if (status === 403) return 'Access denied for this account';
+    if (status === 404) return 'API route not found — check the backend API URL';
+    if (status >= 500) return 'Backend error — please try again later';
+  }
+  // No HTTP response: the request never reached the backend (offline, wrong
+  // API URL, CORS preflight rejected, or the backend is unreachable).
+  if (typeof err?.message === 'string' && err.message) return `Cannot reach the backend server (${err.message})`;
   return fallback;
 }
 
