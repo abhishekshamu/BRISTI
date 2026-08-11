@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MotionConfig } from 'framer-motion';
 import { Toaster } from 'sonner';
+import { inject } from '@vercel/analytics';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { ServerThemeProvider } from '@/context/ServerThemeContext';
 import { SettingsProvider } from '@/context/SettingsContext';
@@ -22,6 +23,8 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+inject();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
