@@ -94,6 +94,34 @@ api.interceptors.response.use(
   (error) => {
     captureCsrfToken(error.response);
     const config = error.config;
+    const data = error.response?.data;
+    // The backend's express-validator rejects return { success, errors: [...] }
+    // without a message field; normalize so every consumer showing
+    // data.message / data.error surfaces the real validation reason instead of
+    // a generic fallback.
+    if (
+      data &&
+      typeof data === 'object' &&
+      !data.message &&
+      !data.error &&
+      Array.isArray(data.errors) &&
+      data.errors.length > 0
+    ) {
+      const firstError = typeof data.errors[0]?.msg === 'string' ? data.errors[0].msg : 'Request validation failed';
+      data.message = firstError;
+      data.error = firstError;
+    }
+    // Self-heal a CSRF 403: the echoed token may be stale (session cookie outlives
+    // the session-scoped xsrf cookie across browser restarts, tab restores, cookie
+    // eviction). Re-capture via the boot endpoint and retry once with the fresh token.
+    const method = String(config?.method ?? 'get').toLowerCase();
+    const isStateChange = config && !['get', 'head', 'options'].includes(method);
+    const csrfFailure = error.response?.status === 403 && /csrf/i.test(String(data?.message ?? ''));
+    if (isStateChange && csrfFailure && config && !(config as any).__csrfRetried) {
+      (config as any).__csrfRetried = true;
+      csrfToken = null;
+      return ensureCsrfToken().then(() => api(config));
+    }
     if (error.response?.status === 401) {
       const bootRequest = (config?.url ?? '').includes('/admin/me');
       if (!bootRequest && window.location.pathname !== '/login') {

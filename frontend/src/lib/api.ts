@@ -32,6 +32,7 @@ let refreshPromise: Promise<boolean> | null = null;
 // The backend echoes the same value in the X-Bristi-Csrf-Token response header
 // (CORS-exposed); capture it here and double-submit it on every request.
 let csrfToken: string | null = null;
+let csrfBootstrap: Promise<string | null> | null = null;
 
 function captureCsrfToken(response?: { headers?: Record<string, unknown> }): void {
   const echoed = response?.headers?.['x-bristi-csrf-token'];
@@ -40,9 +41,35 @@ function captureCsrfToken(response?: { headers?: Record<string, unknown> }): voi
   }
 }
 
-api.interceptors.request.use((config) => {
-  if (csrfToken) {
-    config.headers['X-XSRF-TOKEN'] = csrfToken;
+// Obtains the CSRF token before the first state-changing request if it has not
+// been captured yet. Uses a safe GET whose response always echoes
+// X-Bristi-Csrf-Token. The X-Skip-Csrf-Bootstrap header prevents recursion and
+// is stripped before the request leaves the app.
+async function ensureCsrfToken(): Promise<string | null> {
+  if (csrfToken) return csrfToken;
+  if (!csrfBootstrap) {
+    csrfBootstrap = (async () => {
+      try {
+        await api.get('/auth/me', { headers: { 'X-Skip-Csrf-Bootstrap': '1' } });
+      } catch {
+        // A 401 on the boot check still echoes X-Bristi-Csrf-Token; ignore errors.
+      }
+      return csrfToken;
+    })().finally(() => {
+      csrfBootstrap = null;
+    });
+  }
+  return csrfBootstrap;
+}
+
+api.interceptors.request.use(async (config) => {
+  if (config.headers['X-Skip-Csrf-Bootstrap']) {
+    delete config.headers['X-Skip-Csrf-Bootstrap'];
+    return config;
+  }
+  const token = csrfToken ?? (await ensureCsrfToken());
+  if (token) {
+    config.headers['X-XSRF-TOKEN'] = token;
   }
   return config;
 });
@@ -67,6 +94,31 @@ api.interceptors.response.use(
     captureCsrfToken(error.response);
     const original = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
     const url = original?.url ?? '';
+    // The backend's express-validator rejects return { success, errors: [...] }
+    // without a message field; normalize so consumers showing data.message
+    // surface the real validation reason instead of a generic fallback.
+    const data = error.response?.data as any;
+    if (
+      data &&
+      typeof data === 'object' &&
+      !data.message &&
+      !data.error &&
+      Array.isArray(data.errors) &&
+      data.errors.length > 0
+    ) {
+      data.message = typeof data.errors[0]?.msg === 'string' ? data.errors[0].msg : 'Request validation failed';
+    }
+    // Self-heal a CSRF 403: the echoed token may be stale (session cookies
+    // outlive the session-scoped xsrf cookie across browser restarts).
+    // Re-capture via the boot endpoint and retry once with the fresh token.
+    const method = String(original?.method ?? 'get').toLowerCase();
+    const isStateChange = original && !['get', 'head', 'options'].includes(method);
+    const csrfFailure = error.response?.status === 403 && /csrf/i.test(String(data?.message ?? ''));
+    if (isStateChange && csrfFailure && original && !(original as any).__csrfRetried) {
+      (original as any).__csrfRetried = true;
+      csrfToken = null;
+      return ensureCsrfToken().then(() => api(original));
+    }
     const anonymousProbe = /\/auth\/me$|\/users\/profile$/.test(url);
     if (
       error.response?.status === 401 &&

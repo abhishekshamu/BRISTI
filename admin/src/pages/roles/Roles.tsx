@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Plus, Edit, Trash2, Shield, ShieldCheck, Users, KeyRound } from 'lucide-react';
-import api from '../../lib/api';
+import api, { getApiError } from '../../lib/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../lib/auth-context';
 import { ADMIN_ROLES, ROLE_PERMISSIONS } from '@shared/constants';
@@ -125,7 +125,7 @@ export default function Roles() {
       setFormData({ ...emptyForm });
       fetchStaff();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || error.response?.data?.error || 'Failed to save staff member');
+      toast.error(getApiError(error, 'Failed to save staff member'));
     } finally {
       setSaving(false);
     }
@@ -159,7 +159,7 @@ export default function Roles() {
       setDeleteTarget(null);
       fetchStaff();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to remove staff member');
+      toast.error(getApiError(error, 'Failed to remove staff member'));
     }
   };
 
