@@ -12,7 +12,7 @@ import { OtpService } from '../services/otp.service';
 import { OtpRepository } from '../repositories/otp.repository';
 import { SmsService } from '../services/sms.service';
 import { GoogleService } from '../services/google.service';
-import { protect } from '../middleware/auth.middleware';
+import { protect, optionalAuth } from '../middleware/auth.middleware';
 import { registerValidation, loginValidation, forgotPasswordValidation, resetPasswordValidation, refreshTokenValidation, changePasswordValidation, updateProfileValidation, googleLoginValidation, requestOtpValidation, verifyOtpValidation } from '../validators/auth.validators';
 import { validateRequest } from '../validators';
 
@@ -40,9 +40,9 @@ const router = Router();
 // Public routes
 router.post('/register', registerValidation, validateRequest, authController.register);
 router.post('/login', loginValidation, validateRequest, authController.login);
-router.post('/google', googleLoginValidation, validateRequest, authController.googleLogin);
-router.post('/otp/request', requestOtpValidation, validateRequest, authController.requestOtp);
-router.post('/otp/verify', verifyOtpValidation, validateRequest, authController.verifyOtp);
+router.post('/google', optionalAuth, googleLoginValidation, validateRequest, authController.googleLogin);
+router.post('/otp/request', optionalAuth, requestOtpValidation, validateRequest, authController.requestOtp);
+router.post('/otp/verify', optionalAuth, verifyOtpValidation, validateRequest, authController.verifyOtp);
 router.post('/refresh-token', refreshTokenValidation, validateRequest, authController.refreshToken);
 router.post('/forgot-password', forgotPasswordValidation, validateRequest, authController.forgotPassword);
 router.post('/reset-password/:token', resetPasswordValidation, validateRequest, authController.resetPassword);

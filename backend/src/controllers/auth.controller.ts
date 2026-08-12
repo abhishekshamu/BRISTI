@@ -65,10 +65,14 @@ export class AuthController {
       throw new ValidationError('Please provide Google credential');
     }
 
-    const { user, accessToken, refreshToken } = await this.authService.googleLogin(credential, {
-      ip: req.ip,
-      userAgent: req.headers['user-agent'],
-    });
+    const { user, accessToken, refreshToken } = await this.authService.googleLogin(
+      credential,
+      {
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+      },
+      req.authType === 'user' ? req.user?.id : undefined
+    );
 
     setAuthCookies(res, accessToken, refreshToken);
 
@@ -97,7 +101,8 @@ export class AuthController {
       throw new ValidationError('Please provide phone number');
     }
 
-    const result = await this.authService.requestOtp(phone);
+    const purpose = req.authType === 'user' ? 'phone_verification' : 'login';
+    const result = await this.authService.requestOtp(phone, undefined, purpose);
 
     res.status(200).json({
       success: true,
@@ -112,10 +117,17 @@ export class AuthController {
       throw new ValidationError('Please provide phone number and code');
     }
 
-    const { user, accessToken, refreshToken } = await this.authService.verifyOtpAndLogin(phone, otp, {
-      ip: req.ip,
-      userAgent: req.headers['user-agent'],
-    });
+    const purpose = req.authType === 'user' ? 'phone_verification' : 'login';
+    const { user, accessToken, refreshToken } = await this.authService.verifyOtpAndLogin(
+      phone,
+      otp,
+      {
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+      },
+      req.authType === 'user' ? req.user?.id : undefined,
+      purpose
+    );
 
     setAuthCookies(res, accessToken, refreshToken);
 

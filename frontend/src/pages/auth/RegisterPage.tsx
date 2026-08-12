@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Mail, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { GoogleButton } from '@/components/auth/GoogleButton';
+import { PhoneOtpForm } from '@/components/auth/PhoneOtpForm';
 import { usePageMeta } from '@/lib/seo';
 import { getErrorMessage, isValidEmailAddress } from '@/lib/utils';
 import { AuthShell } from '@/components/shared/AuthShell';
@@ -86,7 +88,22 @@ export default function RegisterPage() {
           <span className="h-px flex-1 bg-border" />
         </div>
       </div>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+      <Tabs defaultValue="email" className="w-full">
+        <TabsList className="w-full">
+          <TabsTrigger value="email" className="flex-1 gap-1.5">
+            <Mail className="h-3.5 w-3.5" /> Email
+          </TabsTrigger>
+          <TabsTrigger value="phone" className="flex-1 gap-1.5">
+            <Smartphone className="h-3.5 w-3.5" /> Phone
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="phone">
+          <PhoneOtpForm />
+        </TabsContent>
+
+        <TabsContent value="email">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         <div className="grid gap-6 sm:grid-cols-2">
           <div className="flex flex-col gap-2">
             <Label htmlFor="firstName">First name</Label>
@@ -115,7 +132,9 @@ export default function RegisterPage() {
           {loading && <Loader2 className="h-4 w-4 animate-spin" />}
           Create account
         </Button>
-      </form>
+          </form>
+        </TabsContent>
+      </Tabs>
       <p className="mt-8 text-center text-sm text-muted-foreground">
         Already a member?{' '}
         <Link to={`/login${redirect !== '/account' ? `?redirect=${encodeURIComponent(redirect)}` : ''}`} className="font-medium text-foreground underline underline-offset-4 hover:text-accent">

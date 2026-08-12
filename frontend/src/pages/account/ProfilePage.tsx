@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Loader2, RefreshCw, ShieldCheck, ShieldOff, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { authService } from '@/services/auth.service';
@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { GoogleButton } from '@/components/auth/GoogleButton';
 import { getErrorMessage, getInitials } from '@/lib/utils';
 
 const PROVIDER_LABEL: Record<string, string> = {
@@ -17,8 +18,10 @@ const PROVIDER_LABEL: Record<string, string> = {
   phone: 'Phone',
 };
 
+const PHONE_PATTERN = /^\+?[1-9]\d{9,14}$/;
+
 export default function ProfilePage() {
-  const { profile, refreshProfile } = useAuth();
+  const { profile, refreshProfile, requestOtp, verifyOtp, googleLogin } = useAuth();
   const [form, setForm] = useState({
     firstName: profile?.firstName ?? '',
     lastName: profile?.lastName ?? '',
@@ -32,6 +35,86 @@ export default function ProfilePage() {
   });
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPrefs, setSavingPrefs] = useState(false);
+  const [phoneStep, setPhoneStep] = useState<'idle' | 'otp'>('idle');
+  const [phoneInput, setPhoneInput] = useState(profile?.phone ?? '');
+  const [otpInput, setOtpInput] = useState('');
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [linkingGoogle, setLinkingGoogle] = useState(false);
+  const [resendIn, setResendIn] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
+
+  const startResendCountdown = (seconds: number) => {
+    setResendIn(seconds);
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      setResendIn((prev) => {
+        if (prev <= 1) {
+          if (timerRef.current) clearInterval(timerRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const handleSendCode = async () => {
+    const trimmed = phoneInput.trim();
+    if (!PHONE_PATTERN.test(trimmed)) {
+      toast.error('Please enter a valid phone number in international format (e.g. +8801712345678)');
+      return;
+    }
+    setSendingOtp(true);
+    try {
+      const { resendInSeconds } = await requestOtp(trimmed);
+      setPhoneStep('otp');
+      setOtpInput('');
+      startResendCountdown(resendInSeconds);
+      toast.success('Verification code sent');
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    if (!/^\d{6}$/.test(otpInput)) {
+      toast.error('Please enter the 6-digit code');
+      return;
+    }
+    setVerifyingOtp(true);
+    try {
+      await verifyOtp(phoneInput.trim(), otpInput);
+      await refreshProfile();
+      setForm((prev) => ({ ...prev, phone: phoneInput.trim() }));
+      setPhoneStep('idle');
+      toast.success('Phone number verified and linked to your account');
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
+  const handleGoogleLink = async (credential: string) => {
+    setLinkingGoogle(true);
+    try {
+      await googleLogin(credential);
+      await refreshProfile();
+      toast.success('Google account linked');
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setLinkingGoogle(false);
+    }
+  };
 
   const setField = (field: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm((prev) => ({ ...prev, [field]: event.target.value }));
@@ -91,6 +174,124 @@ export default function ProfilePage() {
             )}
           </div>
         </div>
+      </div>
+
+      <div className="flex flex-col gap-5 border-b border-border pb-8">
+        <h2 className="text-xs font-medium uppercase tracking-lux-sm">Sign-in methods</h2>
+
+        <div className="flex items-center justify-between gap-6">
+          <div>
+            <p className="text-sm font-medium">Email</p>
+            <p className="text-xs text-muted-foreground">{profile?.email ?? 'No email on file'}</p>
+          </div>
+          {profile?.emailVerified ? (
+            <Badge variant="outline" className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider">
+              <ShieldCheck className="h-3 w-3" /> Verified
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider">
+              <ShieldOff className="h-3 w-3" /> {profile?.email ? 'Unverified' : 'Not set'}
+            </Badge>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between gap-6">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium">Phone</p>
+            {phoneStep === 'otp' ? (
+              <div className="mt-2 flex flex-col gap-2">
+                <p className="text-xs text-muted-foreground">
+                  Code sent to <span className="font-medium text-foreground">{phoneInput.trim()}</span>
+                </p>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="\d*"
+                    maxLength={6}
+                    value={otpInput}
+                    onChange={(event) => setOtpInput(event.target.value.replace(/\D/g, ''))}
+                    placeholder="000000"
+                    className="w-32 text-center text-lg tracking-[0.4em]"
+                  />
+                  <Button type="button" variant="dark" size="sm" onClick={handleVerifyCode} disabled={verifyingOtp}>
+                    {verifyingOtp && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    Verify &amp; link
+                  </Button>
+                </div>
+                <div className="flex items-center gap-3 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPhoneStep('idle');
+                      setOtpInput('');
+                    }}
+                    className="text-muted-foreground underline underline-offset-4 hover:text-foreground"
+                  >
+                    Change number
+                  </button>
+                  {resendIn > 0 ? (
+                    <span className="text-muted-foreground tabular-nums">Resend in {resendIn}s</span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleSendCode}
+                      disabled={sendingOtp}
+                      className="inline-flex items-center gap-1 font-medium text-foreground underline underline-offset-4 hover:text-accent disabled:opacity-50"
+                    >
+                      <RefreshCw className="h-3 w-3" /> Resend code
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="mt-2 flex max-w-sm items-center gap-2">
+                <Input
+                  type="tel"
+                  inputMode="tel"
+                  value={phoneInput}
+                  onChange={(event) => setPhoneInput(event.target.value)}
+                  placeholder="+8801712345678"
+                  className="text-sm"
+                />
+                {profile?.phone ? (
+                  <span className="shrink-0 text-[10px] uppercase tracking-wider text-accent">
+                    {profile.phoneVerified ? 'Verified' : 'Unverified'}
+                  </span>
+                ) : null}
+              </div>
+            )}
+          </div>
+          {phoneStep !== 'otp' && (
+            <Button variant="outline" size="sm" onClick={handleSendCode} disabled={sendingOtp} className="shrink-0">
+              {sendingOtp ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Smartphone className="h-3.5 w-3.5" />}
+              {profile?.phoneVerified ? 'Change phone' : 'Verify phone'}
+            </Button>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between gap-6">
+          <div>
+            <p className="text-sm font-medium">Google</p>
+            <p className="text-xs text-muted-foreground">
+              {profile?.googleId ? 'Linked to your Google account' : 'Not linked'}
+            </p>
+          </div>
+          {profile?.googleId ? (
+            <Badge variant="outline" className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider">
+              <ShieldCheck className="h-3 w-3" /> Linked
+            </Badge>
+          ) : (
+            <div className="w-48 shrink-0">
+              <GoogleButton onCredential={handleGoogleLink} label="Link Google" />
+            </div>
+          )}
+        </div>
+        {linkingGoogle && (
+          <p className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Linking your Google account…
+          </p>
+        )}
       </div>
 
       <form onSubmit={handleProfile} className="flex flex-col gap-6">

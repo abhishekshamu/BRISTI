@@ -6,6 +6,7 @@ import { LoginHistoryRepository } from '../repositories/login-history.repository
 import { JwtService } from './jwt.service';
 import { EmailService } from './email.service';
 import { OtpService } from './otp.service';
+import { OtpPurpose } from '../repositories/otp.repository';
 import { GoogleService, GoogleProfile } from './google.service';
 import { NotificationService } from './notification.service';
 import { NotificationRepository } from '../repositories/notification.repository';
@@ -87,7 +88,7 @@ export class AuthService {
     return phone.replace(/[^\d+]/g, '');
   }
 
-  async googleLogin(credential: string, meta?: ClientMeta): Promise<{ user: IUser; accessToken: string; refreshToken: string }> {
+  async googleLogin(credential: string, meta?: ClientMeta, authenticatedUserId?: string): Promise<{ user: IUser; accessToken: string; refreshToken: string }> {
     if (!this.googleService) {
       throw new BadRequestException('Google sign-in is not available');
     }
@@ -107,7 +108,54 @@ export class AuthService {
 
     let user = await this.userRepo.findByGoogleId(profile.sub);
 
-    if (!user && profile.email) {
+    if (authenticatedUserId) {
+      // Account linking: an authenticated customer is connecting a Google
+      // identity to their existing BRISTI account.
+      if (user && user._id.toString() !== authenticatedUserId) {
+        await this.recordLogin({
+          userId: user._id.toString(),
+          method: 'google',
+          success: false,
+          meta,
+          identifier: profile.email,
+          failedReason: 'google_id_linked_elsewhere',
+        });
+        throw new BadRequestException('This Google account is already linked to another BRISTI account');
+      }
+      if (!user) {
+        // The Google identity must not hijack another account's verified email.
+        if (profile.email && profile.emailVerified) {
+          const emailUser = await this.userRepo.findByEmail(profile.email);
+          if (emailUser && emailUser._id.toString() !== authenticatedUserId) {
+            throw new BadRequestException('This Google email is linked to another BRISTI account');
+          }
+        }
+        user = await this.userRepo.findById(authenticatedUserId);
+        if (!user) {
+          throw new BadRequestException('Account not found');
+        }
+        const patch: Record<string, unknown> = { googleId: profile.sub };
+        if (!user.avatar && profile.picture) patch.avatar = profile.picture;
+        if ((!user.firstName || user.firstName === 'BRISTI') && (profile.givenName || profile.name)) {
+          patch.firstName = profile.givenName || profile.name.split(' ')[0] || 'BRISTI';
+        }
+        if (!user.lastName || user.lastName === 'Member') {
+          patch.lastName = profile.familyName || profile.name?.split(' ').slice(1).join(' ') || 'Member';
+        }
+        if (!user.email && profile.email) {
+          patch.email = profile.email;
+          patch.emailVerified = profile.emailVerified;
+        } else if (
+          profile.email &&
+          profile.emailVerified &&
+          user.email &&
+          user.email.toLowerCase() === profile.email.toLowerCase()
+        ) {
+          patch.emailVerified = true;
+        }
+        user = await this.userRepo.updateById(authenticatedUserId, patch);
+      }
+    } else if (!user && profile.email) {
       // A verified email on the ID token may be trusted for account linking.
       user = profile.emailVerified ? await this.userRepo.findByEmail(profile.email) : null;
       if (user) {
@@ -162,21 +210,27 @@ export class AuthService {
     return { user: user.toObject(), accessToken, refreshToken };
   }
 
-  async requestOtp(phone: string, _meta?: ClientMeta): Promise<{ sent: boolean; resendInSeconds: number }> {
+  async requestOtp(phone: string, _meta?: ClientMeta, purpose: OtpPurpose = 'login'): Promise<{ sent: boolean; resendInSeconds: number }> {
     if (!this.otpService) {
       throw new BadRequestException('Phone verification is not available');
     }
-    return this.otpService.sendOtp(this.normalizePhone(phone));
+    return this.otpService.sendOtp(this.normalizePhone(phone), purpose);
   }
 
-  async verifyOtpAndLogin(phone: string, otp: string, meta?: ClientMeta): Promise<{ user: IUser; accessToken: string; refreshToken: string }> {
+  async verifyOtpAndLogin(
+    phone: string,
+    otp: string,
+    meta?: ClientMeta,
+    authenticatedUserId?: string,
+    purpose: OtpPurpose = 'login'
+  ): Promise<{ user: IUser; accessToken: string; refreshToken: string }> {
     if (!this.otpService) {
       throw new BadRequestException('Phone verification is not available');
     }
 
     const normalizedPhone = this.normalizePhone(phone);
     try {
-      await this.otpService.verifyOtp(normalizedPhone, otp);
+      await this.otpService.verifyOtp(normalizedPhone, otp, purpose);
     } catch (error: any) {
       await this.recordLogin({
         method: 'phone',
@@ -188,18 +242,48 @@ export class AuthService {
       throw error;
     }
 
-    let user = await this.userRepo.findByPhone(normalizedPhone);
+    const byPhone = await this.userRepo.findByPhone(normalizedPhone);
+    let user: any;
 
-    if (!user) {
-      user = await this.userRepo.create({
-        phone: normalizedPhone,
-        phoneVerified: true,
-        authProvider: 'phone',
-        firstName: 'BRISTI',
-        lastName: 'Member',
-        role: 'customer',
-        status: 'active',
-      });
+    if (authenticatedUserId) {
+      // Account linking: an authenticated customer verifies a phone number
+      // that is not yet on their account.
+      if (byPhone && byPhone._id.toString() !== authenticatedUserId) {
+        await this.recordLogin({
+          userId: authenticatedUserId,
+          method: 'phone',
+          success: false,
+          meta,
+          identifier: normalizedPhone,
+          failedReason: 'phone_linked_elsewhere',
+        });
+        throw new BadRequestException('This phone number is already linked to another BRISTI account');
+      }
+      if (byPhone) {
+        user = byPhone;
+      } else {
+        user = await this.userRepo.findById(authenticatedUserId);
+        if (!user) {
+          throw new BadRequestException('Account not found');
+        }
+        user = await this.userRepo.updateById(authenticatedUserId, {
+          phone: normalizedPhone,
+          phoneVerified: true,
+        });
+      }
+    } else {
+      user = byPhone;
+      if (!user) {
+        user = await this.userRepo.create({
+          phone: normalizedPhone,
+          phoneVerified: true,
+          authProvider: 'phone',
+          firstName: 'BRISTI',
+          lastName: 'Member',
+          role: 'customer',
+          status: 'active',
+        });
+      }
     }
 
     if (user.status !== 'active') {
