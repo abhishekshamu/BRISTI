@@ -56,9 +56,12 @@ export default function PageCreate() {
       setLoading(true);
       // Backend stores SEO under a nested `seo` object; the flat form fields
       // are mapped here so SEO settings are not silently dropped.
-      const { seoTitle, seoDescription, seoKeywords, ...rest } = data;
+      const { seoTitle, seoDescription, seoKeywords, featuredImage, ...rest } = data;
       const payload = {
         ...rest,
+        // An unset featured image is sent as omitted rather than "" so the
+        // backend's optional() validator does not reject it as an invalid URL.
+        ...(featuredImage ? { featuredImage } : {}),
         seo: {
           ...(seoTitle ? { title: seoTitle } : {}),
           ...(seoDescription ? { description: seoDescription } : {}),
