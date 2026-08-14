@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, type KeyboardEvent, type ClipboardEvent } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { Plus, Trash2 } from 'lucide-react';
@@ -71,7 +71,10 @@ const normalizeOptions = (options: any[] = []): ProductOption[] => {
     if (!name) continue;
     const key = name.toLowerCase();
     const values = (Array.isArray(raw.values) ? raw.values : [])
-      .map((v: any) => (typeof v === 'string' ? v.trim() : ''))
+      // Normalize malformed list values ("S,M,L,XL" or newline-separated
+      // strings) into individual option values — clearly a value list.
+      .flatMap((v: any) => (typeof v === 'string' ? v.split(/[,\n]/) : []))
+      .map((v: string) => v.trim())
       .filter(Boolean);
     const unique = values.filter((v: string, i: number) => values.indexOf(v) === i);
     const existing = seen.get(key);
@@ -149,6 +152,21 @@ const newVariantId = (existing: string[]): string => {
   return id;
 };
 
+const appendOptionValues = (option: any, raw: string): string[] => {
+  const current = Array.isArray(option?.values) ? option.values : [];
+  const next = [...current];
+  const seen = new Set(next.map((v: string) => v.toLowerCase()));
+  for (const piece of raw.split(/[,\n]/)) {
+    const value = piece.trim();
+    if (!value) continue;
+    const key = value.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    next.push(value);
+  }
+  return next;
+};
+
 export default function ProductEdit() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -158,6 +176,8 @@ export default function ProductEdit() {
   const [collections, setCollections] = useState<any[]>([]);
   const { dirty, setDirty } = useUnsavedChanges();
   const originalOptions = useRef<ProductOption[]>([]);
+  const [valueDrafts, setValueDrafts] = useState<Record<number, string>>({});
+  const valueInputs = useRef<(HTMLInputElement | null)[]>([]);
 
   const {
     register,
@@ -213,18 +233,87 @@ export default function ProductEdit() {
     );
   };
 
-  const updateOptionValues = (index: number, value: string) => {
-    const values = value.split(',').map((v) => v.trim()).filter(Boolean);
-    const unique = values.filter((v, i) => values.indexOf(v) === i);
+  const commitOptionDraft = (index: number) => {
+    const draft = (valueDrafts[index] ?? '').trim();
+    const option = productOptions[index];
+    if (!option) return;
+    const nextValues = appendOptionValues(option, draft);
+    if (nextValues.length !== (Array.isArray(option.values) ? option.values.length : 0)) {
+      setValue(
+        'options',
+        productOptions.map((o: any, i: number) => (i === index ? { ...o, values: nextValues } : o)),
+        { shouldDirty: true }
+      );
+    }
+    if (draft) {
+      setValueDrafts((d) => {
+        const next = { ...d };
+        next[index] = '';
+        return next;
+      });
+    }
+  };
+
+  const removeOptionValue = (index: number, valueIndex: number) => {
+    const option = productOptions[index];
+    if (!option) return;
     setValue(
       'options',
-      productOptions.map((option: any, i: number) => (i === index ? { ...option, values: unique } : option)),
+      productOptions.map((o: any, i: number) =>
+        i === index
+          ? { ...o, values: (Array.isArray(o.values) ? o.values : []).filter((_: string, vi: number) => vi !== valueIndex) }
+          : o
+      ),
       { shouldDirty: true }
     );
   };
 
+  const onValuesKeyDown = (index: number, e: KeyboardEvent<HTMLInputElement>) => {
+    // Comma and Enter commit the current draft as an option value.
+    if (e.key === ',' || e.key === 'Enter') {
+      e.preventDefault();
+      commitOptionDraft(index);
+      return;
+    }
+    // Backspace on an empty draft removes the last committed value.
+    if (e.key === 'Backspace' && (valueDrafts[index] ?? '') === '') {
+      const option = productOptions[index];
+      const values = Array.isArray(option?.values) ? option.values : [];
+      if (values.length > 0) {
+        e.preventDefault();
+        removeOptionValue(index, values.length - 1);
+      }
+    }
+  };
+
+  const onValuesPaste = (index: number, e: ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const option = productOptions[index];
+    if (!option) return;
+    // Pasting "S, M, L, XL" or newline-separated values splits them into
+    // individual option values (commas and newlines both act as separators).
+    const nextValues = appendOptionValues(option, e.clipboardData.getData('text'));
+    if (nextValues.length !== (Array.isArray(option.values) ? option.values.length : 0)) {
+      setValue(
+        'options',
+        productOptions.map((o: any, i: number) => (i === index ? { ...o, values: nextValues } : o)),
+        { shouldDirty: true }
+      );
+    }
+    setValueDrafts((d) => {
+      const next = { ...d };
+      next[index] = '';
+      return next;
+    });
+  };
+
   const removeOption = (index: number) => {
     setValue('options', productOptions.filter((_: any, i: number) => i !== index), { shouldDirty: true });
+    setValueDrafts((d) => {
+      const next = { ...d };
+      delete next[index];
+      return next;
+    });
   };
 
   const addVariant = () => {
@@ -380,6 +469,7 @@ export default function ProductEdit() {
             }))
           : [],
       });
+      setValueDrafts({});
     } catch (error) {
       toast.error('Failed to fetch product');
       navigate('/products');
@@ -441,6 +531,7 @@ export default function ProductEdit() {
       originalOptions.current = options.map((o) => ({ name: o.name, values: [...o.values] }));
       setValue('options', options);
       setValue('variants', reconciledVariants);
+      setValueDrafts({});
       toast.success('Product updated successfully');
       setDirty(false);
     } catch (error: any) {
@@ -752,12 +843,43 @@ export default function ProductEdit() {
                     <Trash2 className="w-4 h-4 text-red-500" />
                   </button>
                 </div>
-                <input
-                  value={(option.values ?? []).join(', ')}
-                  onChange={(e) => updateOptionValues(index, e.target.value)}
-                  className="admin-input"
-                  placeholder="Values, comma separated (e.g. S, M, L)"
-                />
+                <div
+                  className="flex flex-wrap items-center gap-1.5 min-h-[44px] w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 px-3.5 py-1.5 text-[15px] text-foreground placeholder:text-slate-400 focus-within:ring-2 focus-within:ring-slate-400/40 focus-within:ring-offset-1 focus-within:ring-offset-white dark:focus-within:ring-offset-slate-950 dark:focus-within:ring-gold/30 transition-colors cursor-text"
+                  onClick={() => valueInputs.current[index]?.focus()}
+                >
+                  {(option.values ?? []).map((v: string, vi: number) => (
+                    <span
+                      key={`${vi}-${v}`}
+                      className="inline-flex items-center gap-1 rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-sm text-slate-700 dark:text-slate-200"
+                    >
+                      {v}
+                      <button
+                        type="button"
+                        onClick={() => removeOptionValue(index, vi)}
+                        className="text-slate-400 hover:text-red-500 leading-none"
+                        aria-label={`Remove ${v}`}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                  <input
+                    ref={(el) => { valueInputs.current[index] = el; }}
+                    value={valueDrafts[index] ?? ''}
+                    onChange={(e) =>
+                      setValueDrafts((d) => {
+                        const next = { ...d };
+                        next[index] = e.target.value;
+                        return next;
+                      })
+                    }
+                    onKeyDown={(e) => onValuesKeyDown(index, e)}
+                    onPaste={(e) => onValuesPaste(index, e)}
+                    onBlur={() => commitOptionDraft(index)}
+                    className="flex-1 min-w-[6rem] bg-transparent outline-none text-[15px]"
+                    placeholder="Type a value, press Enter or comma"
+                  />
+                </div>
               </div>
             ))}
             {productOptions.length === 0 && (

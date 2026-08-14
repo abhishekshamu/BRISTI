@@ -3,7 +3,7 @@ import { chromium } from 'playwright';
 const ADMIN = 'http://127.0.0.1:3003';
 const API = 'http://127.0.0.1:3003/api'; // via vite proxy -> localhost:5000
 const NAME_IN = 'input[placeholder="Option name (e.g. Size)"]';
-const VALUES_IN = 'input[placeholder="Values, comma separated (e.g. S, M, L)"]';
+const VALUES_IN = 'input[placeholder="Type a value, press Enter or comma"]';
 const SKU_IN = 'input[placeholder="Variant SKU"]';
 const STOCK_IN = 'input[placeholder="Stock"]';
 const PRICE_IN = 'input[placeholder="Price adj."]';
@@ -79,7 +79,15 @@ const setOptionName = async (i, name) => {
   await page.locator(NAME_IN).nth(i).fill(name);
 };
 const setOptionValues = async (i, csv) => {
-  await page.locator(VALUES_IN).nth(i).fill(csv);
+  const input = page.locator(VALUES_IN).nth(i);
+  await input.fill(csv);
+  await input.press('Enter');
+};
+const optionChips = async (i) => {
+  const card = page.locator(NAME_IN).nth(i).locator('xpath=ancestor::div[contains(@class,"border")][1]');
+  return await card.locator('button[aria-label^="Remove "]').evaluateAll((els) =>
+    els.map((el) => el.getAttribute('aria-label').replace(/^Remove /, ''))
+  );
 };
 const addOption = async () => {
   await page.locator('button:has-text("Option")').first().click();
@@ -110,8 +118,8 @@ ok('T1 combo', p.variants[0] && comboOf(p.variants[0]) === 'Color=Black|Size=S',
 ok('T1 auto name', p.variants[0]?.name === 'Black / S', p.variants[0]?.name);
 
 // ================= TEST 2: Black,White x S,M -> 4 variants =================
-await page.locator(VALUES_IN).nth(0).fill('Black, White');
-await page.locator(VALUES_IN).nth(1).fill('S, M');
+await setOptionValues(0, 'Black, White');
+await setOptionValues(1, 'S, M');
 const toasts2 = await save();
 ok('T2 save toast', toasts2.some(t => t.includes('Product updated successfully')));
 p = await getProduct();
@@ -120,8 +128,8 @@ const combos2 = p.variants.map(comboOf).sort().join(';');
 ok('T2 combos', combos2 === 'Color=Black|Size=M;Color=Black|Size=S;Color=White|Size=M;Color=White|Size=S', combos2);
 
 // ================= TEST 3: 3x4 -> 12 variants =================
-await page.locator(VALUES_IN).nth(0).fill('Black, White, Charcoal');
-await page.locator(VALUES_IN).nth(1).fill('S, M, L, XL');
+await setOptionValues(0, 'Black, White, Charcoal');
+await setOptionValues(1, 'S, M, L, XL');
 const toasts3 = await save();
 ok('T3 save toast', toasts3.some(t => t.includes('Product updated successfully')));
 p = await getProduct();
@@ -144,7 +152,7 @@ const blackS = p.variants.find(v => comboOf(v) === 'Color=Black|Size=S');
 ok('T4 Black/S sku/stock saved', blackS && blackS.sku === 'T-BLK-S' && blackS.stock === 10, `sku=${blackS?.sku} stock=${blackS?.stock}`);
 const blackId = blackS?.id;
 await openEdit();
-await page.locator(VALUES_IN).nth(0).fill('Black, White, Charcoal, Green');
+await setOptionValues(0, 'Black, White, Charcoal, Green');
 const toasts4b = await save();
 ok('T4 add-value save toast', toasts4b.some(t => t.includes('Product updated successfully')));
 p = await getProduct();
@@ -154,9 +162,11 @@ ok('T4 Black/S id preserved', blackS3 && blackS3.id === blackId, `id=${blackS3?.
 ok('T4 Green combos created', ['S', 'M', 'L', 'XL'].every(s => p.variants.some(v => v.options?.Color === 'Green' && v.options?.Size === s)));
 ok('T4 16 unique variants', p.variants.length === 16 && new Set(p.variants.map(comboOf)).size === 16, `count=${p.variants.length}`);
 
-// ================= TEST 5: remove XL -> only XL variants removed =================
+// ================= TEST 5: remove XL value -> only XL variants removed =================
 await openEdit();
-await page.locator(VALUES_IN).nth(1).fill('S, M, L');
+// remove the XL value chip (each option value is a single chip, not per-variant)
+await page.locator(NAME_IN).nth(1).locator('xpath=ancestor::div[contains(@class,"border")][1]')
+  .locator('button[aria-label="Remove XL"]').click();
 const toasts5 = await save();
 ok('T5 save toast', toasts5.some(t => t.includes('Product updated successfully')));
 p = await getProduct();
@@ -166,11 +176,13 @@ const blackS5 = p.variants.find(v => comboOf(v) === 'Color=Black|Size=S');
 ok('T5 Black/S still preserved', blackS5 && blackS5.sku === 'T-BLK-S' && blackS5.stock === 10, `sku=${blackS5?.sku} stock=${blackS5?.stock}`);
 ok('T5 non-XL sizes intact', ['S', 'M', 'L'].every(s => p.variants.some(v => v.options?.Size === s)));
 
-// ================= TEST 6: rename Black -> Navy Blue =================
+// ================= TEST 6: rename Black -> Navy Blue (1 removed + 1 added) =================
 await openEdit();
-await page.locator(VALUES_IN).nth(0).fill('Navy Blue, White, Charcoal, Green');
+await page.locator(NAME_IN).nth(0).locator('xpath=ancestor::div[contains(@class,"border")][1]')
+  .locator('button[aria-label="Remove Black"]').click();
+await setOptionValues(0, 'Navy Blue');
 const toasts6 = await save();
-ok('T6 save toast', toasts6.some(t => t.includes('Product updated successfully')));
+ok('T6 save toast', toasts6.some(t => t.includes('Product updated successfully')), JSON.stringify(toasts6));
 p = await getProduct();
 ok('T6 no Black combos', !p.variants.some(v => (v.options?.Color ?? '') === 'Black'));
 ok('T6 Navy Blue combos present', ['S', 'M', 'L'].every(s => p.variants.some(v => v.options?.Color === 'Navy Blue' && v.options?.Size === s)));
@@ -180,7 +192,7 @@ ok('T6 still 12 unique variants', new Set(p.variants.map(comboOf)).size === p.va
 
 // ================= TEST 7: reload shows exact structure =================
 await openEdit();
-ok('T7 options after reload', await page.locator(VALUES_IN).nth(0).inputValue() === 'Navy Blue, White, Charcoal, Green' && await page.locator(VALUES_IN).nth(1).inputValue() === 'S, M, L');
+ok('T7 options after reload', JSON.stringify(await optionChips(0)) === JSON.stringify(['White', 'Charcoal', 'Green', 'Navy Blue']) && JSON.stringify(await optionChips(1)) === JSON.stringify(['S', 'M', 'L']));
 const cardCount = await variantCards().count();
 ok('T7 12 variant cards after reload', cardCount === 12, `cards=${cardCount}`);
 const selects = await variantCards().nth(0).locator('select').all();
@@ -214,8 +226,8 @@ ok('T9 state unchanged after rejection', v2valsAfter.join() === v2vals.join(), v
 await page.goto(`${ADMIN}/products/6a7f6ab2819b19560fffd100/edit`, { waitUntil: 'domcontentloaded', timeout: 60000 });
 await page.waitForTimeout(6000);
 ok('M1 malformed product loads', (await page.locator(NAME_IN).count()) === 1 && (await page.locator('input[name="title"]').count()) >= 0, 'options cards=' + (await page.locator(NAME_IN).count()));
-const mValues = await page.locator(VALUES_IN).first().inputValue();
-ok('M2 option normalized to SIZE [S]', mValues === 'S', mValues);
+const mValues = await optionChips(0);
+ok('M2 option normalized to SIZE [S]', JSON.stringify(mValues) === JSON.stringify(['S']), JSON.stringify(mValues));
 const mCards = await variantCards();
 const mTexts = [];
 for (let i = 0; i < await mCards.count(); i++) mTexts.push((await mCards.nth(i).locator('div.text-xs.text-slate-500').first().textContent().catch(() => '')) ?? '');
@@ -246,7 +258,7 @@ ok('V5 duplicate combination rejected (order swapped)', (await putWith({
   options: validOptions,
   variants: [
     { ...validVariants[0], id: 'x1', name: 'a' },
-    { ...validVariants[1], id: 'x2', name: 'b', options: { Size: 'S', Color: 'Navy Blue' } },
+    { ...validVariants[1], id: 'x2', name: 'b', options: { Size: 'S', Color: 'White' } },
   ],
 })) === 400);
 ok('V6 variant duplicate key (case) rejected', (await putWith({
