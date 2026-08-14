@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { Plus, Trash2 } from 'lucide-react';
@@ -49,6 +49,106 @@ interface ProductForm {
   variants: Array<{ id: string; name: string; options: Record<string, string>; priceAdjustment: number; sku: string; stock: number; image?: string }>;
 }
 
+interface ProductOption {
+  name: string;
+  values: string[];
+}
+
+interface ProductVariant {
+  id: string;
+  name: string;
+  options: Record<string, string>;
+  priceAdjustment: number;
+  sku: string;
+  stock: number;
+  image?: string;
+}
+
+const normalizeOptions = (options: any[] = []): ProductOption[] => {
+  const seen = new Map<string, ProductOption>();
+  for (const raw of options) {
+    const name = typeof raw?.name === 'string' ? raw.name.trim() : '';
+    if (!name) continue;
+    const key = name.toLowerCase();
+    const values = (Array.isArray(raw.values) ? raw.values : [])
+      .map((v: any) => (typeof v === 'string' ? v.trim() : ''))
+      .filter(Boolean);
+    const unique = values.filter((v: string, i: number) => values.indexOf(v) === i);
+    const existing = seen.get(key);
+    if (existing) {
+      for (const v of unique) {
+        if (!existing.values.some(x => x.toLowerCase() === v.toLowerCase())) existing.values.push(v);
+      }
+    } else {
+      seen.set(key, { name, values: unique });
+    }
+  }
+  return Array.from(seen.values()).filter(o => o.values.length > 0);
+};
+
+const findDuplicateOptionName = (options: any[]): string | null => {
+  const seen = new Set<string>();
+  for (const option of options) {
+    const name = typeof option?.name === 'string' ? option.name.trim() : '';
+    if (!name) continue;
+    const key = name.toLowerCase();
+    if (seen.has(key)) return name;
+    seen.add(key);
+  }
+  return null;
+};
+
+const canonicalComboKey = (options: Record<string, string>): string =>
+  Object.entries(options)
+    .map(([k, v]) => `${k.trim().toLowerCase()}::${String(v).trim()}`)
+    .sort()
+    .join('|');
+
+const normalizeVariantOptions = (variant: any, optionNames: string[]): Record<string, string> => {
+  const known = new Set(optionNames.map(n => n.toLowerCase()));
+  const result: Record<string, string> = {};
+  for (const [key, value] of Object.entries(variant?.options ?? {})) {
+    const trimmedKey = (key ?? '').trim();
+    const trimmedValue = typeof value === 'string' ? value.trim() : '';
+    if (!trimmedKey || !trimmedValue) continue;
+    if (!known.has(trimmedKey.toLowerCase())) continue;
+    if (Object.keys(result).some(k => k.toLowerCase() === trimmedKey.toLowerCase())) continue;
+    result[trimmedKey] = trimmedValue;
+  }
+  return result;
+};
+
+const buildCombinations = (options: ProductOption[]): Record<string, string>[] => {
+  if (options.length === 0) return [];
+  let combos: Record<string, string>[] = [{}];
+  for (const option of options) {
+    const next: Record<string, string>[] = [];
+    for (const combo of combos) {
+      for (const value of option.values) {
+        next.push({ ...combo, [option.name]: value });
+      }
+    }
+    combos = next;
+  }
+  return combos;
+};
+
+const comboLabel = (options: Record<string, string>): string => Object.values(options).join(' / ');
+
+const comboMatchesVariantName = (combo: Record<string, string>, name: string): boolean => {
+  const normalized = (name ?? '').trim().toLowerCase();
+  if (!normalized) return false;
+  return Object.values(combo).some(v => String(v).trim().toLowerCase() === normalized);
+};
+
+const newVariantId = (existing: string[]): string => {
+  let id = '';
+  do {
+    id = `v-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  } while (existing.includes(id));
+  return id;
+};
+
 export default function ProductEdit() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -57,6 +157,7 @@ export default function ProductEdit() {
   const [categories, setCategories] = useState<any[]>([]);
   const [collections, setCollections] = useState<any[]>([]);
   const { dirty, setDirty } = useUnsavedChanges();
+  const originalOptions = useRef<ProductOption[]>([]);
 
   const {
     register,
@@ -85,27 +186,50 @@ export default function ProductEdit() {
   };
 
   const addOption = () => {
-    setValue('options', [...productOptions, { name: '', values: [] }]);
+    setValue('options', [...productOptions, { name: '', values: [] }], { shouldDirty: true });
   };
 
-  const updateOption = (index: number, field: 'name' | 'values', value: string) => {
-    const next = productOptions.map((option: any, i: number) =>
-      i === index
-        ? field === 'name'
-          ? { ...option, name: value }
-          : { ...option, values: value.split(',').map((v) => v.trim()).filter(Boolean) }
-        : option
+  const updateOptionName = (index: number, value: string) => {
+    const previous = productOptions[index]?.name ?? '';
+    setValue(
+      'options',
+      productOptions.map((option: any, i: number) => (i === index ? { ...option, name: value } : option)),
+      { shouldDirty: true }
     );
-    setValue('options', next);
+    const from = previous.trim();
+    const to = value.trim();
+    if (!from || !to || from === to) return;
+    setValue(
+      'variants',
+      variants.map((variant: any) => {
+        if (!(from in (variant.options ?? {}))) return variant;
+        const options = { ...variant.options };
+        const current = options[from];
+        delete options[from];
+        options[to] = current;
+        return { ...variant, options };
+      }),
+      { shouldDirty: true }
+    );
+  };
+
+  const updateOptionValues = (index: number, value: string) => {
+    const values = value.split(',').map((v) => v.trim()).filter(Boolean);
+    const unique = values.filter((v, i) => values.indexOf(v) === i);
+    setValue(
+      'options',
+      productOptions.map((option: any, i: number) => (i === index ? { ...option, values: unique } : option)),
+      { shouldDirty: true }
+    );
   };
 
   const removeOption = (index: number) => {
-    setValue('options', productOptions.filter((_: any, i: number) => i !== index));
+    setValue('options', productOptions.filter((_: any, i: number) => i !== index), { shouldDirty: true });
   };
 
   const addVariant = () => {
     const seed: any = {
-      id: `v-${Date.now()}`,
+      id: newVariantId(variants.map((v: any) => v.id)),
       name: '',
       options: {},
       priceAdjustment: 0,
@@ -113,28 +237,138 @@ export default function ProductEdit() {
       stock: 0,
     };
     for (const option of productOptions) {
-      if (option.name && option.values?.length) seed.options[option.name] = option.values[0];
+      if (option.name && option.values?.length) seed.options[option.name.trim()] = option.values[0];
     }
-    setValue('variants', [...variants, seed]);
+    setValue('variants', [...variants, seed], { shouldDirty: true });
   };
 
   const updateVariant = (index: number, field: string, value: string | number) => {
     const next = variants.map((variant: any, i: number) =>
       i === index ? { ...variant, [field]: value } : variant
     );
-    setValue('variants', next);
+    setValue('variants', next, { shouldDirty: true });
+  };
+
+  const setVariantOption = (index: number, optionName: string, value: string) => {
+    if (!optionName) return;
+    const next = variants.map((variant: any, i: number) => {
+      if (i !== index) return variant;
+      const options = { ...(variant.options ?? {}) };
+      if (!value) delete options[optionName];
+      else options[optionName] = value;
+      return { ...variant, options };
+    });
+    const combo = next[index].options ?? {};
+    const conflict = next.findIndex(
+      (v: any, i: number) =>
+        i !== index && Object.keys(combo).length > 0 && canonicalComboKey(v.options ?? {}) === canonicalComboKey(combo)
+    );
+    if (conflict !== -1) {
+      toast.error('A variant with this exact combination already exists');
+      return;
+    }
+    setValue('variants', next, { shouldDirty: true });
   };
 
   const removeVariant = (index: number) => {
-    setValue('variants', variants.filter((_: any, i: number) => i !== index));
+    setValue('variants', variants.filter((_: any, i: number) => i !== index), { shouldDirty: true });
+  };
+
+  const reconcileVariants = (options: ProductOption[], variants: ProductVariant[] = []) => {
+    const optionNames = options.map(o => o.name);
+    let working = variants.map((v: any) => ({ ...v, options: { ...(v.options ?? {}) } }));
+
+    for (const option of options) {
+      const original = originalOptions.current.find(
+        (o) => o.name.toLowerCase() === option.name.toLowerCase()
+      );
+      if (!original) continue;
+      const removed = original.values.filter(
+        (v) => !option.values.some((n) => n.toLowerCase() === v.toLowerCase())
+      );
+      const added = option.values.filter(
+        (v) => !original.values.some((o) => o.toLowerCase() === v.toLowerCase())
+      );
+      if (removed.length === 1 && added.length === 1) {
+        const renamedValue = added[0];
+        working = working.map((v: any) => {
+          const current = (v.options ?? {})[option.name];
+          if (typeof current === 'string' && current.toLowerCase() === removed[0].toLowerCase()) {
+            return { ...v, options: { ...v.options, [option.name]: renamedValue } };
+          }
+          return v;
+        });
+      } else if (removed.length > 0) {
+        working = working.filter((v: any) => {
+          const current = (v.options ?? {})[option.name];
+          return typeof current !== 'string' || !removed.some((r) => r.toLowerCase() === current.toLowerCase());
+        });
+      }
+    }
+
+    working = working.map((v: any) => ({ ...v, options: normalizeVariantOptions(v, optionNames) }));
+
+    const combos = buildCombinations(options);
+    const gridKeys = new Set(combos.map(canonicalComboKey));
+    const kept = new Map<string, any>();
+    const orphans: any[] = [];
+    for (const v of working) {
+      const key = canonicalComboKey(v.options ?? {});
+      if (kept.has(key)) continue;
+      if (gridKeys.has(key)) kept.set(key, v);
+      else orphans.push(v);
+    }
+
+    const result: any[] = [];
+    const adopted = new Set<string>();
+    const usedIds = new Set(working.map((v: any) => v.id));
+    for (const combo of combos) {
+      const key = canonicalComboKey(combo);
+      const existing = kept.get(key);
+      if (existing) {
+        result.push(existing);
+        continue;
+      }
+      const match = orphans.find(
+        (o) => !adopted.has(o.id) && comboMatchesVariantName(combo, o.name)
+      );
+      if (match) {
+        adopted.add(match.id);
+        result.push({ ...match, options: { ...combo } });
+        continue;
+      }
+      result.push({
+        id: newVariantId([...usedIds, ...result.map((r) => r.id)]),
+        name: comboLabel(combo),
+        options: { ...combo },
+        priceAdjustment: 0,
+        sku: '',
+        stock: 0,
+      });
+    }
+    for (const o of orphans) {
+      if (!adopted.has(o.id)) result.push(o);
+    }
+    return result;
   };
 
   const fetchProduct = useCallback(async () => {
     try {
       const response = await api.get(`/products/${id}`);
       const product = response.data.data;
+      const options = normalizeOptions(product.options);
+      originalOptions.current = options.map((o) => ({ name: o.name, values: [...o.values] }));
+      const optionNames = options.map((o) => o.name);
       reset({
         ...product,
+        options,
+        variants: Array.isArray(product.variants)
+          ? product.variants.map((v: any) => ({
+              ...v,
+              name: typeof v.name === 'string' ? v.name.trim() : v.name,
+              options: normalizeVariantOptions(v, optionNames),
+            }))
+          : [],
         category: typeof product.category === 'object' ? product.category._id : product.category,
         collections: Array.isArray(product.collections) ? product.collections : [],
         seoKeywords: product.seo?.keywords?.join(', ') || '',
@@ -185,13 +419,28 @@ export default function ProductEdit() {
   const onSubmit = async (data: ProductForm) => {
     try {
       setSaving(true);
+      const duplicate = findDuplicateOptionName(productOptions);
+      if (duplicate) {
+        toast.error(`Duplicate option name "${duplicate.trim()}" — each option needs a unique name`);
+        setSaving(false);
+        return;
+      }
+      const options = normalizeOptions(productOptions);
+      const reconciledVariants = reconcileVariants(options, variants);
+      const { barcode, ...rest } = data;
       const payload = {
-        ...data,
-        options: productOptions,
-        variants,
+        ...rest,
+        // The barcode field is a sparse unique index — an empty string would
+        // collide with other products and block the save entirely.
+        ...(barcode ? { barcode } : {}),
+        options,
+        variants: reconciledVariants,
         images: data.images.map((img) => ({ url: img.url, alt: img.alt ?? '', isFeatured: !!img.isFeatured })),
       };
       await api.put(`/products/${id}`, payload);
+      originalOptions.current = options.map((o) => ({ name: o.name, values: [...o.values] }));
+      setValue('options', options);
+      setValue('variants', reconciledVariants);
       toast.success('Product updated successfully');
       setDirty(false);
     } catch (error: any) {
@@ -491,7 +740,7 @@ export default function ProductEdit() {
                 <div className="flex gap-2">
                   <input
                     value={option.name}
-                    onChange={(e) => updateOption(index, 'name', e.target.value)}
+                    onChange={(e) => updateOptionName(index, e.target.value)}
                     className="admin-input flex-1"
                     placeholder="Option name (e.g. Size)"
                   />
@@ -505,7 +754,7 @@ export default function ProductEdit() {
                 </div>
                 <input
                   value={(option.values ?? []).join(', ')}
-                  onChange={(e) => updateOption(index, 'values', e.target.value)}
+                  onChange={(e) => updateOptionValues(index, e.target.value)}
                   className="admin-input"
                   placeholder="Values, comma separated (e.g. S, M, L)"
                 />
@@ -571,6 +820,25 @@ export default function ProductEdit() {
                 <div className="text-xs text-slate-500 dark:text-slate-400">
                   Options: {Object.entries(variant.options ?? {}).map(([k, v]) => `${k}: ${v}`).join(' · ') || '—'}
                 </div>
+                {productOptions.length > 0 && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {productOptions.map((option: any, oi: number) => (
+                      <div key={oi} className="flex items-center gap-2">
+                        <span className="text-xs text-slate-500 dark:text-slate-400 w-16 shrink-0">{option.name || 'Option'}</span>
+                        <select
+                          value={(variant.options ?? {})[option.name] ?? ''}
+                          onChange={(e) => setVariantOption(index, option.name, e.target.value)}
+                          className="admin-input text-sm"
+                        >
+                          <option value="">—</option>
+                          {(option.values ?? []).map((v: string) => (
+                            <option key={v} value={v}>{v}</option>
+                          ))}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
             {variants.length === 0 && (
