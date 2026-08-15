@@ -17,7 +17,8 @@
     "db:seed": "tsx src/scripts/seed.ts",
     "db:seed-content": "tsx src/scripts/seed-content.ts",
     "db:migrate": "tsx src/scripts/migrate.ts",
-    "db:repair-inventory": "tsx src/scripts/repair-inventory.ts"
+    "db:repair-inventory": "tsx src/scripts/repair-inventory.ts",
+    "db:import-catalog": "tsx src/scripts/import-catalog.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
