@@ -93,7 +93,7 @@ export default function WishlistPage() {
           ) : (
             <div className={productGridClass(4)}>
               {grouped.map((product) => {
-                const isSale = Boolean(product.compareAtPrice && product.compareAtPrice > product.price);
+                const isSale = product.isOnSale === true;
                 return (
                   <div key={String(product._id)} className="group flex flex-col">
                     <a href={`/product/${product.slug}`} className="relative block aspect-[3/4] overflow-hidden bg-secondary">

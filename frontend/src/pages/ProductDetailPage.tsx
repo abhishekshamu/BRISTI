@@ -140,7 +140,7 @@ export default function ProductDetailPage() {
   const availableStock = product ? (selectedVariant ? (selectedVariant.stock ?? 0) : product.stock) : 0;
   const canOverorder = Boolean(product?.allowBackorder);
   const inWishlist = product ? isInWishlist(String(product._id)) : false;
-  const isSale = Boolean(product?.compareAtPrice && product.compareAtPrice > unitPrice);
+  const isSale = product?.isOnSale === true;
   const isSoldOut = Boolean(selectedVariant ? (selectedVariant.stock ?? 0) <= 0 : product && product.stock <= 0 && !product.allowBackorder);
 
   const galleryImages: GalleryImage[] = useMemo(
@@ -255,7 +255,7 @@ export default function ProductDetailPage() {
                 </div>
                 <div className="mt-2 flex items-baseline gap-3">
                   <span className="text-2xl font-medium">{formatPrice(unitPrice)}</span>
-                  {product.compareAtPrice && product.compareAtPrice > unitPrice && (
+                  {isSale && product.compareAtPrice && product.compareAtPrice > unitPrice && (
                     <>
                       <span className="text-base text-muted-foreground line-through">{formatPrice(product.compareAtPrice)}</span>
                       <Badge variant="sale">

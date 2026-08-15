@@ -26,7 +26,7 @@ export const ProductCard = memo(function ProductCard({ product, className, eager
   const hoverImage = images.length > 1 ? images[1] : undefined;
   const productId = String(product._id);
   const inWishlist = isInWishlist(productId);
-  const isSale = Boolean(product.compareAtPrice && product.compareAtPrice > product.price);
+  const isSale = product.isOnSale === true;
   const isSoldOut = product.stock <= 0 && !product.allowBackorder;
   const price = product.price;
 
@@ -123,7 +123,7 @@ export const ProductCard = memo(function ProductCard({ product, className, eager
             <h3 className="min-w-0 flex-1 text-sm font-medium tracking-wide text-foreground">{product.name}</h3>
             <div className="flex shrink-0 items-baseline gap-2 whitespace-nowrap">
               <span className="text-sm font-medium text-foreground">{formatPrice(price)}</span>
-              {product.compareAtPrice && product.compareAtPrice > price && (
+              {isSale && product.compareAtPrice && product.compareAtPrice > price && (
                 <span className="text-xs text-muted-foreground line-through">{formatPrice(product.compareAtPrice)}</span>
               )}
             </div>
