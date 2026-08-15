@@ -25,7 +25,8 @@
  */
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import { getMongoUri, stopMemoryMongo } from '../config/database';
+import dns from 'node:dns';
+import { stopMemoryMongo } from '../config/database';
 import { CategoryModel } from '../models/Category';
 import { ProductModel } from '../models/Product';
 import { InventoryItemModel } from '../models/InventoryItem';
@@ -109,22 +110,44 @@ function buildVariants(sku: string, productSlug: string, options: Array<{ name: 
   });
 }
 
+const RESOLVER_SETS: string[][] = [
+  ['8.8.8.8', '1.1.1.1'],
+  ['1.1.1.1', '8.8.8.8'],
+  ['9.9.9.9', '149.112.112.112'],
+  ['208.67.222.222', '208.67.220.220'],
+];
+
 export async function connect(): Promise<void> {
   const configured = process.env.MONGODB_URI?.trim();
   if (configured) {
-    try {
-      await mongoose.connect(configured, { serverSelectionTimeoutMS: 15000 } as any);
-      console.log(`Connected to configured MongoDB: ${mongoose.connection.host}`);
-      return;
-    } catch (error: any) {
-      console.warn(`Configured MONGODB_URI unreachable (${error.message}); falling back to in-memory MongoDB (development fallback).`);
-      await mongoose.disconnect().catch(() => undefined);
+    // Try multiple DNS resolvers before giving up. Atlas SRV lookups can fail
+    // with querySrv ECONNREFUSED when the host's default resolver misbehaves
+    // (e.g. corporate DNS), even though the cluster itself is reachable.
+    const seen = new Set<string>();
+    const sets = [...RESOLVER_SETS, dns.getServers()]
+      .map((set) => set.filter(Boolean))
+      .filter((set) => {
+        const key = set.join(',');
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    for (const set of sets) {
+      dns.setServers(set);
+      try {
+        await mongoose.connect(configured, { serverSelectionTimeoutMS: 15000 } as any);
+        console.log(`Connected to configured MongoDB: ${mongoose.connection.host} (dns: ${set.join(', ')})`);
+        return;
+      } catch (error: any) {
+        console.warn(`MongoDB (dns: ${set.join(', ')}) connection failed: ${error?.message ?? error}`);
+        await mongoose.disconnect().catch(() => undefined);
+      }
     }
+    // No in-memory fallback for a real import — fail loudly so data cannot be
+    // silently written to (or lost from) an ephemeral database.
+    throw new Error('Configured MONGODB_URI is unreachable from every DNS resolver set; aborting. Fix DNS/network access to MongoDB Atlas, then re-run.');
   }
-  delete process.env.MONGODB_URI;
-  const uri = await getMongoUri();
-  await mongoose.connect(uri);
-  console.log(`Connected to in-memory MongoDB: ${mongoose.connection.host}`);
+  throw new Error('MONGODB_URI is not set; refusing to import into an in-memory database.');
 }
 
 // Resolve a category by exact name (case-insensitive) or slug; create it only
