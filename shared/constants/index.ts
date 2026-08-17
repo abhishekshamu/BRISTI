@@ -420,14 +420,61 @@ export const GENDER_OPTIONS = [
 ];
 
 export const CURRENCIES = [
+  { code: 'INR', symbol: '₹', name: 'Indian Rupee' },
   { code: 'USD', symbol: '$', name: 'US Dollar' },
   { code: 'EUR', symbol: '€', name: 'Euro' },
   { code: 'GBP', symbol: '£', name: 'British Pound' },
-  { code: 'INR', symbol: '₹', name: 'Indian Rupee' },
+  { code: 'AED', symbol: 'د.إ', name: 'UAE Dirham' },
   { code: 'JPY', symbol: '¥', name: 'Japanese Yen' },
   { code: 'CAD', symbol: 'C$', name: 'Canadian Dollar' },
   { code: 'AUD', symbol: 'A$', name: 'Australian Dollar' },
+  { code: 'SGD', symbol: 'S$', name: 'Singapore Dollar' },
 ];
+
+/**
+ * BCP-47 locales used when formatting each currency with Intl.NumberFormat.
+ * Kept next to CURRENCIES so admin and storefront agree on the exact output
+ * (₹5,000 Indian grouping, $60.00 US decimals, …).
+ */
+export const CURRENCY_LOCALES: Record<string, string> = {
+  INR: 'en-IN',
+  USD: 'en-US',
+  EUR: 'de-DE',
+  GBP: 'en-GB',
+  AED: 'en-AE',
+  JPY: 'ja-JP',
+  CAD: 'en-CA',
+  AUD: 'en-AU',
+  SGD: 'en-SG',
+};
+
+/**
+ * The currency product prices are stored in. Product/order/cart amounts in the
+ * database are base-currency amounts; the storefront converts them to the
+ * configured display currency at render time. Never convert an already
+ * converted display value again.
+ */
+export const DEFAULT_BASE_CURRENCY = 'INR';
+
+/**
+ * Fallback exchange rates: how many units of the target currency equal ONE
+ * unit of the base currency (base = DEFAULT_BASE_CURRENCY). These are
+ * configurable overrides stored in settings.exchangeRates — the storefront
+ * prefers settings rates and falls back to this table (rate 1 when a currency
+ * has no entry, e.g. the base currency itself). Swap the table for a live
+ * provider later without touching any component.
+ */
+export const DEFAULT_EXCHANGE_RATES: Record<string, number> = {
+  INR: 1,
+  USD: 0.012,
+  EUR: 0.011,
+  GBP: 0.0095,
+  AED: 0.044,
+  JPY: 1.78,
+  CAD: 0.016,
+  AUD: 0.018,
+  SGD: 0.016,
+};
 
 export const SOCIAL_PLATFORMS = [
   { id: 'facebook', label: 'Facebook', icon: 'facebook' },

@@ -6,13 +6,15 @@ import { toast } from 'sonner';
 import { useUIStore } from '@/store/useUIStore';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
-import { formatPrice, getImageUrl, slugifyText } from '@/lib/utils';
+import { useCurrency } from '@/context/CurrencyContext';
+import { getImageUrl, slugifyText } from '@/lib/utils';
 import { FREE_SHIPPING_THRESHOLD, FLAT_SHIPPING_RATE } from '@/lib/pricing';
 
 export function CartDrawer() {
   const { isCartDrawerOpen, closeCartDrawer } = useUIStore();
   const { cart, updateQuantity, removeItem, isUpdating, applyCoupon } = useCart();
   const { isAuthenticated } = useAuth();
+  const { formatPrice } = useCurrency();
   const navigate = useNavigate();
   const [couponCode, setCouponCode] = useState('');
   const [applyingCoupon, setApplyingCoupon] = useState(false);

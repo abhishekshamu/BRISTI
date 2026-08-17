@@ -1,16 +1,151 @@
 // Shared Utilities
 
+import {
+  CURRENCY_LOCALES,
+  DEFAULT_BASE_CURRENCY,
+  DEFAULT_EXCHANGE_RATES,
+} from '../constants';
+import type { BrandIdentity, SiteSettings } from '../types';
+
+// Re-exported so backend/frontend consumers can import currency defaults from
+// a single module.
+export { DEFAULT_BASE_CURRENCY, DEFAULT_EXCHANGE_RATES };
+
 /**
- * Format price as currency
+ * Exchange rate lookup: units of `to` currency per ONE unit of `from` currency.
+ * `rates` (settings.exchangeRates) wins; otherwise the static fallback table
+ * is used; unknown currencies resolve to 1 (no conversion).
  */
-export const formatPrice = (amount: number, currency: string = 'USD'): string => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
+export const getCurrencyRate = (
+  from: string,
+  to: string,
+  rates?: Record<string, number> | null,
+): number => {
+  const normalized = (code: string) => String(code ?? '').trim().toUpperCase();
+  const source = normalized(from);
+  const target = normalized(to);
+  if (source === target) return 1;
+
+  const table: Record<string, number> = { ...DEFAULT_EXCHANGE_RATES, ...(rates ?? {}) };
+  const sourceRate = table[source] ?? 1;
+  const targetRate = table[target] ?? 1;
+  return targetRate / sourceRate;
 };
+
+/**
+ * Central currency conversion. `amount` must ALWAYS be a base-currency amount
+ * (database price / cart / order values) — never pass an already converted
+ * display value into this function, or the value gets converted twice.
+ */
+export const convertPrice = (
+  amount: number,
+  fromCurrency: string,
+  toCurrency: string,
+  rates?: Record<string, number> | null,
+): number => {
+  const n = Number(amount) || 0;
+  if (!Number.isFinite(n) || n === 0) return 0;
+  return n * getCurrencyRate(fromCurrency, toCurrency, rates);
+};
+
+const DEFAULT_CURRENCY_LOCALE = 'en-US';
+
+/** Formats an amount in the given currency with Intl.NumberFormat (no manual symbol concatenation). */
+export const formatPrice = (
+  amount: number,
+  currency: string = 'USD',
+  locale?: string,
+): string => {
+  const code = String(currency ?? '').trim().toUpperCase() || 'USD';
+  const resolvedLocale = locale || CURRENCY_LOCALES[code] || DEFAULT_CURRENCY_LOCALE;
+  const zeroDecimals = code === 'JPY';
+  return new Intl.NumberFormat(resolvedLocale, {
+    style: 'currency',
+    currency: code,
+    minimumFractionDigits: zeroDecimals ? 0 : 2,
+    maximumFractionDigits: zeroDecimals ? 0 : 2,
+  }).format(Number(amount) || 0);
+};
+
+/**
+ * Currency formatter bound to the site configuration. Amounts are expected in
+ * the site's base currency; the value is converted once to the display
+ * currency and then formatted.
+ */
+export const formatPriceIn = (
+  amount: number,
+  baseCurrency: string,
+  displayCurrency: string,
+  rates?: Record<string, number> | null,
+  locale?: string,
+): string => {
+  const converted = convertPrice(amount, baseCurrency, displayCurrency, rates);
+  return formatPrice(converted, displayCurrency, locale);
+};
+
+const DEFAULT_LOGO_PATHS = ['', '/logo.png', '/favicon.svg'];
+
+const isDefaultLogo = (url?: string | null): boolean =>
+  !url || DEFAULT_LOGO_PATHS.includes(url.trim());
+
+const cleanUrl = (url?: string | null): string | null => {
+  const value = String(url ?? '').trim();
+  return value ? value : null;
+};
+
+/**
+ * Normalizes brand identity with backward-compatible migration from the
+ * legacy settings (brandName string + logo field).
+ *
+ * Migration rules:
+ * - wordmark.text  ← brandName (or legacy wordmark text)
+ * - wordmark.imageUrl ← legacy `logo` ONLY when it is a real uploaded asset
+ *   (the legacy logo was rendered as the wordmark, so it migrates there — it
+ *   is never bound to the brand icon at the same time).
+ * - wordmark.mode  ← 'image' when a real wordmark image exists, else 'text'
+ * - icon.imageUrl  ← its own field; never derived from the legacy logo.
+ */
+export function normalizeBrandIdentity(
+  settings: Pick<SiteSettings, 'brandName' | 'logo'> & Partial<SiteSettings>,
+): BrandIdentity {
+  const legacyLogo = cleanUrl(settings?.logo);
+  const saved = settings?.brandIdentity;
+
+  const wordmarkText =
+    cleanUrl(saved?.wordmark?.text) ??
+    cleanUrl(settings?.brandName) ??
+    'BRISTI';
+
+  const savedWordmarkImage = cleanUrl(saved?.wordmark?.imageUrl);
+  const imageUrl =
+    savedWordmarkImage ??
+    (isDefaultLogo(legacyLogo) ? null : legacyLogo);
+
+  const explicitMode = saved?.wordmark?.mode;
+  const mode =
+    explicitMode === 'text' || explicitMode === 'image'
+      ? explicitMode
+      : imageUrl
+        ? 'image'
+        : 'text';
+
+  return {
+    wordmark: {
+      mode,
+      text: wordmarkText,
+      imageUrl: mode === 'image' ? imageUrl : null,
+    },
+    icon: {
+      imageUrl: cleanUrl(saved?.icon?.imageUrl),
+    },
+  };
+}
+
+/** Defaults used when the settings doc predates the new fields. */
+export const defaultBrandIdentity = (brandName = 'BRISTI'): BrandIdentity => ({
+  wordmark: { mode: 'text', text: brandName, imageUrl: null },
+  icon: { imageUrl: null },
+});
 
 /**
  * Format date to local string
@@ -252,7 +387,7 @@ export const getYouTubeVideoId = (url: string): string | null => {
  * Get Vimeo video ID from URL
  */
 export const getVimeoVideoId = (url: string): string | null => {
-  const regExp = /https?:\/\/(?:www\.|player\.)?vimeo.com\/(?:channels\/(?:\w+\/)?|groups\/([^\/]*)\/videos\/|album\/(\d+)\/video\/|video\/|)(\d+)(?:$|\/|\?)/;
+  const regExp = /https?:\/\/(?:www\.|player\.)?vimeo.com\/(?:channels\/(?:\w+\/)?|groups\/([^/]*)\/videos\/|album\/(\d+)\/video\/|video\/|)(\d+)(?:$|\/|\?)/;
   const match = url.match(regExp);
   return match ? match[3] : null;
 };

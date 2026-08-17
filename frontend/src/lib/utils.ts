@@ -43,7 +43,7 @@ const API_ORIGIN: string = String(
  *   otherwise they would resolve to the storefront origin and 404.
  * - Any other relative path is left untouched (frontend public assets).
  */
-export function getImageUrl(url?: string): string | null {
+export function getImageUrl(url?: string | null): string | null {
   if (!url) return null;
   if (url.startsWith('http://') || url.startsWith('https://')) {
     try {

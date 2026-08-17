@@ -1,15 +1,40 @@
 import { SettingsRepository } from '../repositories/settings.repository';
 import { ISiteSettings } from '../../shared/types';
+import {
+  DEFAULT_BASE_CURRENCY,
+  DEFAULT_EXCHANGE_RATES,
+  normalizeBrandIdentity,
+} from '../../shared/utils';
 
 export class SettingsService {
   constructor(private settingsRepo: SettingsRepository) {}
 
-  // Public settings: strip any secrets so the storefront never receives credentials
-  async getPublicSettings(): Promise<any> {
-    const settings = await this.settingsRepo.getSettings();
+  /**
+   * Backward-compatible migration for brand identity: fills the new
+   * brandIdentity/baseCurrency/exchangeRates fields from legacy data without
+   * mutating the stored document. The legacy `logo` is treated as the wordmark
+   * image only — it is never bound to the brand icon.
+   */
+  private decorate(settings: ISiteSettings): any {
     const sanitized: any = settings && typeof (settings as any).toObject === 'function'
       ? (settings as any).toObject()
       : { ...(settings as any) };
+
+    sanitized.brandIdentity = normalizeBrandIdentity(sanitized);
+    sanitized.baseCurrency = String(sanitized.baseCurrency || DEFAULT_BASE_CURRENCY).toUpperCase();
+    sanitized.exchangeRates = {
+      ...DEFAULT_EXCHANGE_RATES,
+      ...(sanitized.exchangeRates && typeof sanitized.exchangeRates === 'object'
+        ? sanitized.exchangeRates
+        : {}),
+    };
+    return sanitized;
+  }
+
+  // Public settings: strip any secrets so the storefront never receives credentials
+  async getPublicSettings(): Promise<any> {
+    const settings = await this.settingsRepo.getSettings();
+    const sanitized = this.decorate(settings);
 
     if (sanitized.emailSettings) {
       sanitized.emailSettings = {
@@ -25,7 +50,8 @@ export class SettingsService {
   }
 
   async getSettings(): Promise<ISiteSettings> {
-    return this.settingsRepo.getSettings();
+    const settings = await this.settingsRepo.getSettings();
+    return this.decorate(settings);
   }
 
   async updateSettings(data: Partial<ISiteSettings>): Promise<ISiteSettings> {

@@ -5,6 +5,7 @@ import { X } from 'lucide-react';
 import { catalogService } from '@/services/catalog.service';
 import { useSiteSettings } from '@/context/SettingsContext';
 import { useUIStore } from '@/store/useUIStore';
+import { BrandIdentity } from '@/components/shared/BrandIdentity';
 
 export function MobileNav() {
   const { isMobileNavOpen, closeMobileNav } = useUIStore();
@@ -19,8 +20,6 @@ export function MobileNav() {
     .filter((item) => item.isActive !== false)
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
     .map((item) => ({ label: item.label, to: item.url }));
-
-  const brandName = settings?.brandName || 'BRISTI';
 
   return (
     <AnimatePresence>
@@ -41,8 +40,8 @@ export function MobileNav() {
             className="fixed inset-y-0 left-0 z-[71] flex w-[85%] max-w-sm flex-col bg-[var(--mobile-drawer-bg)]"
           >
             <div className="flex h-16 items-center justify-between border-b border-[var(--mobile-nav-border)] px-6">
-              <Link to="/" onClick={closeMobileNav} className="font-display text-xl font-semibold tracking-[0.3em] text-[var(--mobile-drawer-text)]">
-                {brandName}
+              <Link to="/" onClick={closeMobileNav}>
+                <BrandIdentity variant="mobile" />
               </Link>
               <button type="button" aria-label="Close menu" onClick={closeMobileNav} className="flex h-10 w-10 items-center justify-center">
                 <X className="h-5 w-5" />

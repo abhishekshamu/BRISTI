@@ -16,9 +16,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
 import { usePageMeta } from '@/lib/seo';
-import { formatPrice } from '@/lib/utils';
-import { computeTotals, TAX_RATE } from '@/lib/pricing';
-import { useBrandName } from '@/context/SettingsContext';
+import { computeTotals, TAX_RATE, totalsOptionsFromSettings } from '@/lib/pricing';
+import { useBrandName, useSiteSettings } from '@/context/SettingsContext';
+import { useCurrency } from '@/context/CurrencyContext';
 
 type PaymentMethod = 'stripe' | 'razorpay' | 'cod';
 
@@ -55,6 +55,8 @@ const EMPTY_ADDRESS: AddressForm = {
 export default function CheckoutPage() {
   const { isAuthenticated, profile, isLoading: authLoading, user } = useAuth();
   const brandName = useBrandName();
+  const { settings } = useSiteSettings();
+  const { formatPrice, convertTo, currency: displayCurrency } = useCurrency();
   const { cart, clear } = useCart();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -85,7 +87,7 @@ export default function CheckoutPage() {
 
   const items = cart?.items ?? [];
   const subtotal = cart?.subtotal ?? 0;
-  const totals = computeTotals(subtotal, cart?.discount ?? 0, items.length);
+  const totals = computeTotals(subtotal, cart?.discount ?? 0, items.length, totalsOptionsFromSettings(settings));
   const summary = useMemo(
     () => ({ ...totals, discount: cart?.discount ?? 0, subtotal }),
     [totals, cart?.discount, subtotal],
@@ -167,15 +169,26 @@ export default function CheckoutPage() {
         notes: notes.trim() || undefined,
       });
 
+      const gatewayCurrency = paymentMethod === 'razorpay' ? 'INR' : displayCurrency;
+      const gatewayAmount = Math.round(convertTo(summary.total, gatewayCurrency) * 100) / 100;
+
       if (paymentMethod === 'stripe') {
         try {
-          await paymentService.createStripeIntent({ amount: summary.total, orderId: String(order._id) });
+          await paymentService.createStripeIntent({
+            amount: gatewayAmount,
+            currency: gatewayCurrency,
+            orderId: String(order._id),
+          });
         } catch {
           // gateway intent creation failed - order remains pending
         }
       } else if (paymentMethod === 'razorpay') {
         try {
-          await paymentService.createRazorpayOrder({ amount: summary.total, orderId: String(order._id) });
+          await paymentService.createRazorpayOrder({
+            amount: gatewayAmount,
+            currency: gatewayCurrency,
+            orderId: String(order._id),
+          });
         } catch {
           // gateway order creation failed - order remains pending
         }

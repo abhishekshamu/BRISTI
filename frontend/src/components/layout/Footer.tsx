@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { newsletterService } from '@/services/engagement.service';
 import { useSiteSettings } from '@/context/SettingsContext';
 import { isValidEmailAddress } from '@/lib/utils';
+import { BrandIdentity } from '@/components/shared/BrandIdentity';
 
 const SOCIAL_ICONS: Record<string, typeof Instagram> = {
   instagram: Instagram,
@@ -19,8 +20,6 @@ export function Footer() {
   const [subscribing, setSubscribing] = useState(false);
 
   const brandName = settings?.brandName || 'BRISTI';
-  const tagline = settings?.slogan;
-  const showLogoImage = !!settings?.logo && settings.logo !== '/logo.png' && settings.logo !== '/favicon.svg';
 
   const linkColumns: Array<{ title: string; links: Array<{ label: string; to: string }>; content?: string }> = settings?.footer?.sections?.length
     ? settings.footer.sections
@@ -59,14 +58,7 @@ export function Footer() {
         <div className="grid gap-12 py-16 lg:grid-cols-[1.4fr_1fr_1fr_1fr] lg:py-20">
           <div className="flex flex-col gap-6">
             <Link to="/" className="flex flex-col leading-none">
-              {showLogoImage ? (
-                <img src={settings?.logo} alt={brandName} className="h-10 w-auto object-contain" />
-              ) : (
-                <span className="font-display text-3xl font-semibold tracking-[0.3em] text-[var(--footer-heading)]">{brandName}</span>
-              )}
-              {tagline && (
-                <span className="mt-2 text-[10px] uppercase tracking-lux text-[var(--footer-text)]">{tagline}</span>
-              )}
+              <BrandIdentity variant="footer" showTagline />
             </Link>
             {settings?.contactInfo?.address && (
               <p className="max-w-xs text-sm leading-7 text-[var(--footer-text)]">{settings.contactInfo.address}</p>
@@ -134,7 +126,7 @@ export function Footer() {
         <div className="flex flex-col items-center justify-between gap-4 border-t border-[var(--footer-border)] py-8 sm:flex-row">
           <p className="text-xs text-[var(--footer-text)]">© {new Date().getFullYear()} {brandName}. All rights reserved.</p>
           <p className="flex items-center gap-2 text-[10px] uppercase tracking-lux-sm text-[var(--footer-text)]">
-            Crafted with care <span className="text-accent">✦</span> {tagline}
+            Crafted with care <span className="text-accent">✦</span> {settings?.slogan}
           </p>
         </div>
       </div>

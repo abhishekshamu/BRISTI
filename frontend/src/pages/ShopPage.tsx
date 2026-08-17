@@ -17,8 +17,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { usePageMeta } from '@/lib/seo';
-import { formatPrice, getImageUrl } from '@/lib/utils';
+import { getImageUrl } from '@/lib/utils';
 import { useBrandName } from '@/context/SettingsContext';
+import { useCurrency } from '@/context/CurrencyContext';
 
 const SORT_OPTIONS = [
   { value: 'newest', label: 'Newest', sort: 'createdAt', order: 'desc' },
@@ -31,6 +32,7 @@ const SORT_OPTIONS = [
 export default function ShopPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const brandName = useBrandName();
+  const { formatPrice } = useCurrency();
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   const selectedSlugs = useMemo(() => {

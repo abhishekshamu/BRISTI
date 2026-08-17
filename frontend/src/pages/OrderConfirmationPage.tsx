@@ -6,8 +6,8 @@ import { Check, Package, PackageCheck, Truck, Loader2 } from 'lucide-react';
 import { usePageMeta } from '@/lib/seo';
 import { useAuth } from '@/context/AuthContext';
 import { useBrandName } from '@/context/SettingsContext';
+import { useCurrency } from '@/context/CurrencyContext';
 import { orderService } from '@/services/order.service';
-import { formatPrice } from '@/lib/utils';
 import { ORDER_STATUSES, PAYMENT_STATUSES } from '@shared/constants';
 import type { Order } from '@shared/types';
 
@@ -15,6 +15,7 @@ export default function OrderConfirmationPage() {
   const { orderNumber = '' } = useParams<{ orderNumber: string }>();
   const location = useLocation();
   const brandName = useBrandName();
+  const { formatPrice } = useCurrency();
   const { isAuthenticated } = useAuth();
   const orderFromState = (location.state as { order?: Order } | null)?.order;
 

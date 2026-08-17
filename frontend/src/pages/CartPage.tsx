@@ -12,15 +12,16 @@ import { SafeImage } from '@/components/shared/SafeImage';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePageMeta } from '@/lib/seo';
-import { formatPrice } from '@/lib/utils';
 import { FREE_SHIPPING_THRESHOLD, FLAT_SHIPPING_RATE, TAX_RATE } from '@/lib/pricing';
 import { useBrandName } from '@/context/SettingsContext';
+import { useCurrency } from '@/context/CurrencyContext';
 
 export default function CartPage() {
   const { cart, isLoading, updateQuantity, removeItem, applyCoupon, removeCoupon, isUpdating } = useCart();
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const brandName = useBrandName();
+  const { formatPrice } = useCurrency();
   const [couponCode, setCouponCode] = useState('');
   const [applying, setApplying] = useState(false);
 

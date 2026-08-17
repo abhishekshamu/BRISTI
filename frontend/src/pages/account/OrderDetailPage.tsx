@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatPrice } from '@/lib/utils';
+import { useCurrency } from '@/context/CurrencyContext';
 import { ORDER_STATUSES, PAYMENT_STATUSES } from '@shared/constants';
 
 const STEPS = [
@@ -24,6 +24,7 @@ export default function OrderDetailPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [cancelling, setCancelling] = useState(false);
+  const { formatPrice } = useCurrency();
 
   const { data: order, isLoading, error, refetch } = useQuery({
     queryKey: ['orders', 'detail', orderNumber],

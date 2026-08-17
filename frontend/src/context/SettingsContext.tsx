@@ -1,8 +1,12 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { siteService } from '@/services/site.service';
 import { organizationJsonLd, setJsonLd } from '@/lib/seo';
+import { getImageUrl } from '@/lib/utils';
 import { DEFAULT_SETTINGS } from '@shared/constants';
-import type { SiteSettings } from '@shared/types';
+import { normalizeBrandIdentity } from '@shared/utils';
+import type { BrandIdentity, SiteSettings } from '@shared/types';
+
+const SETTINGS_CACHE_KEY = 'bristi.settings.cache.v1';
 
 interface SettingsContextValue {
   settings: SiteSettings | null;
@@ -66,14 +70,15 @@ function applySettingsToDom(settings: SiteSettings | null): void {
     }
     metaDesc.setAttribute('content', settings.seo.defaultDescription);
   }
-  if (settings.favicon) {
+  const faviconUrl = getImageUrl(settings.favicon);
+  if (faviconUrl) {
     let favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null;
     if (!favicon) {
       favicon = document.createElement('link');
       favicon.rel = 'icon';
       document.head.appendChild(favicon);
     }
-    favicon.href = settings.favicon;
+    favicon.href = faviconUrl;
   }
 
   // Colors → shadcn HSL variables (only when a hex value is provided)
@@ -126,26 +131,64 @@ function applySettingsToDom(settings: SiteSettings | null): void {
   }
 }
 
+function loadCachedSettings(): SiteSettings | null {
+  try {
+    const raw = localStorage.getItem(SETTINGS_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as SiteSettings;
+    return parsed && typeof parsed === 'object' && parsed.brandName ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function cacheSettings(settings: SiteSettings): void {
+  try {
+    localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify(settings));
+  } catch {
+    // storage unavailable — settings simply re-fetch next load
+  }
+}
+
 export function SettingsProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState<SiteSettings | null>(null);
+  const [settings, setSettings] = useState<SiteSettings | null>(() => loadCachedSettings());
   const [loading, setLoading] = useState(true);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     try {
       const data = await siteService.getSettings();
       setSettings(data);
       applySettingsToDom(data);
-      setJsonLd(organizationJsonLd({ brandName: data.brandName, slogan: data.slogan, logo: data.logo }));
+      cacheSettings(data);
+      const identity = normalizeBrandIdentity(data);
+      setJsonLd(
+        organizationJsonLd({
+          brandName: identity.wordmark.text,
+          slogan: data.slogan,
+          logo: identity.wordmark.imageUrl ?? data.logo,
+        }),
+      );
     } catch {
       // Keep current (static) theme when the API is unavailable
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     refresh();
-  }, []);
+  }, [refresh]);
+
+  // Keep storefront settings fresh (currency, brand, favicon, colors): when the
+  // admin saves settings and the shop tab regains focus, the latest values are
+  // re-fetched — no stale currency survives an admin change.
+  useEffect(() => {
+    const onFocus = () => {
+      refresh();
+    };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [refresh]);
 
   return (
     <SettingsContext.Provider value={{ settings, loading, refresh }}>
@@ -163,4 +206,13 @@ export function useSiteSettings(): SettingsContextValue {
 export function useBrandName(): string {
   const { settings } = useSiteSettings();
   return settings?.brandName || DEFAULT_SETTINGS.brandName;
+}
+
+/**
+ * Normalized brand identity (wordmark + icon) with legacy-data fallbacks.
+ * Single source of truth for every brand render (header, mobile nav, footer).
+ */
+export function useBrandIdentity(): BrandIdentity {
+  const { settings } = useSiteSettings();
+  return normalizeBrandIdentity(settings ?? { brandName: DEFAULT_SETTINGS.brandName, logo: '' });
 }

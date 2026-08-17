@@ -34,6 +34,40 @@ const HomepageSectionSchema: Schema = new Schema({
   isActive: { type: Boolean, default: true },
 });
 
+const BrandWordmarkSchema: Schema = new Schema({
+  mode: {
+    type: String,
+    enum: ['text', 'image'],
+    default: 'text',
+  },
+  text: {
+    type: String,
+    default: 'BRISTI',
+  },
+  imageUrl: {
+    type: String,
+    default: null,
+  },
+});
+
+const BrandIconSchema: Schema = new Schema({
+  imageUrl: {
+    type: String,
+    default: null,
+  },
+});
+
+const BrandIdentitySchema: Schema = new Schema({
+  wordmark: {
+    type: BrandWordmarkSchema,
+    default: () => ({}),
+  },
+  icon: {
+    type: BrandIconSchema,
+    default: () => ({}),
+  },
+}, { _id: false });
+
 const SettingsSchema: Schema = new Schema({
   brandName: {
     type: String,
@@ -50,6 +84,24 @@ const SettingsSchema: Schema = new Schema({
   },
   slogan: {
     type: String,
+  },
+  /**
+   * Brand identity (wordmark + icon). Kept independent from the legacy
+   * `logo`/`favicon` fields: the wordmark image is never used as the icon
+   * and vice versa. Legacy data migrates into this structure lazily via
+   * SettingsService.normalizeBrandIdentity.
+   */
+  brandIdentity: {
+    type: BrandIdentitySchema,
+    default: () => ({}),
+  },
+  baseCurrency: {
+    type: String,
+    default: 'INR',
+  },
+  exchangeRates: {
+    type: Schema.Types.Mixed,
+    default: {},
   },
   colors: {
     primary: {

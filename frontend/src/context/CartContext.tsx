@@ -2,8 +2,9 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { cartService, cartItemKey, type AddToCartPayload } from '@/services/cart.service';
 import { couponService } from '@/services/coupon.service';
 import { useAuth } from '@/context/AuthContext';
+import { useSiteSettings } from '@/context/SettingsContext';
 import { getErrorMessage } from '@/lib/utils';
-import { computeTotals } from '@/lib/pricing';
+import { computeTotals, totalsOptionsFromSettings } from '@/lib/pricing';
 import { productService } from '@/services/product.service';
 import type { Cart, CartItem } from '@shared/types';
 
@@ -104,22 +105,28 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (cart && !isAuthenticated) persistGuestCart(cart);
   }, [cart, isAuthenticated]);
 
-  const recomputeTotals = useCallback((next: Cart): Cart => {
-    const items = next.items.filter((item) => item.quantity > 0);
-    const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const { tax, shipping } = computeTotals(subtotal, next.discount, items.length);
-    const discount = subtotal === 0 ? 0 : next.discount;
-    return {
-      ...next,
-      items,
-      totalItems: items.reduce((sum, item) => sum + item.quantity, 0),
-      subtotal,
-      tax,
-      shipping,
-      discount,
-      total: subtotal + tax + shipping - discount,
-    };
-  }, []);
+  const { settings } = useSiteSettings();
+  const totalsOptions = useMemo(() => totalsOptionsFromSettings(settings), [settings]);
+
+  const recomputeTotals = useCallback(
+    (next: Cart): Cart => {
+      const items = next.items.filter((item) => item.quantity > 0);
+      const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      const { tax, shipping } = computeTotals(subtotal, next.discount, items.length, totalsOptions);
+      const discount = subtotal === 0 ? 0 : next.discount;
+      return {
+        ...next,
+        items,
+        totalItems: items.reduce((sum, item) => sum + item.quantity, 0),
+        subtotal,
+        tax,
+        shipping,
+        discount,
+        total: subtotal + tax + shipping - discount,
+      };
+    },
+    [totalsOptions],
+  );
 
   const addItem = useCallback(
     async (payload: AddToCartPayload) => {

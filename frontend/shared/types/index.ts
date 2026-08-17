@@ -1,4 +1,33 @@
 // Shared Types
+
+export type BrandWordmarkMode = 'text' | 'image';
+
+/**
+ * Brand Name / Wordmark. Exactly one display mode drives the storefront:
+ * - text  → the configured text brand name is rendered
+ * - image → the uploaded wordmark image is rendered (text is the fallback)
+ */
+export interface BrandWordmark {
+  mode: BrandWordmarkMode;
+  text: string;
+  imageUrl: string | null;
+}
+
+/** Brand Icon / mark — rendered next to the wordmark, never instead of it. */
+export interface BrandIcon {
+  imageUrl: string | null;
+}
+
+/**
+ * Brand identity settings (independent of the legacy logo/favicon fields).
+ * wordmark and icon are deliberately separate: a wordmark image is never used
+ * as the icon and the icon is never used as a wordmark replacement.
+ */
+export interface BrandIdentity {
+  wordmark: BrandWordmark;
+  icon: BrandIcon;
+}
+
 export interface SiteSettings {
   _id: any;
   brandName: string;
@@ -61,6 +90,16 @@ export interface SiteSettings {
     }>;
   };
   currency: string;
+  /**
+   * Currency product/cart/order amounts are stored in (see
+   * DEFAULT_BASE_CURRENCY). Display currency = `currency`; conversion happens
+   * once, at render time, via convertPrice().
+   */
+  baseCurrency?: string;
+  /** Optional per-currency exchange rates (1 unit of base → X units of target). */
+  exchangeRates?: Record<string, number>;
+  /** Brand identity — wordmark + icon, normalized for the storefront. */
+  brandIdentity?: BrandIdentity;
   taxRate: number;
   freeShippingThreshold: number;
   maintenanceMode?: boolean;

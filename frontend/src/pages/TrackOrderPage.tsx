@@ -6,8 +6,8 @@ import { useAuth } from '@/context/AuthContext';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { usePageMeta } from '@/lib/seo';
 import { orderService } from '@/services/order.service';
-import { formatPrice } from '@/lib/utils';
 import { useBrandName } from '@/context/SettingsContext';
+import { useCurrency } from '@/context/CurrencyContext';
 import type { Order } from '@shared/types';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -20,6 +20,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 export default function TrackOrderPage() {
   const brandName = useBrandName();
+  const { formatPrice } = useCurrency();
   usePageMeta({ title: `Track Order — ${brandName}`, description: `Follow your ${brandName} order from atelier to your door.` });
   const { isAuthenticated } = useAuth();
   const [orderNumber, setOrderNumber] = useState('');

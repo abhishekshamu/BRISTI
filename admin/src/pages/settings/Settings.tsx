@@ -37,7 +37,7 @@ import PageShell from '../../components/ui/PageShell';
 import PageSpinner from '../../components/ui/PageSpinner';
 import StickySaveBar from '../../components/ui/StickySaveBar';
 import { useUnsavedChanges } from '../../lib/unsaved-context';
-import { CURRENCIES } from '@shared/constants';
+import { CURRENCIES, DEFAULT_EXCHANGE_RATES } from '@shared/constants';
 
 /* ============================================================
    Constants
@@ -123,6 +123,14 @@ interface FormState {
   socialLinks: SocialLink[];
   seo: { defaultTitle: string; defaultDescription: string; defaultImage: string };
   currency: string;
+  baseCurrency: string;
+  exchangeRates: Record<string, string>;
+  brandIdentity: {
+    wordmarkMode: 'text' | 'image';
+    wordmarkText: string;
+    wordmarkImageUrl: string;
+    iconImageUrl: string;
+  };
   taxGstRate: number;
   freeShippingThreshold: number;
   maintenanceMode: boolean;
@@ -212,6 +220,14 @@ const DEFAULT_FORM: FormState = {
   socialLinks: [],
   seo: { defaultTitle: '', defaultDescription: '', defaultImage: '' },
   currency: 'USD',
+  baseCurrency: 'INR',
+  exchangeRates: {},
+  brandIdentity: {
+    wordmarkMode: 'text',
+    wordmarkText: '',
+    wordmarkImageUrl: '',
+    iconImageUrl: '',
+  },
   taxGstRate: 10,
   freeShippingThreshold: 100,
   maintenanceMode: false,
@@ -356,6 +372,30 @@ function mergeForm(raw: Record<string, unknown>): FormState {
     socialLinks: Array.isArray(raw.socialLinks) ? (raw.socialLinks as SocialLink[]) : d.socialLinks,
     seo: { ...d.seo, ...(isRecord(raw.seo) ? raw.seo : {}) },
     currency: str(raw.currency, d.currency),
+    baseCurrency: str(raw.baseCurrency, d.baseCurrency).toUpperCase(),
+    exchangeRates: isRecord(raw.exchangeRates)
+      ? Object.fromEntries(
+          Object.entries(raw.exchangeRates)
+            .filter(([, value]) => typeof value === 'number' && value > 0)
+            .map(([code, value]) => [code.toUpperCase(), String(value)]),
+        )
+      : {},
+    brandIdentity: (() => {
+      const rawBI = isRecord(raw.brandIdentity) ? raw.brandIdentity : {};
+      const rawWM = isRecord(rawBI.wordmark) ? rawBI.wordmark : {};
+      const legacyLogo = str(raw.logo, '');
+      return {
+        wordmarkMode:
+          rawWM.mode === 'image' || rawWM.mode === 'text'
+            ? rawWM.mode
+            : legacyLogo
+              ? 'image'
+              : d.brandIdentity.wordmarkMode,
+        wordmarkText: str(rawWM.text, str(raw.brandName, d.brandName)),
+        wordmarkImageUrl: str(rawWM.imageUrl, legacyLogo),
+        iconImageUrl: str(isRecord(rawBI.icon) ? rawBI.icon.imageUrl : undefined, ''),
+      };
+    })(),
     taxGstRate: num(raw.taxGstRate, d.taxGstRate),
     freeShippingThreshold: num(raw.freeShippingThreshold, d.freeShippingThreshold),
     maintenanceMode: bool(raw.maintenanceMode, d.maintenanceMode),
@@ -382,7 +422,6 @@ function buildPayload(f: FormState) {
   return {
     brandName: f.brandName.trim() || 'BRISTI',
     slogan: f.slogan.trim(),
-    logo: f.logo,
     favicon: f.favicon,
     contactInfo: {
       email: f.contactInfo.email.trim(),
@@ -398,6 +437,26 @@ function buildPayload(f: FormState) {
       defaultImage: f.seo.defaultImage,
     },
     currency: f.currency,
+    baseCurrency: f.baseCurrency || 'INR',
+    exchangeRates: (() => {
+      const rates: Record<string, number> = {};
+      for (const [code, value] of Object.entries(f.exchangeRates)) {
+        const num = Number(value);
+        if (value.trim() && Number.isFinite(num) && num > 0) rates[code.toUpperCase()] = num;
+      }
+      return rates;
+    })(),
+    brandIdentity: {
+      wordmark: {
+        mode: f.brandIdentity.wordmarkMode,
+        text: f.brandIdentity.wordmarkText.trim() || f.brandName.trim() || 'BRISTI',
+        imageUrl: f.brandIdentity.wordmarkImageUrl || null,
+      },
+      icon: { imageUrl: f.brandIdentity.iconImageUrl || null },
+    },
+    // Backward compatibility: keep the legacy logo field in sync with the
+    // wordmark image so older consumers of settings.logo keep working.
+    logo: f.brandIdentity.wordmarkImageUrl || f.logo,
     taxRate: (Number(f.taxGstRate) || 0) / 100,
     freeShippingThreshold: Number(f.freeShippingThreshold) || 0,
     maintenanceMode: f.maintenanceMode,
@@ -617,6 +676,21 @@ export default function Settings() {
     }
     if (!CURRENCIES.some((c) => c.code === form.currency)) {
       errs['general.currency'] = 'Select a valid currency';
+    }
+    if (!CURRENCIES.some((c) => c.code === form.baseCurrency)) {
+      errs['general.baseCurrency'] = 'Select a valid base currency';
+    }
+    for (const [code, value] of Object.entries(form.exchangeRates)) {
+      const num = Number(value);
+      if (value.trim() && (!Number.isFinite(num) || num <= 0)) {
+        errs[`general.rate.${code}`] = 'Rate must be a positive number';
+      }
+    }
+    if (form.brandIdentity.wordmarkImageUrl && !/^(https?:\/\/|\/uploads\/)/i.test(form.brandIdentity.wordmarkImageUrl)) {
+      errs['general.wordmarkImage'] = 'Must be an http(s) URL or /uploads/ path';
+    }
+    if (form.brandIdentity.iconImageUrl && !/^(https?:\/\/|\/uploads\/)/i.test(form.brandIdentity.iconImageUrl)) {
+      errs['general.brandIcon'] = 'Must be an http(s) URL or /uploads/ path';
     }
     if (extras.store.timezone && !TIMEZONES.includes(extras.store.timezone)) {
       errs['general.timezone'] = 'Select a valid timezone';
@@ -946,7 +1020,7 @@ export default function Settings() {
                 </Field>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="Currency" required error={errors['general.currency']}>
+                <Field label="Currency" required error={errors['general.currency']} hint="Display currency used across the storefront — prices are converted from the base currency">
                   <select
                     value={form.currency}
                     onChange={(e) => update({ currency: e.target.value })}
@@ -959,29 +1033,114 @@ export default function Settings() {
                     ))}
                   </select>
                 </Field>
-                <Field label="GST / VAT" local hint="Registration / tax identification number" error={errors['general.gstVat']}>
-                  <input
-                    type="text"
-                    value={extras.store.gstVat}
-                    onChange={(e) => updateExtras({ store: { ...extras.store, gstVat: e.target.value } })}
-                    className={inputCls('general.gstVat')}
-                    placeholder="27AAPFU0939F1ZV"
-                  />
+                <Field label="Base Currency" error={errors['general.baseCurrency']} hint="Currency your catalog prices are stored in. Usually set once when prices were entered">
+                  <select
+                    value={form.baseCurrency}
+                    onChange={(e) => update({ baseCurrency: e.target.value })}
+                    className={inputCls('general.baseCurrency')}
+                  >
+                    {CURRENCIES.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.code} — {c.name}
+                      </option>
+                    ))}
+                  </select>
                 </Field>
               </div>
-              <MediaPicker
-                label="Company Logo"
-                value={form.logo}
-                onChange={(url) => update({ logo: url })}
-                ratio="logo"
-                folder="logos"
-              />
+              <Field label="GST / VAT" local hint="Registration / tax identification number" error={errors['general.gstVat']}>
+                <input
+                  type="text"
+                  value={extras.store.gstVat}
+                  onChange={(e) => updateExtras({ store: { ...extras.store, gstVat: e.target.value } })}
+                  className={inputCls('general.gstVat')}
+                  placeholder="27AAPFU0939F1ZV"
+                />
+              </Field>
+              <div className="border-t border-slate-200 dark:border-slate-700 pt-4 mt-1">
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Exchange Rates</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+                  1 {form.baseCurrency || 'INR'} equals the rate below — the storefront converts base prices to the display
+                  currency using these rates. Leave blank to use the built-in default (shown as placeholder).
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {CURRENCIES.map((c) => (
+                    <div key={c.code} className="flex items-center gap-2">
+                      <span className="w-14 shrink-0 text-xs font-medium text-slate-600 dark:text-slate-300">{c.code}</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.000001"
+                        inputMode="decimal"
+                        value={form.exchangeRates[c.code] ?? ''}
+                        onChange={(e) =>
+                          update({ exchangeRates: { ...form.exchangeRates, [c.code]: e.target.value } })
+                        }
+                        className={inputCls(`general.rate.${c.code}`)}
+                        placeholder={DEFAULT_EXCHANGE_RATES[c.code] != null ? String(DEFAULT_EXCHANGE_RATES[c.code]) : ''}
+                        aria-label={`Exchange rate for ${c.code}`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
               <MediaPicker
                 label="Favicon"
                 value={form.favicon}
                 onChange={(url) => update({ favicon: url })}
                 ratio="favicon"
                 folder="favicons"
+              />
+            </Card>
+
+            <Card icon={Image} title="Brand Identity" description="Brand name / wordmark and the independent brand icon — rendered exactly like this in the storefront">
+              <Field label="Wordmark Display Mode" hint="Image mode shows the wordmark image; text is used as the automatic fallback if the image ever breaks">
+                <div className="flex gap-2">
+                  {(['text', 'image'] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => update({ brandIdentity: { ...form.brandIdentity, wordmarkMode: mode } })}
+                      className={`flex-1 rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
+                        form.brandIdentity.wordmarkMode === mode
+                          ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                          : 'border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300'
+                      }`}
+                    >
+                      {mode === 'text' ? 'Text' : 'Image'}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+              <Field
+                label="Brand Name (Wordmark)"
+                hint="Rendered in the header and footer. Defaults to the Store Name when empty"
+              >
+                <input
+                  type="text"
+                  value={form.brandIdentity.wordmarkText}
+                  onChange={(e) => update({ brandIdentity: { ...form.brandIdentity, wordmarkText: e.target.value } })}
+                  className={inputCls('general.wordmarkText')}
+                  placeholder={form.brandName || 'BRISTI'}
+                />
+              </Field>
+              <MediaPicker
+                label="Wordmark Image"
+                value={form.brandIdentity.wordmarkImageUrl}
+                onChange={(url) =>
+                  update({
+                    brandIdentity: { ...form.brandIdentity, wordmarkImageUrl: url },
+                    logo: url,
+                  })
+                }
+                ratio="logo"
+                folder="logos"
+              />
+              <MediaPicker
+                label="Brand Icon"
+                value={form.brandIdentity.iconImageUrl}
+                onChange={(url) => update({ brandIdentity: { ...form.brandIdentity, iconImageUrl: url } })}
+                ratio="favicon"
+                folder="icons"
               />
             </Card>
 

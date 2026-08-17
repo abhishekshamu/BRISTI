@@ -7,12 +7,14 @@ import { orderService } from '@/services/order.service';
 import { notificationService } from '@/services/engagement.service';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { formatPrice, getInitials } from '@/lib/utils';
+import { getInitials } from '@/lib/utils';
+import { useCurrency } from '@/context/CurrencyContext';
 import { ORDER_STATUSES, PAYMENT_STATUSES } from '@shared/constants';
 
 export default function DashboardPage() {
   const { user, profile } = useAuth();
   const { productIds } = useWishlist();
+  const { formatPrice } = useCurrency();
 
   const { data: ordersPage, isLoading: ordersLoading } = useQuery({
     queryKey: ['orders', 'mine'],

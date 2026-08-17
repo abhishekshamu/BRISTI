@@ -13,9 +13,10 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { productGridClass } from '@/components/product/ProductGrid';
 import { usePageMeta } from '@/lib/seo';
-import { formatPrice, getDefaultVariant } from '@/lib/utils';
+import { getDefaultVariant } from '@/lib/utils';
 import { SafeImage } from '@/components/shared/SafeImage';
 import { useBrandName } from '@/context/SettingsContext';
+import { useCurrency } from '@/context/CurrencyContext';
 import type { Product } from '@shared/types';
 
 export default function WishlistPage() {
@@ -23,6 +24,7 @@ export default function WishlistPage() {
   const { addItem } = useCart();
   const { isAuthenticated } = useAuth();
   const brandName = useBrandName();
+  const { formatPrice } = useCurrency();
 
   usePageMeta({ title: `Wishlist — ${brandName}` });
 

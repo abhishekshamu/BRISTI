@@ -19,9 +19,9 @@ import { ProductCard } from '@/components/product/ProductCard';
 import { ProductGallery, type GalleryImage } from '@/components/product/ProductGallery';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { usePageMeta, useJsonLd } from '@/lib/seo';
-import { formatPrice } from '@/lib/utils';
 import { getRecentlyViewedIds, trackRecentlyViewed } from '@/lib/recently-viewed';
 import { useBrandName } from '@/context/SettingsContext';
+import { useCurrency } from '@/context/CurrencyContext';
 
 // three.js (r3f + drei) only loads when the user actually opens the 3D viewer,
 // keeping the ~1.1MB WebGL chunk out of the product page's initial load.
@@ -33,6 +33,7 @@ export default function ProductDetailPage() {
   const { slug = '' } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const brandName = useBrandName();
+  const { formatPrice } = useCurrency();
   const { addItem } = useCart();
   const { isInWishlist, toggle } = useWishlist();
   const { isAuthenticated } = useAuth();

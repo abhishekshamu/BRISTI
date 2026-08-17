@@ -12,6 +12,7 @@ import { useSiteSettings } from '@/context/SettingsContext';
 import { useScrolled } from '@/hooks/useScrollPosition';
 import { useIsDesktop } from '@/hooks/useMediaQuery';
 import { AnnouncementMarquee } from '@/components/shared/AnnouncementMarquee';
+import { BrandIdentity } from '@/components/shared/BrandIdentity';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { getInitials, cn } from '@/lib/utils';
@@ -27,10 +28,6 @@ export function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
-
-  const brandName = settings?.brandName || 'BRISTI';
-  const tagline = settings?.slogan;
-  const showLogoImage = !!settings?.logo && settings.logo !== '/logo.png' && settings.logo !== '/favicon.svg';
 
   const navLinks = (settings?.navbar?.items ?? [])
     .filter((item) => item.isActive !== false)
@@ -82,14 +79,7 @@ export function Navbar() {
               <Menu className="h-5 w-5" />
             </button>
             <Link to="/" className="flex min-w-0 flex-col leading-none">
-              {showLogoImage ? (
-                <img src={settings?.logo} alt={brandName} className="h-8 w-auto object-contain" />
-              ) : (
-                <span className="truncate font-display text-xl font-semibold tracking-[0.22em] text-[var(--header-text)] sm:text-2xl sm:tracking-[0.3em]">{brandName}</span>
-              )}
-              {tagline && (
-                <span className="mt-1 hidden text-[9px] uppercase tracking-lux text-muted-foreground sm:block">{tagline}</span>
-              )}
+              <BrandIdentity variant="header" showTagline />
             </Link>
           </div>
 

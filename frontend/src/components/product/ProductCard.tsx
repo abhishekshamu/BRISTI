@@ -9,13 +9,15 @@ import { useWishlist } from '@/context/WishlistContext';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { useBrandName } from '@/context/SettingsContext';
-import { formatPrice, getDefaultVariant } from '@/lib/utils';
+import { useCurrency } from '@/context/CurrencyContext';
+import { getDefaultVariant } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { Product } from '@shared/types';
 
 export const ProductCard = memo(function ProductCard({ product, className, eager = false }: { product: Product; className?: string; eager?: boolean }) {
   const brandName = useBrandName();
+  const { formatPrice } = useCurrency();
   const { isInWishlist, toggle } = useWishlist();
   const { addItem } = useCart();
   const { isAuthenticated } = useAuth();

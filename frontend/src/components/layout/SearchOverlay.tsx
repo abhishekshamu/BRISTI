@@ -7,13 +7,15 @@ import { productService } from '@/services/product.service';
 import { useUIStore } from '@/store/useUIStore';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useBrandName } from '@/context/SettingsContext';
-import { formatPrice, getImageUrl } from '@/lib/utils';
+import { useCurrency } from '@/context/CurrencyContext';
+import { getImageUrl } from '@/lib/utils';
 import { ROUTES } from '@shared/constants';
 import type { Product } from '@shared/types';
 
 export function SearchOverlay() {
   const { isSearchOpen, closeSearch } = useUIStore();
   const brandName = useBrandName();
+  const { formatPrice } = useCurrency();
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebounce(query, 300);
   const inputRef = useRef<HTMLInputElement>(null);

@@ -8,6 +8,7 @@ import { inject } from '@vercel/analytics';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { ServerThemeProvider } from '@/context/ServerThemeContext';
 import { SettingsProvider } from '@/context/SettingsContext';
+import { CurrencyProvider } from '@/context/CurrencyContext';
 import { AuthProvider } from '@/context/AuthContext';
 import { CartProvider } from '@/context/CartContext';
 import { WishlistProvider } from '@/context/WishlistContext';
@@ -30,22 +31,24 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <SettingsProvider>
-        <ServerThemeProvider>
-          <ThemeProvider>
-            <AuthProvider>
-              <CartProvider>
-                <WishlistProvider>
-<BrowserRouter>
+        <CurrencyProvider>
+          <ServerThemeProvider>
+            <ThemeProvider>
+              <AuthProvider>
+                <CartProvider>
+                  <WishlistProvider>
+                    <BrowserRouter>
                       <MotionConfig reducedMotion="user">
                         <App />
                         <Toaster position="bottom-right" theme="dark" />
                       </MotionConfig>
                     </BrowserRouter>
-                </WishlistProvider>
-              </CartProvider>
-            </AuthProvider>
-          </ThemeProvider>
-        </ServerThemeProvider>
+                  </WishlistProvider>
+                </CartProvider>
+              </AuthProvider>
+            </ThemeProvider>
+          </ServerThemeProvider>
+        </CurrencyProvider>
       </SettingsProvider>
     </QueryClientProvider>
   </React.StrictMode>

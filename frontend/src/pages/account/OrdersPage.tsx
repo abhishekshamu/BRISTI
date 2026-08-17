@@ -9,13 +9,14 @@ import { ErrorState } from '@/components/shared/ErrorState';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Pagination } from '@/components/ui/pagination';
-import { formatPrice } from '@/lib/utils';
+import { useCurrency } from '@/context/CurrencyContext';
 import { ORDER_STATUSES } from '@shared/constants';
 
 const PAGE_SIZE = 10;
 
 export default function OrdersPage() {
   const { user } = useAuth();
+  const { formatPrice } = useCurrency();
   const [page, setPage] = useState(1);
 
   const { data, isLoading, error, refetch } = useQuery({
