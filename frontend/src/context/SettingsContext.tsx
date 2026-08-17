@@ -3,7 +3,7 @@ import { siteService } from '@/services/site.service';
 import { organizationJsonLd, setJsonLd } from '@/lib/seo';
 import { getImageUrl } from '@/lib/utils';
 import { DEFAULT_SETTINGS } from '@shared/constants';
-import { normalizeBrandIdentity } from '@shared/utils';
+import { buildGoogleFontsUrl, normalizeBrandIdentity, normalizeBrandNameTypography } from '@shared/utils';
 import type { BrandIdentity, SiteSettings } from '@shared/types';
 
 const SETTINGS_CACHE_KEY = 'bristi.settings.cache.v1';
@@ -108,26 +108,41 @@ function applySettingsToDom(settings: SiteSettings | null): void {
     root.style.fontSize = settings.typography.baseSize;
   }
 
-  // Load fonts (Google Fonts link injected once)
-  const fonts: string[] = [];
+  // Load fonts (Google Fonts link injected once). The storefront loads ONLY
+  // the fonts it needs — the selected brand wordmark font (text mode only)
+  // plus the theme heading/body fonts — never the whole library.
+  const fonts: Array<{ family: string; weights?: number[]; italic?: boolean }> = [];
   if (settings.typography?.headingFont && !FONT_FALLBACKS[settings.typography.headingFont]) {
-    fonts.push(settings.typography.headingFont);
+    fonts.push({ family: settings.typography.headingFont });
   }
   if (settings.typography?.bodyFont && !FONT_FALLBACKS[settings.typography.bodyFont]) {
-    fonts.push(settings.typography.bodyFont);
+    fonts.push({ family: settings.typography.bodyFont });
+  }
+  const identity = normalizeBrandIdentity(settings);
+  if (identity.wordmark.mode === 'text') {
+    const brandTypo = normalizeBrandNameTypography(settings.brandNameTypography);
+    if (brandTypo.fontFamily && !FONT_FALLBACKS[brandTypo.fontFamily]) {
+      fonts.push({
+        family: brandTypo.fontFamily,
+        weights: [brandTypo.fontWeight],
+        italic: brandTypo.fontStyle !== 'normal',
+      });
+    }
   }
   if (fonts.length > 0) {
+    const href = buildGoogleFontsUrl(fonts);
     const existing = document.getElementById('settings-fonts') as HTMLLinkElement | null;
-    const family = fonts.map((f) => f.replace(/ /g, '+')).join('&family=');
     if (existing) {
-      existing.href = `https://fonts.googleapis.com/css2?family=${family}&display=swap`;
+      existing.href = href;
     } else {
       const link = document.createElement('link');
       link.id = 'settings-fonts';
       link.rel = 'stylesheet';
-      link.href = `https://fonts.googleapis.com/css2?family=${family}&display=swap`;
+      link.href = href;
       document.head.appendChild(link);
     }
+  } else {
+    document.getElementById('settings-fonts')?.remove();
   }
 }
 

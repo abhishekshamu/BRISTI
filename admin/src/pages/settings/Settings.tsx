@@ -37,7 +37,10 @@ import PageShell from '../../components/ui/PageShell';
 import PageSpinner from '../../components/ui/PageSpinner';
 import StickySaveBar from '../../components/ui/StickySaveBar';
 import { useUnsavedChanges } from '../../lib/unsaved-context';
-import { CURRENCIES, DEFAULT_EXCHANGE_RATES } from '@shared/constants';
+import { CURRENCIES, DEFAULT_BRAND_TYPOGRAPHY, DEFAULT_EXCHANGE_RATES } from '@shared/constants';
+import type { BrandNameTypography } from '@shared/types';
+import { normalizeBrandNameTypography } from '@shared/utils';
+import { BrandTypographyEditor } from '../../components/settings/BrandTypographyEditor';
 
 /* ============================================================
    Constants
@@ -131,6 +134,7 @@ interface FormState {
     wordmarkImageUrl: string;
     iconImageUrl: string;
   };
+  brandNameTypography: BrandNameTypography;
   taxGstRate: number;
   freeShippingThreshold: number;
   maintenanceMode: boolean;
@@ -228,6 +232,7 @@ const DEFAULT_FORM: FormState = {
     wordmarkImageUrl: '',
     iconImageUrl: '',
   },
+  brandNameTypography: { ...DEFAULT_BRAND_TYPOGRAPHY },
   taxGstRate: 10,
   freeShippingThreshold: 100,
   maintenanceMode: false,
@@ -396,6 +401,9 @@ function mergeForm(raw: Record<string, unknown>): FormState {
         iconImageUrl: str(isRecord(rawBI.icon) ? rawBI.icon.imageUrl : undefined, ''),
       };
     })(),
+    brandNameTypography: normalizeBrandNameTypography(
+      isRecord(raw.brandNameTypography) ? (raw.brandNameTypography as Partial<BrandNameTypography>) : undefined,
+    ),
     taxGstRate: num(raw.taxGstRate, d.taxGstRate),
     freeShippingThreshold: num(raw.freeShippingThreshold, d.freeShippingThreshold),
     maintenanceMode: bool(raw.maintenanceMode, d.maintenanceMode),
@@ -454,6 +462,7 @@ function buildPayload(f: FormState) {
       },
       icon: { imageUrl: f.brandIdentity.iconImageUrl || null },
     },
+    brandNameTypography: normalizeBrandNameTypography(f.brandNameTypography),
     // Backward compatibility: keep the legacy logo field in sync with the
     // wordmark image so older consumers of settings.logo keep working.
     logo: f.brandIdentity.wordmarkImageUrl || f.logo,
@@ -1123,6 +1132,13 @@ export default function Settings() {
                   placeholder={form.brandName || 'BRISTI'}
                 />
               </Field>
+              <BrandTypographyEditor
+                value={form.brandNameTypography}
+                onChange={(next) => update({ brandNameTypography: next })}
+                wordmarkText={form.brandIdentity.wordmarkText || form.brandName || 'BRISTI'}
+                slogan={form.slogan}
+                disabled={form.brandIdentity.wordmarkMode === 'image'}
+              />
               <MediaPicker
                 label="Wordmark Image"
                 value={form.brandIdentity.wordmarkImageUrl}

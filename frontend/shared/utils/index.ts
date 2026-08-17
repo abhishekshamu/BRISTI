@@ -1,11 +1,21 @@
 // Shared Utilities
 
 import {
+  BRAND_FONTS,
   CURRENCY_LOCALES,
   DEFAULT_BASE_CURRENCY,
+  DEFAULT_BRAND_TYPOGRAPHY,
   DEFAULT_EXCHANGE_RATES,
 } from '../constants';
-import type { BrandIdentity, SiteSettings } from '../types';
+import type {
+  BrandFontStyle,
+  BrandNameTypography,
+  BrandTextAlign,
+  BrandTextDecoration,
+  BrandTextTransform,
+  BrandIdentity,
+  SiteSettings,
+} from '../types';
 
 // Re-exported so backend/frontend consumers can import currency defaults from
 // a single module.
@@ -146,6 +156,125 @@ export const defaultBrandIdentity = (brandName = 'BRISTI'): BrandIdentity => ({
   wordmark: { mode: 'text', text: brandName, imageUrl: null },
   icon: { imageUrl: null },
 });
+
+/* ============================================================
+   Brand Name Typography (Text wordmark mode)
+   ============================================================ */
+
+const isFontStyle = (v: unknown): v is BrandFontStyle =>
+  v === 'normal' || v === 'italic' || v === 'oblique';
+const isTextTransform = (v: unknown): v is BrandTextTransform =>
+  v === 'none' || v === 'uppercase' || v === 'lowercase' || v === 'capitalize';
+const isTextDecoration = (v: unknown): v is BrandTextDecoration =>
+  v === 'none' || v === 'underline' || v === 'overline' || v === 'line-through';
+const isTextAlign = (v: unknown): v is BrandTextAlign =>
+  v === 'left' || v === 'center' || v === 'right';
+const isUnit = (v: unknown): v is string =>
+  typeof v === 'string' && v.trim().length > 0;
+
+/**
+ * Normalizes a stored (possibly partial / legacy / malformed) typography
+ * object into the full BrandNameTypography shape with sensible defaults, so
+ * every consumer can rely on every field being present and CSS-ready.
+ */
+export function normalizeBrandNameTypography(
+  raw?: Partial<BrandNameTypography> | null,
+): BrandNameTypography {
+  const d = DEFAULT_BRAND_TYPOGRAPHY;
+  if (!raw || typeof raw !== 'object') return { ...d };
+
+  const fontFamily = isUnit(raw.fontFamily) ? raw.fontFamily.trim() : d.fontFamily;
+  const fontMeta = BRAND_FONTS.find((f) => f.family === fontFamily);
+
+  let fontWeight = typeof raw.fontWeight === 'number' && Number.isFinite(raw.fontWeight)
+    ? Math.min(900, Math.max(100, Math.round(raw.fontWeight)))
+    : d.fontWeight;
+  // Never advertise a weight the selected font cannot render.
+  if (fontMeta && !fontMeta.weights.includes(fontWeight)) {
+    fontWeight = fontMeta.weights.reduce(
+      (best, wgt) => (Math.abs(wgt - fontWeight) < Math.abs(best - fontWeight) ? wgt : best),
+      fontMeta.weights[0],
+    );
+  }
+
+  return {
+    fontFamily,
+    fontWeight,
+    fontSize: isUnit(raw.fontSize) ? raw.fontSize.trim() : d.fontSize,
+    letterSpacing: isUnit(raw.letterSpacing) ? raw.letterSpacing.trim() : d.letterSpacing,
+    lineHeight: isUnit(raw.lineHeight) ? raw.lineHeight.trim() : d.lineHeight,
+    fontStyle: isFontStyle(raw.fontStyle) ? raw.fontStyle : d.fontStyle,
+    textTransform: isTextTransform(raw.textTransform) ? raw.textTransform : d.textTransform,
+    textDecoration: isTextDecoration(raw.textDecoration) ? raw.textDecoration : d.textDecoration,
+    textAlign: isTextAlign(raw.textAlign) ? raw.textAlign : d.textAlign,
+  };
+}
+
+/**
+ * CSS font-family stack for a brand font with a graceful fallback chain:
+ * system-ui for sans fonts, Georgia for serif/display fonts — a failed web
+ * font request can never make the brand name invisible.
+ */
+export function getBrandFontStack(fontFamily: string): string {
+  const clean = String(fontFamily || '').trim() || 'Inter';
+  const meta = BRAND_FONTS.find((f) => f.family === clean);
+  const isSerif = meta
+    ? meta.categories.includes('serif') || meta.categories.includes('display')
+    : /serif|garamond|display|didot|baskerville|prata|cinzel|marcellus|italiana|forum|oranienbaum|vidaloka|tenor|poiret|cormorant|fraunces|cardo|spectral|newsreader|playfair|merriweather|lora|sourceserif|libre/i.test(clean);
+  return `${clean}, ${isSerif ? 'Georgia, "Times New Roman", serif' : 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'}`;
+}
+
+/**
+ * Splits a CSS size like "32px" into { value, unit }. Returns null for
+ * unrecognized values so callers can keep the raw string untouched.
+ */
+export function parseBrandFontSize(
+  size: string,
+): { value: number; unit: string } | null {
+  const match = String(size ?? '').trim().match(/^(-?[\d.]+)(px|rem|em|%)$/i);
+  if (!match) return null;
+  return { value: parseFloat(match[1]), unit: match[2].toLowerCase() };
+}
+
+/**
+ * Responsive brand font size: px values become a clamp() so a large desktop
+ * wordmark scales down on small screens instead of breaking the header.
+ * Relative units (rem/em/%) already scale with the theme, so they pass through.
+ */
+export function responsiveBrandFontSize(size: string): string {
+  const parsed = parseBrandFontSize(size);
+  if (!parsed || parsed.unit !== 'px') return size;
+  const min = Math.round(parsed.value * 0.72 * 100) / 100;
+  return `clamp(${min}px, 7vw, ${parsed.value}px)`;
+}
+
+interface GoogleFontRequest {
+  family: string;
+  weights?: number[];
+  italic?: boolean;
+}
+
+/**
+ * Builds a Google Fonts css2 URL for a small set of families — the storefront
+ * loads ONLY the selected brand font (never the whole library).
+ */
+export function buildGoogleFontsUrl(fonts: GoogleFontRequest[]): string {
+  const parts = fonts
+    .filter((f) => f.family && f.family.trim())
+    .map((f) => {
+      const family = f.family.trim().replace(/\s+/g, '+');
+      const weights = (f.weights ?? []).filter((weight) => Number.isFinite(weight) && weight >= 100 && weight <= 1000);
+      const hasItalic = !!f.italic;
+      if (weights.length === 0) return `family=${family}`;
+      if (hasItalic) {
+        const axes = [...new Set(weights)].map((weight) => `0,${weight};1,${weight}`).join(';');
+        return `family=${family}:ital,wght@${axes}`;
+      }
+      return `family=${family}:wght@${[...new Set(weights)].join(';')}`;
+    });
+  if (parts.length === 0) return '';
+  return `https://fonts.googleapis.com/css2?${parts.join('&')}&display=swap`;
+}
 
 /**
  * Format date to local string

@@ -1,5 +1,7 @@
 // Shared Constants
 
+import type { BrandNameTypography } from '../types';
+
 // Slugs reserved by the legacy marketing-collection system. Marketing and
 // homepage sections are driven by independent product boolean flags (isNewArrival,
 // isBestSeller, ...), never by collections. These slugs must never appear in
@@ -639,3 +641,275 @@ export const MAX_FILE_SIZES = {
   MODEL: 50 * 1024 * 1024, // 50MB
   DOCUMENT: 10 * 1024 * 1024, // 10MB
 };
+
+/* ============================================================
+   Brand Name Typography (Wordmark Display Mode = Text)
+   ============================================================ */
+
+export type BrandFontCategory = 'sans' | 'serif' | 'display' | 'minimal';
+
+export interface BrandFontOption {
+  family: string;
+  /** A font may belong to several curations (e.g. Bodoni Moda = serif + display). */
+  categories: BrandFontCategory[];
+  /** Numeric weights actually shipped by the font (variable-font static steps). */
+  weights: number[];
+  /** True when the font ships a real italic face. */
+  italic: boolean;
+}
+
+const w = (...steps: number[]): number[] => steps;
+
+/**
+ * Curated BRISTI font library. Weights are the real Google Fonts static steps
+ * for each family so the admin never offers a weight the font cannot render.
+ */
+export const BRAND_FONTS: BrandFontOption[] = [
+  // ── Sans Serif / Modern ────────────────────────────────────────────────
+  { family: 'Inter', categories: ['sans', 'minimal'], weights: w(100, 200, 300, 400, 500, 600, 700, 800, 900), italic: true },
+  { family: 'Manrope', categories: ['sans', 'minimal'], weights: w(200, 300, 400, 500, 600, 700, 800), italic: true },
+  { family: 'DM Sans', categories: ['sans', 'minimal'], weights: w(100, 200, 300, 400, 500, 600, 700, 800, 900, 1000), italic: true },
+  { family: 'Plus Jakarta Sans', categories: ['sans', 'minimal'], weights: w(200, 300, 400, 500, 600, 700, 800), italic: true },
+  { family: 'Poppins', categories: ['sans'], weights: w(100, 200, 300, 400, 500, 600, 700, 800, 900), italic: true },
+  { family: 'Montserrat', categories: ['sans', 'minimal'], weights: w(100, 200, 300, 400, 500, 600, 700, 800, 900), italic: true },
+  { family: 'Open Sans', categories: ['sans'], weights: w(300, 400, 500, 600, 700, 800), italic: true },
+  { family: 'Lato', categories: ['sans'], weights: w(100, 300, 400, 700, 900), italic: true },
+  { family: 'Roboto', categories: ['sans'], weights: w(100, 300, 400, 500, 700, 900), italic: true },
+  { family: 'Work Sans', categories: ['sans'], weights: w(100, 200, 300, 400, 500, 600, 700, 800, 900), italic: true },
+  { family: 'Outfit', categories: ['sans', 'minimal'], weights: w(100, 200, 300, 400, 500, 600, 700, 800, 900), italic: true },
+  { family: 'Urbanist', categories: ['sans', 'minimal'], weights: w(100, 200, 300, 400, 500, 600, 700, 800, 900), italic: true },
+  { family: 'Nunito Sans', categories: ['sans'], weights: w(200, 300, 400, 500, 600, 700, 800, 900, 1000), italic: true },
+  { family: 'Raleway', categories: ['sans', 'minimal'], weights: w(100, 200, 300, 400, 500, 600, 700, 800, 900), italic: true },
+  { family: 'Oswald', categories: ['sans'], weights: w(200, 300, 400, 500, 600, 700), italic: false },
+  { family: 'Archivo', categories: ['sans'], weights: w(100, 200, 300, 400, 500, 600, 700, 800, 900), italic: true },
+  { family: 'Space Grotesk', categories: ['sans', 'minimal'], weights: w(300, 400, 500, 600, 700), italic: false },
+  { family: 'Sora', categories: ['sans', 'minimal'], weights: w(100, 200, 300, 400, 500, 600, 700, 800), italic: false },
+  { family: 'Rubik', categories: ['sans'], weights: w(300, 400, 500, 600, 700, 800, 900), italic: true },
+  { family: 'Figtree', categories: ['sans', 'minimal'], weights: w(300, 400, 500, 600, 700, 800, 900), italic: true },
+  { family: 'Public Sans', categories: ['sans'], weights: w(100, 200, 300, 400, 500, 600, 700, 800, 900), italic: true },
+  { family: 'IBM Plex Sans', categories: ['sans'], weights: w(100, 200, 300, 400, 500, 600, 700), italic: true },
+  { family: 'Source Sans 3', categories: ['sans'], weights: w(200, 300, 400, 500, 600, 700, 800, 900), italic: true },
+  { family: 'Albert Sans', categories: ['sans'], weights: w(100, 200, 300, 400, 500, 600, 700, 800, 900), italic: true },
+  { family: 'Lexend', categories: ['sans'], weights: w(100, 200, 300, 400, 500, 600, 700, 800, 900), italic: false },
+  { family: 'Mulish', categories: ['sans'], weights: w(200, 300, 400, 500, 600, 700, 800, 900, 1000), italic: true },
+  { family: 'Karla', categories: ['sans'], weights: w(200, 300, 400, 500, 600, 700, 800), italic: true },
+  { family: 'Cabin', categories: ['sans'], weights: w(400, 500, 600, 700), italic: true },
+  { family: 'Barlow', categories: ['sans'], weights: w(100, 200, 300, 400, 500, 600, 700, 800, 900), italic: true },
+  { family: 'Barlow Condensed', categories: ['sans'], weights: w(100, 200, 300, 400, 500, 600, 700, 800, 900), italic: true },
+  { family: 'League Spartan', categories: ['sans'], weights: w(100, 200, 300, 400, 500, 600, 700, 800, 900), italic: false },
+  { family: 'Bebas Neue', categories: ['sans'], weights: w(400), italic: false },
+
+  // ── Luxury / Editorial Serif ───────────────────────────────────────────
+  { family: 'Playfair Display', categories: ['serif', 'display'], weights: w(400, 500, 600, 700, 800, 900), italic: true },
+  { family: 'Cormorant Garamond', categories: ['serif', 'display'], weights: w(300, 400, 500, 600, 700), italic: true },
+  { family: 'Cormorant', categories: ['serif'], weights: w(300, 400, 500, 600, 700), italic: true },
+  { family: 'Libre Baskerville', categories: ['serif'], weights: w(400, 700), italic: true },
+  { family: 'Lora', categories: ['serif'], weights: w(400, 500, 600, 700), italic: true },
+  { family: 'Merriweather', categories: ['serif'], weights: w(300, 400, 700, 900), italic: true },
+  { family: 'DM Serif Display', categories: ['serif', 'display'], weights: w(400), italic: false },
+  { family: 'DM Serif Text', categories: ['serif'], weights: w(400), italic: true },
+  { family: 'Bodoni Moda', categories: ['serif', 'display'], weights: w(400, 500, 600, 700, 800, 900), italic: true },
+  { family: 'Prata', categories: ['serif', 'display'], weights: w(400), italic: false },
+  { family: 'Cinzel', categories: ['serif', 'display'], weights: w(400, 500, 600, 700, 800, 900), italic: false },
+  { family: 'EB Garamond', categories: ['serif'], weights: w(400, 500, 600, 700, 800), italic: true },
+  { family: 'Crimson Pro', categories: ['serif'], weights: w(200, 300, 400, 500, 600, 700, 800, 900), italic: true },
+  { family: 'Libre Caslon Display', categories: ['serif', 'display'], weights: w(400), italic: false },
+  { family: 'Fraunces', categories: ['serif'], weights: w(100, 200, 300, 400, 500, 600, 700, 800, 900), italic: true },
+  { family: 'Cardo', categories: ['serif'], weights: w(400, 700), italic: true },
+  { family: 'Spectral', categories: ['serif'], weights: w(200, 300, 400, 500, 600, 700, 800), italic: true },
+  { family: 'Source Serif 4', categories: ['serif'], weights: w(200, 300, 400, 500, 600, 700, 800, 900), italic: true },
+  { family: 'Newsreader', categories: ['serif'], weights: w(200, 300, 400, 500, 600, 700, 800), italic: true },
+  { family: 'Instrument Serif', categories: ['serif', 'display'], weights: w(400), italic: true },
+  { family: 'GFS Didot', categories: ['serif'], weights: w(400), italic: false },
+
+  // ── Fashion / Elegant Display ──────────────────────────────────────────
+  { family: 'Cormorant Infant', categories: ['display'], weights: w(300, 400, 500, 600, 700), italic: true },
+  { family: 'Italiana', categories: ['display'], weights: w(400), italic: false },
+  { family: 'Poiret One', categories: ['display'], weights: w(400), italic: false },
+  { family: 'Tenor Sans', categories: ['display'], weights: w(400), italic: false },
+  { family: 'Forum', categories: ['display'], weights: w(400), italic: false },
+  { family: 'Marcellus', categories: ['display'], weights: w(400), italic: false },
+  { family: 'Oranienbaum', categories: ['display'], weights: w(400), italic: false },
+  { family: 'Vidaloka', categories: ['display'], weights: w(400), italic: false },
+];
+
+export const BRAND_FONT_CATEGORIES: Array<{ id: BrandFontCategory | 'all'; label: string }> = [
+  { id: 'all', label: 'All' },
+  { id: 'sans', label: 'Sans Serif' },
+  { id: 'serif', label: 'Serif' },
+  { id: 'display', label: 'Display' },
+  { id: 'minimal', label: 'Minimal' },
+];
+
+/** Fonts the BRISTI brand recommends — shown first in the picker. */
+export const BRAND_POPULAR_FONTS = [
+  'Cormorant Garamond',
+  'Playfair Display',
+  'Bodoni Moda',
+  'Instrument Serif',
+  'DM Serif Display',
+  'Montserrat',
+  'Manrope',
+  'Inter',
+  'Raleway',
+  'Cinzel',
+] as const;
+
+export const BRAND_FONT_WEIGHTS: Array<{ value: number; label: string }> = [
+  { value: 100, label: 'Thin' },
+  { value: 200, label: 'Extra Light' },
+  { value: 300, label: 'Light' },
+  { value: 400, label: 'Regular' },
+  { value: 500, label: 'Medium' },
+  { value: 600, label: 'Semi Bold' },
+  { value: 700, label: 'Bold' },
+  { value: 800, label: 'Extra Bold' },
+  { value: 900, label: 'Black' },
+];
+
+export const BRAND_FONT_SIZE_PRESETS = [12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 48, 56, 64];
+export const BRAND_FONT_SIZE_UNITS = ['px', 'rem', 'em', '%'] as const;
+
+export const BRAND_LETTER_SPACING_PRESETS = [
+  '-0.05em',
+  '-0.02em',
+  '0',
+  '0.02em',
+  '0.05em',
+  '0.08em',
+  '0.12em',
+  '0.16em',
+  '0.20em',
+];
+
+export const BRAND_LINE_HEIGHT_PRESETS = ['0.8', '0.9', '1', '1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.8', '2'];
+
+export const BRAND_FONT_STYLE_OPTIONS: Array<{ value: BrandNameTypography['fontStyle']; label: string }> = [
+  { value: 'normal', label: 'Normal' },
+  { value: 'italic', label: 'Italic' },
+  { value: 'oblique', label: 'Oblique' },
+];
+
+export const BRAND_TEXT_TRANSFORM_OPTIONS: Array<{ value: BrandNameTypography['textTransform']; label: string; sample: string }> = [
+  { value: 'none', label: 'None', sample: 'BRISTI' },
+  { value: 'uppercase', label: 'UPPERCASE', sample: 'BRISTI' },
+  { value: 'lowercase', label: 'lowercase', sample: 'bristi' },
+  { value: 'capitalize', label: 'Capitalize', sample: 'Bristi' },
+];
+
+export const BRAND_TEXT_DECORATION_OPTIONS: Array<{ value: BrandNameTypography['textDecoration']; label: string }> = [
+  { value: 'none', label: 'None' },
+  { value: 'underline', label: 'Underline' },
+  { value: 'overline', label: 'Overline' },
+  { value: 'line-through', label: 'Line Through' },
+];
+
+export const BRAND_TEXT_ALIGN_OPTIONS: Array<{ value: BrandNameTypography['textAlign']; label: string }> = [
+  { value: 'left', label: 'Left' },
+  { value: 'center', label: 'Center' },
+  { value: 'right', label: 'Right' },
+];
+
+/** Reset / fresh-install defaults for the text wordmark typography. */
+export const DEFAULT_BRAND_TYPOGRAPHY: BrandNameTypography = {
+  fontFamily: 'Inter',
+  fontWeight: 500,
+  fontSize: '32px',
+  letterSpacing: '0',
+  lineHeight: '1.1',
+  fontStyle: 'normal',
+  textTransform: 'none',
+  textDecoration: 'none',
+  textAlign: 'left',
+};
+
+export interface BrandTypographyPreset {
+  id: string;
+  name: string;
+  description: string;
+  values: BrandNameTypography;
+}
+
+/** One-click starting points — fully editable afterwards, never locked. */
+export const BRAND_TYPOGRAPHY_PRESETS: BrandTypographyPreset[] = [
+  {
+    id: 'luxury-serif',
+    name: 'Luxury Serif',
+    description: 'Cormorant Garamond · Medium · wide tracking',
+    values: {
+      fontFamily: 'Cormorant Garamond',
+      fontWeight: 500,
+      fontSize: '32px',
+      letterSpacing: '0.08em',
+      lineHeight: '1.1',
+      fontStyle: 'normal',
+      textTransform: 'none',
+      textDecoration: 'none',
+      textAlign: 'left',
+    },
+  },
+  {
+    id: 'modern-luxury',
+    name: 'Modern Luxury',
+    description: 'Manrope · Semi Bold · spaced uppercase',
+    values: {
+      fontFamily: 'Manrope',
+      fontWeight: 600,
+      fontSize: '32px',
+      letterSpacing: '0.12em',
+      lineHeight: '1.1',
+      fontStyle: 'normal',
+      textTransform: 'uppercase',
+      textDecoration: 'none',
+      textAlign: 'left',
+    },
+  },
+  {
+    id: 'minimal',
+    name: 'Minimal',
+    description: 'Inter · Medium · clean',
+    values: {
+      fontFamily: 'Inter',
+      fontWeight: 500,
+      fontSize: '32px',
+      letterSpacing: '0.04em',
+      lineHeight: '1.1',
+      fontStyle: 'normal',
+      textTransform: 'none',
+      textDecoration: 'none',
+      textAlign: 'left',
+    },
+  },
+  {
+    id: 'editorial',
+    name: 'Editorial',
+    description: 'Playfair Display · Medium · refined',
+    values: {
+      fontFamily: 'Playfair Display',
+      fontWeight: 500,
+      fontSize: '32px',
+      letterSpacing: '0.02em',
+      lineHeight: '1.1',
+      fontStyle: 'normal',
+      textTransform: 'none',
+      textDecoration: 'none',
+      textAlign: 'left',
+    },
+  },
+  {
+    id: 'fashion-bold',
+    name: 'Fashion Bold',
+    description: 'Montserrat · Bold · strong uppercase',
+    values: {
+      fontFamily: 'Montserrat',
+      fontWeight: 700,
+      fontSize: '32px',
+      letterSpacing: '0.08em',
+      lineHeight: '1.1',
+      fontStyle: 'normal',
+      textTransform: 'uppercase',
+      textDecoration: 'none',
+      textAlign: 'left',
+    },
+  },
+];

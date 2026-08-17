@@ -68,6 +68,18 @@ const BrandIdentitySchema: Schema = new Schema({
   },
 }, { _id: false });
 
+const BrandNameTypographySchema: Schema = new Schema({
+  fontFamily: { type: String, default: 'Inter' },
+  fontWeight: { type: Number, default: 500, min: 100, max: 1000 },
+  fontSize: { type: String, default: '32px' },
+  letterSpacing: { type: String, default: '0' },
+  lineHeight: { type: String, default: '1.1' },
+  fontStyle: { type: String, enum: ['normal', 'italic', 'oblique'], default: 'normal' },
+  textTransform: { type: String, enum: ['none', 'uppercase', 'lowercase', 'capitalize'], default: 'none' },
+  textDecoration: { type: String, enum: ['none', 'underline', 'overline', 'line-through'], default: 'none' },
+  textAlign: { type: String, enum: ['left', 'center', 'right'], default: 'left' },
+}, { _id: false });
+
 const SettingsSchema: Schema = new Schema({
   brandName: {
     type: String,
@@ -93,6 +105,15 @@ const SettingsSchema: Schema = new Schema({
    */
   brandIdentity: {
     type: BrandIdentitySchema,
+    default: () => ({}),
+  },
+  /**
+   * Typography for the text wordmark (only used when wordmark.mode = 'text').
+   * Lazily normalized with defaults by SettingsService so legacy documents
+   * always expose a complete object.
+   */
+  brandNameTypography: {
+    type: BrandNameTypographySchema,
     default: () => ({}),
   },
   baseCurrency: {

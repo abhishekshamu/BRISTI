@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { cn, getImageUrl } from '@/lib/utils';
 import { useBrandIdentity, useSiteSettings } from '@/context/SettingsContext';
+import { getBrandFontStack, normalizeBrandNameTypography, responsiveBrandFontSize } from '@shared/utils';
 
 type BrandIdentityVariant = 'header' | 'footer' | 'mobile';
 
@@ -80,9 +81,30 @@ export function BrandIdentity({
   const showWordmarkImage = identity.wordmark.mode === 'image' && !!wordmarkImage && !wordmarkFailed;
   const showIcon = !!iconImage && !iconFailed;
 
+  // Global Brand Name Typography — applied to the text wordmark ONLY. Image
+  // mode never receives typography. Responsive px → clamp() keeps an oversized
+  // desktop wordmark from breaking the mobile header.
+  const typography = normalizeBrandNameTypography(settings?.brandNameTypography);
+  const textStyle: CSSProperties = {
+    fontFamily: getBrandFontStack(typography.fontFamily),
+    fontWeight: typography.fontWeight,
+    fontSize: responsiveBrandFontSize(typography.fontSize),
+    letterSpacing: typography.letterSpacing,
+    lineHeight: typography.lineHeight,
+    fontStyle: typography.fontStyle,
+    textTransform: typography.textTransform,
+    textDecoration: typography.textDecoration === 'none' ? undefined : typography.textDecoration,
+    textAlign: typography.textAlign,
+    maxWidth: '100%',
+  };
+  // Align the icon+wordmark lockup as a group without touching the header
+  // flex layout: left (default) is byte-for-byte the current behavior.
+  const groupJustify: CSSProperties['justifyContent'] =
+    typography.textAlign === 'center' ? 'center' : typography.textAlign === 'right' ? 'flex-end' : 'flex-start';
+
   return (
-    <span className={cn('flex min-w-0 flex-col leading-none', className)}>
-      <span className="flex min-w-0 items-center gap-2">
+    <span className={cn('flex min-w-0 flex-col leading-none', className)} style={{ textAlign: typography.textAlign }}>
+      <span className="flex min-w-0 items-center gap-2" style={{ justifyContent: groupJustify }}>
         {showIcon && (
           <img
             src={iconImage!}
@@ -105,7 +127,9 @@ export function BrandIdentity({
             draggable={false}
           />
         ) : (
-          <span className={cn(defaults.wordmark, wordmarkClassName)}>{identity.wordmark.text}</span>
+          <span className={cn(defaults.wordmark, wordmarkClassName)} style={textStyle}>
+            {identity.wordmark.text}
+          </span>
         )}
       </span>
       {showTagline && settings?.slogan && (

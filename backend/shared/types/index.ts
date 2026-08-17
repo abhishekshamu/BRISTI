@@ -18,6 +18,33 @@ export interface BrandIcon {
   imageUrl: string | null;
 }
 
+export type BrandFontStyle = 'normal' | 'italic' | 'oblique';
+export type BrandTextTransform = 'none' | 'uppercase' | 'lowercase' | 'capitalize';
+export type BrandTextDecoration = 'none' | 'underline' | 'overline' | 'line-through';
+export type BrandTextAlign = 'left' | 'center' | 'right';
+
+/**
+ * Typography applied to the text-based brand wordmark (Wordmark Display Mode
+ * = "text"). Never applied to the wordmark image. Values are stored verbatim
+ * as CSS-ready strings so the storefront can apply them 1:1.
+ */
+export interface BrandNameTypography {
+  /** Google Font family name, e.g. "Cormorant Garamond". */
+  fontFamily: string;
+  /** Numeric CSS font-weight (100–900). */
+  fontWeight: number;
+  /** CSS length, e.g. "32px", "2rem", "120%". */
+  fontSize: string;
+  /** CSS letter-spacing, e.g. "0", "0.08em", "-0.02em". */
+  letterSpacing: string;
+  /** Unitless CSS line-height, e.g. "1.1". */
+  lineHeight: string;
+  fontStyle: BrandFontStyle;
+  textTransform: BrandTextTransform;
+  textDecoration: BrandTextDecoration;
+  textAlign: BrandTextAlign;
+}
+
 /**
  * Brand identity settings (independent of the legacy logo/favicon fields).
  * wordmark and icon are deliberately separate: a wordmark image is never used
@@ -100,6 +127,8 @@ export interface SiteSettings {
   exchangeRates?: Record<string, number>;
   /** Brand identity — wordmark + icon, normalized for the storefront. */
   brandIdentity?: BrandIdentity;
+  /** Typography for the text-based brand wordmark (Text wordmark mode only). */
+  brandNameTypography?: BrandNameTypography;
   taxRate: number;
   freeShippingThreshold: number;
   maintenanceMode?: boolean;

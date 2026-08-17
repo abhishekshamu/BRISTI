@@ -4,6 +4,7 @@ import {
   DEFAULT_BASE_CURRENCY,
   DEFAULT_EXCHANGE_RATES,
   normalizeBrandIdentity,
+  normalizeBrandNameTypography,
 } from '../../shared/utils';
 
 export class SettingsService {
@@ -21,6 +22,7 @@ export class SettingsService {
       : { ...(settings as any) };
 
     sanitized.brandIdentity = normalizeBrandIdentity(sanitized);
+    sanitized.brandNameTypography = normalizeBrandNameTypography(sanitized.brandNameTypography);
     sanitized.baseCurrency = String(sanitized.baseCurrency || DEFAULT_BASE_CURRENCY).toUpperCase();
     sanitized.exchangeRates = {
       ...DEFAULT_EXCHANGE_RATES,
