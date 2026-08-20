@@ -8,6 +8,7 @@ import DataTable, { type Column } from '../../components/ui/DataTable';
 import IconBtn from '../../components/ui/IconBtn';
 import Badge from '../../components/ui/Badge';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import { resolveMediaUrl } from '../../lib/mediaUrl';
 
 interface BlogPost {
   _id: string;
@@ -76,7 +77,7 @@ export default function Blogs() {
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-md flex items-center justify-center overflow-hidden">
             {blog.featuredImage ? (
-              <img src={blog.featuredImage} alt="" className="w-10 h-10 object-cover" />
+              <img src={resolveMediaUrl(blog.featuredImage) ?? ''} alt="" className="w-10 h-10 object-cover" />
             ) : (
               <BookOpen className="w-5 h-5 text-slate-400" />
             )}

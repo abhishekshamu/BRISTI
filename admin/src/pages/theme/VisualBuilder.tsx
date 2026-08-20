@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ExternalLink, Eye, Loader2, Globe2 } from 'lucide-react';
 import api, { FRONTEND_URL } from '../../lib/api';
+import { resolveMediaUrl } from '../../lib/mediaUrl';
 import toast from 'react-hot-toast';
 import PageShell from '../../components/ui/PageShell';
 import PageSpinner from '../../components/ui/PageSpinner';
@@ -647,7 +648,7 @@ export default function VisualBuilder() {
                 return (
                   <div key={s.id} className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 py-4 last:border-0">
                     <div className="w-24 h-14 rounded-lg overflow-hidden bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shrink-0 flex items-center justify-center">
-                      {img ? <img src={img} alt="" className="w-full h-full object-cover" /> : <Icon className="w-5 h-5 text-slate-300" />}
+                      {img ? <img src={resolveMediaUrl(img) ?? ''} alt="" className="w-full h-full object-cover" /> : <Icon className="w-5 h-5 text-slate-300" />}
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{s.label ?? m?.label ?? s.type}</p>

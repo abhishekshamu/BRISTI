@@ -30,6 +30,7 @@ import {
 } from '../../services/media.service';
 import MediaLibraryDialog from '../../components/media/MediaLibraryDialog';
 import CategoryCropDialog from './CategoryCropDialog';
+import { resolveMediaUrl } from '../../lib/mediaUrl';
 
 export interface CategoryImageMeta {
   alt?: string;
@@ -308,7 +309,7 @@ export default function CategoryImagePicker({ value = '', onChange, ratio, folde
           </div>
         )}
         {imgState === 'ready' && value && (
-          <img src={value} alt="Category preview" className="w-full h-full object-cover" draggable={false} />
+          <img src={resolveMediaUrl(value) ?? ''} alt="Category preview" className="w-full h-full object-cover" draggable={false} />
         )}
         {imgState === 'ready' && value && !busy && (
           <button
@@ -491,7 +492,7 @@ export default function CategoryImagePicker({ value = '', onChange, ratio, folde
       )}
       {cropOpen && value && (
         <CategoryCropDialog
-          src={media?.url || value}
+          src={resolveMediaUrl(media?.url || value) ?? value}
           mediaId={media ? String(media._id) : undefined}
           folder={folder}
           initialRatio={ratioInfo && ratioInfo.w > 0 ? { w: ratioInfo.w, h: ratioInfo.h } : undefined}
@@ -515,7 +516,7 @@ export default function CategoryImagePicker({ value = '', onChange, ratio, folde
           onKeyDown={(e) => e.key === 'Escape' && setLargePreview(false)}
         >
           <div className="relative" onClick={(e) => e.stopPropagation()}>
-            <img src={value} alt="Category preview" className="max-h-[85vh] max-w-[90vw] object-contain rounded-lg shadow-2xl" />
+            <img src={resolveMediaUrl(value) ?? ''} alt="Category preview" className="max-h-[85vh] max-w-[90vw] object-contain rounded-lg shadow-2xl" />
             <button
               type="button"
               onClick={() => setLargePreview(false)}

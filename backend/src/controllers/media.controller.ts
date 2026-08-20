@@ -48,6 +48,20 @@ export class MediaController {
     res.json({ success: true, data: result });
   });
 
+  verifyBatch = asyncHandler(async (req: Request, res: Response) => {
+    const ids: string[] = Array.isArray(req.body?.ids) ? req.body.ids : [];
+    if (ids.length === 0) throw new BadRequestError('ids array is required');
+    const result = await this.mediaService.verifyBatch(ids);
+    res.json({ success: true, data: result });
+  });
+
+  reprocess = asyncHandler(async (req: Request, res: Response) => {
+    const result = await this.mediaService.reprocess(req.params.id, req.user!.id, {
+      deleteOriginal: req.body?.deleteOriginal === true,
+    });
+    res.json({ success: true, data: result });
+  });
+
   get = asyncHandler(async (req: Request, res: Response) => {
     const media = await this.mediaService.get(req.params.id, req.user?.id);
     res.json({ success: true, data: media });

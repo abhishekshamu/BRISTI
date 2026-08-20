@@ -822,6 +822,8 @@ export interface MediaFile {
   filename: string;
   originalName: string;
   mimeType: string;
+  /** Canonical format of the stored file, e.g. 'webp' (converted raster), 'svg', 'gif' (animated), 'mp4'. */
+  format?: string;
   size: number;
   url: string;
   thumbnailUrl?: string;

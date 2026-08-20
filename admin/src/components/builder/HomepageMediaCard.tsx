@@ -31,6 +31,7 @@ import {
 } from '../../services/media.service';
 import MediaLibraryDialog from '../../components/media/MediaLibraryDialog';
 import CropDialog from '../../components/media/CropDialog';
+import { resolveMediaUrl } from '../../lib/mediaUrl';
 
 export interface HomepageMediaMeta {
   alt?: string;
@@ -353,10 +354,10 @@ export default function HomepageMediaCard({
           </div>
         )}
         {imgState === 'ready' && value && !isVideo && (
-          <img src={value} alt="Preview" className="w-full h-full object-cover" draggable={false} />
-        )}
-        {imgState === 'ready' && value && isVideo && (
-          <video src={value} className="w-full h-full object-cover" muted playsInline />
+<img src={resolveMediaUrl(value) ?? ''} alt="Preview" className="w-full h-full object-cover" draggable={false} />
+          )}
+          {isVideoValue(value) && (
+          <video src={resolveMediaUrl(value) ?? ''} className="w-full h-full object-cover" muted playsInline />
         )}
         {imgState === 'ready' && value && !busy && (
           <button
@@ -547,7 +548,7 @@ export default function HomepageMediaCard({
       )}
       {cropOpen && value && (
         <CropDialog
-          src={media?.url || value}
+          src={resolveMediaUrl(media?.url || value) ?? value}
           mediaId={media ? String(media._id) : undefined}
           folder={folder}
           initialRatio={ratioInfo && ratioInfo.w > 0 ? { w: ratioInfo.w, h: ratioInfo.h } : undefined}
@@ -572,9 +573,9 @@ export default function HomepageMediaCard({
         >
           <div className="relative" onClick={(e) => e.stopPropagation()}>
             {isVideo ? (
-              <video src={value} controls autoPlay className="max-h-[85vh] max-w-[90vw] rounded-lg shadow-2xl" />
+              <video src={resolveMediaUrl(value) ?? ''} controls autoPlay className="max-h-[85vh] max-w-[90vw] rounded-lg shadow-2xl" />
             ) : (
-              <img src={value} alt="Preview" className="max-h-[85vh] max-w-[90vw] object-contain rounded-lg shadow-2xl" />
+              <img src={resolveMediaUrl(value) ?? ''} alt="Preview" className="max-h-[85vh] max-w-[90vw] object-contain rounded-lg shadow-2xl" />
             )}
             <button
               type="button"

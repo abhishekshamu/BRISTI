@@ -40,10 +40,14 @@ import {
   restoreMediaVersion,
   replaceEverywhere,
   fitMedia,
+  reprocessMedia,
+  verifyMediaBatch,
   formatBytes,
   totalUsageOf,
   ACCEPTED_IMAGE_ACCEPT,
 } from '../../services/media.service';
+import { resolveMediaUrl } from '../../lib/mediaUrl';
+import MediaImage from './MediaImage';
 import CropDialog from './CropDialog';
 import MediaLibraryDialog from './MediaLibraryDialog';
 import ConfirmDialog from '../ui/ConfirmDialog';
@@ -89,6 +93,9 @@ export default function MediaLibrary({ onSelect, onPickMulti, multi = false, com
   const [safeDeleteTarget, setSafeDeleteTarget] = useState<MediaFile | null>(null);
   const [bulkBlocked, setBulkBlocked] = useState<any[] | null>(null);
   const [replacePickerOpen, setReplacePickerOpen] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [broken, setBroken] = useState<Set<string>>(new Set());
+  const [repairing, setRepairing] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -115,6 +122,7 @@ export default function MediaLibrary({ onSelect, onPickMulti, multi = false, com
       setFiles(result.data);
       setUsageMap(result.usage);
       setPagination(result.pagination);
+      setBroken(new Set());
     } catch {
       setError('Failed to load media');
     } finally {
@@ -172,6 +180,39 @@ export default function MediaLibrary({ onSelect, onPickMulti, multi = false, com
     [folder, reload]
   );
 
+  // -- health check / repair ------------------------------------------------
+  const checkMedia = useCallback(async () => {
+    if (files.length === 0) return;
+    setChecking(true);
+    try {
+      const results = await verifyMediaBatch(files.map((f) => String(f._id)));
+      const bad = new Set(results.filter((r) => !r.ok).map((r) => r.id));
+      setBroken(bad);
+      if (bad.size === 0) toast.success(`All ${results.length} media files are reachable`);
+      else toast.error(`${bad.size} file${bad.size > 1 ? 's' : ''} unreachable — repair them below`);
+    } catch {
+      toast.error('Media check failed');
+    } finally {
+      setChecking(false);
+    }
+  }, [files]);
+
+  const repairBroken = useCallback(
+    async (id: string) => {
+      setRepairing(id);
+      try {
+        const result = await reprocessMedia(id);
+        toast.success(`Reprocessed to WebP${result.replaced > 0 ? ` — updated ${result.replaced} reference${result.replaced > 1 ? 's' : ''}` : ''}`);
+        reload();
+      } catch (error: any) {
+        toast.error(error?.response?.data?.message || 'Reprocess failed');
+      } finally {
+        setRepairing(null);
+      }
+    },
+    [reload]
+  );
+
   // -- selection -------------------------------------------------------------
   const toggleSelection = (id: string) => {
     setSelection((prev) => {
@@ -218,8 +259,10 @@ export default function MediaLibrary({ onSelect, onPickMulti, multi = false, com
 
   const handleBulkDownload = () => {
     for (const f of selectedFiles) {
+      const resolved = resolveMediaUrl(f.url);
+      if (!resolved) continue;
       const a = document.createElement('a');
-      a.href = f.url;
+      a.href = resolved;
       a.download = f.originalName || f.filename;
       a.target = '_blank';
       a.rel = 'noopener noreferrer';
@@ -335,13 +378,23 @@ export default function MediaLibrary({ onSelect, onPickMulti, multi = false, com
                 <List className="w-4 h-4" />
               </button>
             </div>
-            {allowUpload && (
+{allowUpload && (
               <label className="admin-btn-primary px-3.5 py-2 text-xs flex items-center gap-1.5 cursor-pointer">
                 {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
                 {uploading ? `Uploading ${uploadProgress}%` : 'Upload'}
                 <input ref={fileRef} type="file" accept={ACCEPTED_IMAGE_ACCEPT} multiple className="hidden" onChange={(e) => { if (e.target.files) void handleUpload(e.target.files); e.target.value = ''; }} />
               </label>
             )}
+            <button
+              type="button"
+              onClick={() => void checkMedia()}
+              disabled={checking || files.length === 0}
+              className="admin-btn-secondary px-3.5 py-2 text-xs flex items-center gap-1.5 disabled:opacity-50"
+              title="Verify every file on this page is reachable"
+            >
+              {checking ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+              {checking ? 'Checking...' : 'Check media'}
+            </button>
           </div>
         </div>
 
@@ -438,6 +491,32 @@ export default function MediaLibrary({ onSelect, onPickMulti, multi = false, com
         </div>
       )}
 
+      {/* Broken media banner */}
+      {broken.size > 0 && (
+        <div className="admin-card p-3 border-amber-400/60 dark:border-amber-500/40 bg-amber-50/60 dark:bg-amber-900/10">
+          <p className="text-xs font-medium text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+            <AlertTriangle className="w-3.5 h-3.5" /> {broken.size} file{broken.size > 1 ? 's' : ''} on this page {broken.size > 1 ? 'are' : 'is'} unreachable
+          </p>
+          <p className="text-[11px] text-amber-700/80 dark:text-amber-400/70 mt-1">
+            Files that still exist in storage can be reprocessed to WebP — references are updated automatically.
+          </p>
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {files.filter((f) => broken.has(String(f._id))).map((f) => (
+              <button
+                key={String(f._id)}
+                type="button"
+                onClick={() => void repairBroken(String(f._id))}
+                disabled={repairing === String(f._id)}
+                className="flex items-center gap-1.5 rounded-full bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-800/60 text-amber-800 dark:text-amber-300 px-2.5 py-1 text-[11px] font-medium disabled:opacity-50"
+              >
+                {repairing === String(f._id) ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                <span className="max-w-[160px] truncate">{f.originalName}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Drag & drop upload zone */}
       <div
         className={dragOver ? 'rounded-xl border-2 border-dashed border-slate-900 dark:border-slate-100 p-8 bg-slate-50 dark:bg-slate-800/50 text-center' : ''}
@@ -492,9 +571,9 @@ export default function MediaLibrary({ onSelect, onPickMulti, multi = false, com
                   }}
                 >
                   {isVideo(file) ? (
-                    <video src={file.thumbnailUrl || file.url} className="w-full h-full object-cover" muted playsInline />
+                    <video src={resolveMediaUrl(file.thumbnailUrl || file.url) ?? undefined} className="w-full h-full object-cover" muted playsInline />
                   ) : (
-                    <img src={file.thumbnailUrl || file.url} alt={file.altText || file.originalName} loading="lazy" className="w-full h-full object-cover" />
+                    <MediaImage src={file.thumbnailUrl || file.url} alt={file.altText || file.originalName} loading="lazy" className="w-full h-full object-cover" fallbackLabel={file.originalName} retry />
                   )}
                   {file.favorite && <Heart className="absolute top-2 right-2 w-3.5 h-3.5 text-amber-400 fill-amber-400" />}
                   {used > 0 && (
@@ -521,10 +600,10 @@ export default function MediaLibrary({ onSelect, onPickMulti, multi = false, com
                   <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-between">
                     <p className="text-[10px] text-white truncate max-w-[55%]">{file.originalName}</p>
                     <div className="flex items-center gap-1">
-                      <button type="button" className="p-1 rounded bg-white/20 hover:bg-white/40 text-white" title="Open in new tab" onClick={(e) => { e.stopPropagation(); window.open(file.url, '_blank', 'noopener'); }}>
+                      <button type="button" className="p-1 rounded bg-white/20 hover:bg-white/40 text-white" title="Open in new tab" onClick={(e) => { e.stopPropagation(); const u = resolveMediaUrl(file.url); if (u) window.open(u, '_blank', 'noopener'); }}>
                         <ExternalLink className="w-3 h-3" />
                       </button>
-                      <button type="button" className="p-1 rounded bg-white/20 hover:bg-white/40 text-white" title="Copy URL" onClick={(e) => { e.stopPropagation(); void copyUrl(file.url); }}>
+                      <button type="button" className="p-1 rounded bg-white/20 hover:bg-white/40 text-white" title="Copy URL" onClick={(e) => { e.stopPropagation(); void copyUrl(resolveMediaUrl(file.url) ?? file.url); }}>
                         <Copy className="w-3 h-3" />
                       </button>
                       <button type="button" className="p-1 rounded bg-white/20 hover:bg-white/40 text-white" title="Details" onClick={(e) => { e.stopPropagation(); setDetailId(String(file._id)); }}>
@@ -560,7 +639,7 @@ export default function MediaLibrary({ onSelect, onPickMulti, multi = false, com
                   onKeyDown={(e) => e.key === 'Enter' && handlePick(file)}
                 >
                   <div className="w-10 h-10 rounded-md overflow-hidden bg-slate-100 dark:bg-slate-800">
-                    {isVideo(file) ? <video src={file.thumbnailUrl || file.url} className="w-full h-full object-cover" muted /> : <img src={file.thumbnailUrl || file.url} alt="" loading="lazy" className="w-full h-full object-cover" />}
+                    {isVideo(file) ? <video src={resolveMediaUrl(file.thumbnailUrl || file.url) ?? undefined} className="w-full h-full object-cover" muted /> : <MediaImage src={file.thumbnailUrl || file.url} alt="" loading="lazy" className="w-full h-full object-cover" />}
                   </div>
                   <div className="min-w-0">
                     <p className="text-xs font-medium text-slate-800 dark:text-slate-200 truncate">{file.originalName}</p>
@@ -643,6 +722,7 @@ function MediaDetailDialog({ id, onClose, onChanged, onSafeDelete }: { id: strin
   const [usage, setUsage] = useState<MediaUsageEntry[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [reprocessing, setReprocessing] = useState(false);
   const [alt, setAlt] = useState('');
   const [title, setTitle] = useState('');
   const [caption, setCaption] = useState('');
@@ -743,9 +823,9 @@ function MediaDetailDialog({ id, onClose, onChanged, onSafeDelete }: { id: strin
               <div className="lg:w-1/2 shrink-0">
                 <div className="rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center" style={{ maxHeight: 360 }}>
                   {isVideo(file) ? (
-                    <video src={file.url} controls className="w-full max-h-[360px] object-contain bg-black" />
+                    <video src={resolveMediaUrl(file.url) ?? undefined} controls className="w-full max-h-[360px] object-contain bg-black" />
                   ) : (
-                    <img src={file.url} alt={file.altText || file.originalName} className="max-h-[360px] w-full object-contain" />
+                    <MediaImage src={file.url} alt={file.altText || file.originalName} loading="eager" className="max-h-[360px] w-full object-contain" fallbackLabel={file.originalName} retry />
                   )}
                 </div>
                 <div className="flex flex-wrap gap-1.5 mt-3">
@@ -891,15 +971,37 @@ function MediaDetailDialog({ id, onClose, onChanged, onSafeDelete }: { id: strin
                       </button>
                     </>
                   )}
-                  <a href={file.url} target="_blank" rel="noopener noreferrer" className="admin-btn-ghost px-3 py-2 text-xs flex items-center gap-1.5">
+                  <a href={resolveMediaUrl(file.url) ?? file.url} target="_blank" rel="noopener noreferrer" className="admin-btn-ghost px-3 py-2 text-xs flex items-center gap-1.5">
                     <ExternalLink className="w-3.5 h-3.5" /> Open
                   </a>
-                  <button type="button" onClick={() => void copyText(file.url)} className="admin-btn-ghost px-3 py-2 text-xs flex items-center gap-1.5">
+                  <button type="button" onClick={() => void copyText(resolveMediaUrl(file.url) ?? file.url)} className="admin-btn-ghost px-3 py-2 text-xs flex items-center gap-1.5">
                     <Copy className="w-3.5 h-3.5" /> Copy URL
                   </button>
-                  <a href={file.url} download className="admin-btn-ghost px-3 py-2 text-xs flex items-center gap-1.5">
+                  <a href={resolveMediaUrl(file.url) ?? file.url} download className="admin-btn-ghost px-3 py-2 text-xs flex items-center gap-1.5">
                     <Download className="w-3.5 h-3.5" /> Download
                   </a>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const id = String(file._id);
+                      setReprocessing(true);
+                      void reprocessMedia(id)
+                        .then((result) => {
+                          toast.success(result.replaced > 0 ? `Reprocessed to WebP — updated ${result.replaced} reference${result.replaced > 1 ? 's' : ''}` : `Reprocessed to WebP`);
+                          onChanged();
+                          return fetchMediaById(id);
+                        })
+                        .then(setFile)
+                        .catch((error: any) => toast.error(error?.response?.data?.message || 'Reprocess failed'))
+                        .finally(() => setReprocessing(false));
+                    }}
+                    disabled={reprocessing || isVideo(file)}
+                    className="admin-btn-secondary px-3 py-2 text-xs flex items-center gap-1.5 disabled:opacity-40"
+                    title={isVideo(file) ? 'Videos cannot be reprocessed' : 'Convert this file to WebP and update all references'}
+                  >
+                    {reprocessing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                    {reprocessing ? 'Reprocessing…' : 'Reprocess to WebP'}
+                  </button>
                   <button type="button" onClick={() => { if (onSafeDelete && file) { onClose(); onSafeDelete(file); } else { void deleteMedia(id, true).then(() => { toast.success('File deleted'); onChanged(); onClose(); }).catch(() => toast.error('Delete failed')); } }} className="admin-btn-ghost px-3 py-2 text-xs flex items-center gap-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20">
                     <Trash2 className="w-3.5 h-3.5" /> Delete
                   </button>
@@ -911,7 +1013,7 @@ function MediaDetailDialog({ id, onClose, onChanged, onSafeDelete }: { id: strin
 
         {cropOpen && file && !isVideo(file) && (
           <CropDialog
-            src={file.url}
+            src={resolveMediaUrl(file.url) ?? file.url}
             mediaId={id}
             open={cropOpen}
             onClose={() => setCropOpen(false)}
@@ -952,11 +1054,11 @@ function VersionsDialog({ file, onClose, onRestored }: { file: MediaFile; onClos
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <p className="text-[10px] text-slate-400 mb-1">Current</p>
-                <img src={file.url} alt="Current version" className="w-full aspect-video object-cover rounded-lg border border-slate-200 dark:border-slate-700" />
+                <img src={resolveMediaUrl(file.url) ?? ''} alt="Current version" className="w-full aspect-video object-cover rounded-lg border border-slate-200 dark:border-slate-700" />
               </div>
               <div>
                 <p className="text-[10px] text-slate-400 mb-1">Selected version</p>
-                <img src={compareUrl} alt="Selected version" className="w-full aspect-video object-cover rounded-lg border border-slate-200 dark:border-slate-700" />
+                <img src={resolveMediaUrl(compareUrl) ?? ''} alt="Selected version" className="w-full aspect-video object-cover rounded-lg border border-slate-200 dark:border-slate-700" />
               </div>
             </div>
           </div>
@@ -964,7 +1066,7 @@ function VersionsDialog({ file, onClose, onRestored }: { file: MediaFile; onClos
 
         <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Current file</p>
         <div className="flex items-center gap-3 rounded-xl border border-slate-900/20 dark:border-slate-500/40 p-3 mb-4 bg-slate-50 dark:bg-slate-800/40">
-          <img src={file.url} alt="" className="w-14 h-14 object-cover rounded-lg" />
+          <img src={resolveMediaUrl(file.url) ?? ''} alt="" className="w-14 h-14 object-cover rounded-lg" />
           <div className="min-w-0 flex-1">
             <p className="text-xs font-medium text-slate-800 dark:text-slate-200 truncate">{file.originalName}</p>
             <p className="text-[10px] text-slate-400">Now · {file.width}×{file.height} · {file.ratio ? `ratio ${file.ratio} · ` : ''}{formatBytes(file.size)}</p>
@@ -978,7 +1080,7 @@ function VersionsDialog({ file, onClose, onRestored }: { file: MediaFile; onClos
           <div className="space-y-2">
             {[...file.versions].reverse().map((v) => (
               <div key={String(v._id)} className="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-700 p-3">
-                <img src={v.thumbnailUrl || v.url} alt="" className="w-14 h-14 object-cover rounded-lg bg-slate-100" />
+                <img src={resolveMediaUrl(v.thumbnailUrl || v.url) ?? ''} alt="" className="w-14 h-14 object-cover rounded-lg bg-slate-100" />
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-medium text-slate-700 dark:text-slate-200">{v.note || 'Version'}</p>
                   <p className="text-[10px] text-slate-400">{new Date(v.createdAt).toLocaleString()} · {v.width}×{v.height} · {formatBytes(v.size)}</p>

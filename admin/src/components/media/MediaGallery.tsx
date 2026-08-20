@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import type { MediaFile } from '@shared/types';
 import { getMediaRatio } from '@shared/constants';
 import { uploadFiles } from '../../services/media.service';
+import MediaImage from './MediaImage';
 import MediaLibraryDialog from './MediaLibraryDialog';
 
 export interface GalleryImage {
@@ -149,7 +150,7 @@ export default function MediaGallery({ images, onChange, ratio = 'product', fold
             } ${editing === index ? 'ring-2 ring-slate-900 dark:ring-slate-100' : ''}`}
           >
             <div className="w-full overflow-hidden" style={frameStyle}>
-              <img src={img.url} alt={img.alt || `Product image ${index + 1}`} loading="lazy" className="w-full h-full object-cover" />
+              <MediaImage src={img.url} alt={img.alt || `Product image ${index + 1}`} loading="lazy" className="w-full h-full object-cover" fallbackLabel={img.alt || `Image ${index + 1}`} retry />
             </div>
 
             {/* Badges */}
@@ -233,7 +234,7 @@ export default function MediaGallery({ images, onChange, ratio = 'product', fold
         )}
       </div>
 
-      <input ref={fileRef} type="file" accept=".jpg,.jpeg,.png,.webp,.svg,.gif,.avif,image/jpeg,image/png,image/webp,image/svg+xml,image/gif,image/avif" multiple className="hidden" onChange={(e) => { if (e.target.files) void handleUpload(e.target.files); e.target.value = ''; }} />
+      <input ref={fileRef} type="file" accept=".jpg,.jpeg,.png,.webp,.svg,.gif,.avif,.bmp,.tiff,.heic,.heif,image/jpeg,image/png,image/webp,image/svg+xml,image/gif,image/avif,image/bmp,image/tiff,image/heic,image/heif" multiple className="hidden" onChange={(e) => { if (e.target.files) void handleUpload(e.target.files); e.target.value = ''; }} />
       {libraryOpen && (
         <MediaLibraryDialog
           open={libraryOpen}

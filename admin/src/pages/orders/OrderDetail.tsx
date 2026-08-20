@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Package, Truck, CheckCircle, XCircle, Clock, Printer, Mail, CreditCard, Send, MapPin, History } from 'lucide-react';
 import api from '../../lib/api';
+import { resolveMediaUrl } from '../../lib/mediaUrl';
 import toast from 'react-hot-toast';
 import PageShell from '../../components/ui/PageShell';
 import PageSpinner from '../../components/ui/PageSpinner';
@@ -331,7 +332,7 @@ export default function OrderDetail() {
                   <div className="flex items-center space-x-4">
                     <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-md flex items-center justify-center overflow-hidden">
                       {item.image ? (
-                        <img src={item.image} alt="" className="w-16 h-16 object-cover rounded-md" />
+                        <img src={resolveMediaUrl(item.image) ?? ''} alt="" className="w-16 h-16 object-cover rounded-md" />
                       ) : (
                         <Package className="w-6 h-6 text-slate-400" />
                       )}

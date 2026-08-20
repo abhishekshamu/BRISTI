@@ -8,6 +8,7 @@ import IconBtn from '../../components/ui/IconBtn';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import api, { getApiError } from '../../lib/api';
+import { resolveMediaUrl } from '../../lib/mediaUrl';
 import toast from 'react-hot-toast';
 
 interface Product {
@@ -79,7 +80,7 @@ export default function Products() {
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-md flex items-center justify-center shrink-0">
             {product.images?.[0]?.url ? (
-              <img src={product.images[0].url} alt={product.name} className="w-10 h-10 object-cover rounded-md" />
+              <img src={resolveMediaUrl(product.images[0].url) ?? ''} alt={product.name} className="w-10 h-10 object-cover rounded-md" />
             ) : (
               <Package className="w-5 h-5 text-slate-400" />
             )}

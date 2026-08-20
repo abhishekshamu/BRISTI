@@ -125,8 +125,30 @@ export async function verifyUrl(url: string): Promise<{ ok: boolean; status: num
   return res.data.data;
 }
 
-export const ACCEPTED_IMAGE_EXTENSIONS = 'jpg,jpeg,png,webp,svg,gif,avif';
-export const ACCEPTED_IMAGE_ACCEPT = '.jpg,.jpeg,.png,.webp,.svg,.gif,.avif,image/jpeg,image/png,image/webp,image/svg+xml,image/gif,image/avif';
+export interface MediaVerifyResult {
+  id: string;
+  ok: boolean;
+  status?: number;
+  error?: string;
+  url?: string;
+}
+
+export async function verifyMediaBatch(ids: string[]): Promise<MediaVerifyResult[]> {
+  const res = await api.post('/media/verify', { ids });
+  return res.data.data as MediaVerifyResult[];
+}
+
+export async function reprocessMedia(
+  id: string,
+  deleteOriginal = false
+): Promise<{ media: MediaFile; replaced: number; note?: string }> {
+  const res = await api.post(`/media/${id}/reprocess`, { deleteOriginal });
+  return res.data.data;
+}
+
+export const ACCEPTED_IMAGE_EXTENSIONS = 'jpg,jpeg,png,webp,svg,gif,avif,bmp,tiff,heic,heif';
+export const ACCEPTED_IMAGE_ACCEPT =
+  '.jpg,.jpeg,.png,.webp,.svg,.gif,.avif,.bmp,.tiff,.heic,.heif,image/jpeg,image/png,image/webp,image/svg+xml,image/gif,image/avif,image/bmp,image/tiff,image/heic,image/heif';
 export const MAX_IMAGE_BYTES = 25 * 1024 * 1024;
 
 export function formatBytes(bytes?: number): string {
@@ -146,7 +168,7 @@ export function isImageMime(mimeType: string): boolean {
 }
 
 export function isRasterMime(mimeType: string): boolean {
-  return ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'].includes(mimeType);
+  return ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif', 'image/bmp', 'image/tiff', 'image/heic', 'image/heif'].includes(mimeType);
 }
 
 export function generateAltFromFilename(name: string): string {

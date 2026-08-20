@@ -35,18 +35,41 @@ const ALLOWED_MIMES: Record<string, string> = {
   'image/svg+xml': '.svg',
   'image/gif': '.gif',
   'image/avif': '.avif',
+  'image/bmp': '.bmp',
+  'image/tiff': '.tiff',
+  'image/heic': '.heic',
+  'image/heif': '.heif',
   'video/mp4': '.mp4',
   'video/webm': '.webm',
 };
 
-const RASTER_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
+// Raster images that the upload pipeline converts to WebP. SVG is preserved as
+// a vector asset; videos are stored as-is.
+const RASTER_IMAGE_MIMES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'image/avif',
+  'image/bmp',
+  'image/tiff',
+  'image/heic',
+  'image/heif',
+];
 
-// URLs stored in the DB are relative (e.g. /uploads/...) so they work on any
-// host the API is deployed to; the frontend resolves them against its API origin.
-// Server-side fetch (fit/crop) resolves relative URLs against this instance.
-const API_BASE = () => (process.env.API_URL ? process.env.API_URL.replace(/\/$/, '') : '');
+// WebP encoding profile. Quality 85 keeps visual fidelity high while removing
+// most of the original weight; transparency is preserved natively by WebP and
+// never flattened against a background.
+const WEBP_QUALITY = 85;
+const THUMB_WIDTH = 320;
+
+// URLs stored in the DB are absolute (or Cloudinary secure_url) so they work on
+// any host the API is deployed to. When API_URL is unset the URL falls back to
+// the server base (localhost in dev); consumers rewrite dev-host URLs to their
+// configured API origin.
 const SERVER_BASE = () =>
   process.env.API_URL ? process.env.API_URL.replace(/\/$/, '') : `http://localhost:${process.env.PORT || 5000}`;
+const API_BASE = () => SERVER_BASE();
 
 const isCloudinary = () => Boolean(process.env.CLOUDINARY_URL);
 
@@ -54,11 +77,32 @@ const isCloudinary = () => Boolean(process.env.CLOUDINARY_URL);
 // Storage helpers (Cloudinary when configured, local uploads/ otherwise)
 // ---------------------------------------------------------------------------
 
-async function storeBuffer(buffer: Buffer, ext: string, _tag: string): Promise<{ url: string; publicId: string }> {
+/**
+ * Builds a safe unique filename stem from a client-supplied original name:
+ * lowercased, unicode-normalized, non-alphanumerics collapsed to '-', bounded
+ * length. Never includes directory separators or user path segments.
+ */
+function safeStem(originalName: string): string {
+  const base = path.basename(originalName || '').replace(/\.[^.]+$/, '');
+  const slug = base
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60);
+  return slug || 'image';
+}
+
+function uniquePublicId(stem: string, ext: string): string {
+  return `${stem}-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+}
+
+async function storeBuffer(buffer: Buffer, ext: string, _tag: string, stem = 'file'): Promise<{ url: string; publicId: string }> {
   if (isCloudinary()) {
     const result = await new Promise<any>((resolve, reject) => {
       const stream = cloudinary.v2.uploader.upload_stream(
-        { folder: 'bristi', use_filename: true, unique_filename: true, resource_type: 'auto' },
+        { folder: 'bristi', public_id: uniquePublicId(stem, ''), resource_type: 'auto' },
         (error, upload) => (error ? reject(error) : resolve(upload))
       );
       stream.end(buffer);
@@ -66,7 +110,7 @@ async function storeBuffer(buffer: Buffer, ext: string, _tag: string): Promise<{
     return { url: result.secure_url, publicId: result.public_id };
   }
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-  const publicId = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+  const publicId = uniquePublicId(stem, ext);
   fs.writeFileSync(path.join(UPLOADS_DIR, publicId), buffer);
   return { url: `${API_BASE()}/uploads/${publicId}`, publicId };
 }
@@ -91,9 +135,71 @@ function deleteStored(publicIds: string[] = []) {
   }
 }
 
+/** Verifies that a freshly stored object is actually readable before a media record is created. */
+async function assertStored(stored: { url: string; publicId: string }): Promise<void> {
+  if (!isCloudinary()) {
+    const filePath = path.join(UPLOADS_DIR, path.basename(stored.publicId));
+    if (!fs.existsSync(filePath)) throw new Error('Unable to store image — file is missing after upload');
+    const stat = fs.statSync(filePath);
+    if (stat.size === 0) throw new Error('Unable to store image — stored file is empty');
+    return;
+  }
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(stored.url, { method: 'HEAD', redirect: 'follow', signal: controller.signal });
+    clearTimeout(timer);
+    if (!res.ok) throw new Error(`Image was uploaded but could not be verified (HTTP ${res.status})`);
+  } catch (error: any) {
+    if (error?.message?.startsWith('Image was uploaded')) throw error;
+    throw new Error('Image was uploaded but could not be verified');
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Validation helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Content sniffing — never trust the multipart MIME header alone. Detects the
+ * real payload type from magic bytes; returns null for unknown content.
+ */
+function sniffMime(buffer: Buffer): string | null {
+  if (!buffer || buffer.length === 0) return null;
+  const b = buffer;
+  const ascii = (start: number, len: number) => b.subarray(start, start + len).toString('ascii');
+
+  if (b.length >= 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'image/jpeg';
+  if (b.length >= 8 && [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a].every((v, i) => b[i] === v)) return 'image/png';
+
+  if (b.length >= 6) {
+    const gif = ascii(0, 6);
+    if (gif === 'GIF87a' || gif === 'GIF89a') return 'image/gif';
+  }
+
+  if (b.length >= 12 && ascii(0, 4) === 'RIFF' && ascii(8, 4) === 'WEBP') return 'image/webp';
+
+  if (b.length >= 2 && b[0] === 0x42 && b[1] === 0x4d) return 'image/bmp';
+  if (b.length >= 4) {
+    if (b[0] === 0x49 && b[1] === 0x49 && b[2] === 0x2a && b[3] === 0x00) return 'image/tiff';
+    if (b[0] === 0x4d && b[1] === 0x4d && b[2] === 0x00 && b[3] === 0x2a) return 'image/tiff';
+  }
+
+  if (b.length >= 12 && ascii(4, 4) === 'ftyp') {
+    const compat = ascii(8, Math.min(24, b.length - 8));
+    if (/^(avif|avis)\b/i.test(ascii(8, 4)) || /\b(avif|avis)\b/i.test(compat)) return 'image/avif';
+    if (/^(heic|heix|hevc|hevx|mif1|msf1)\b/i.test(ascii(8, 4)) || /\b(heic|heix|hevc|hevx|mif1|msf1)\b/i.test(compat)) return 'image/heic';
+    return 'video/mp4';
+  }
+
+  if (b.length >= 4 && b[0] === 0x1a && b[1] === 0x45 && b[2] === 0xdf && b[3] === 0xa3) return 'video/webm';
+
+  // SVG is textual: optional BOM, whitespace, then an XML/SVG/DOCTYPE declaration.
+  const text = b.subarray(0, 512).toString('utf8').replace(/^\uFEFF/, '').trimStart();
+  if (text.startsWith('<?xml') || text.startsWith('<svg') || text.startsWith('<!DOCTYPE')) return 'image/svg+xml';
+
+  return null;
+}
 
 function unsafeSvgReason(buffer: Buffer): string | null {
   const text = buffer.toString('utf8').toLowerCase();
@@ -113,10 +219,7 @@ function unsafeSvgReason(buffer: Buffer): string | null {
   return null;
 }
 
-// Video magic-byte sniffing. The multipart `mimetype` header is client
-// controlled, so we verify the payload actually looks like a video before
-// persisting it, otherwise an HTML/script payload could be stored under a
-// .mp4 / .webm name.
+// Video magic-byte sniffing (kept in addition to sniffMime for a friendlier error).
 function videoMagicReason(buffer: Buffer): string | null {
   if (buffer.length < 12) return 'file too small to be a video';
   const isMp4 = buffer.subarray(4, 8).toString('ascii') === 'ftyp';
@@ -164,69 +267,109 @@ async function assertPublicUrl(url: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// Image processing (sharp): dimensions, WebP/AVIF responsive variants
+// Image processing (sharp): WebP conversion, thumbnails, responsive variants
 // ---------------------------------------------------------------------------
 
+interface StoredVariant {
+  url: string;
+  width: number;
+  height: number;
+  size: number;
+  format: string;
+  publicId: string;
+}
+
 interface ProcessedImage {
+  /** WebP-encoded copy of the raster original (null for SVG/video/animated GIF). */
+  webp: Buffer | null;
   width: number;
   height: number;
   isAnimated: boolean;
-  variants: Record<string, { url: string; width: number; height: number; size: number; format: string }>;
-  optimizedSize: number;
+  variants: Record<string, StoredVariant>;
   storedPublicIds: string[];
+  /** Canonical format of the stored original ('webp' | 'svg' | 'gif' | ...). */
+  format: string;
 }
 
-async function processImage(buffer: Buffer, mimeType: string): Promise<ProcessedImage> {
-  const empty: ProcessedImage = { width: 0, height: 0, isAnimated: false, variants: {}, optimizedSize: 0, storedPublicIds: [] };
-  if (mimeType === 'image/svg+xml') return empty;
-  let meta;
+function buildSrcset(variants: Record<string, { url: string }>): string {
+  const parts: string[] = [];
+  const order = ['thumb', 'medium', 'large'];
+  const widths: Record<string, number> = { thumb: THUMB_WIDTH, medium: 900, large: 1600 };
+  for (const key of order) {
+    if (variants[key]) parts.push(`${variants[key].url} ${widths[key]}w`);
+  }
+  return parts.join(', ');
+}
+
+/**
+ * Converts a raster image to WebP (quality 85, original dimensions preserved,
+ * alpha/transparency preserved, metadata stripped). Animated GIFs are returned
+ * untouched — they keep their native format.
+ */
+async function convertToWebp(buffer: Buffer, sourceMime: string, stem: string): Promise<ProcessedImage> {
+  let meta: sharp.Metadata;
   try {
     meta = await sharp(buffer).metadata();
   } catch {
     throw new BadRequestError('Invalid image file — it does not appear to be a supported format');
   }
   if (!meta.width || !meta.height) throw new BadRequestError('The image file appears to be corrupted or unreadable');
-  if (mimeType === 'image/gif' && (meta.pages ?? 1) > 1) {
-    return { ...empty, width: meta.width, height: meta.height, isAnimated: true };
+
+  const isAnimated = sourceMime === 'image/gif' && (meta.pages ?? 1) > 1;
+  if (isAnimated) {
+    return { webp: null, width: meta.width, height: meta.height, isAnimated: true, variants: {}, storedPublicIds: [], format: 'gif' };
   }
 
-  const base = sharp(buffer).rotate(); // auto-orient so EXIF-rotated photos render correctly
-  const jobs: Array<{ name: string; width: number; format: 'webp' | 'avif'; quality: number }> = [];
-  if (meta.width > 320) jobs.push({ name: 'thumb', width: 320, format: 'webp', quality: 78 });
-  if (meta.width > 900) jobs.push({ name: 'medium', width: 900, format: 'webp', quality: 82 });
-  if (meta.width > 1600) jobs.push({ name: 'large', width: 1600, format: 'webp', quality: 85 });
-  if (meta.width > 900) jobs.push({ name: 'avif', width: 900, format: 'avif', quality: 70 });
+  const encoded = await sharp(buffer)
+    .rotate() // auto-orient so EXIF-rotated photos render correctly
+    .toFormat('webp', { quality: WEBP_QUALITY, effort: 4, smartSubsample: true })
+    .toBuffer({ resolveWithObject: true });
 
-  const variants: Record<string, { url: string; width: number; height: number; size: number; format: string }> = {};
+  const base = sharp(encoded.data);
+  const jobs: Array<{ name: string; width: number; quality: number }> = [{ name: 'thumb', width: THUMB_WIDTH, quality: 80 }];
+  if (encoded.info.width > 900) jobs.push({ name: 'medium', width: 900, quality: 82 });
+  if (encoded.info.width > 1600) jobs.push({ name: 'large', width: 1600, quality: WEBP_QUALITY });
+
+  const variants: Record<string, StoredVariant> = {};
   const storedPublicIds: string[] = [];
-  let optimizedSize = 0;
   for (const job of jobs) {
     try {
       const out = await base
         .clone()
         .resize({ width: job.width, withoutEnlargement: true })
-        .toFormat(job.format, { quality: job.quality, effort: 4 })
+        .webp({ quality: job.quality, effort: 4 })
         .toBuffer({ resolveWithObject: true });
-      const stored = await storeBuffer(out.data, `.${job.format}`, job.name);
-      variants[job.name] = { url: stored.url, width: out.info.width, height: out.info.height, size: out.data.length, format: job.format };
+      const stored = await storeBuffer(out.data, '.webp', job.name, `${stem}-${job.name}`);
+      variants[job.name] = { url: stored.url, width: out.info.width, height: out.info.height, size: out.data.length, format: 'webp', publicId: stored.publicId };
       storedPublicIds.push(stored.publicId);
-      optimizedSize += out.data.length;
     } catch {
-      // AVIF/WebP encoding can fail on exotic inputs — variants are best-effort,
-      // the original is always stored.
+      // thumbnail/variant encoding is best-effort — the original WebP is always stored
     }
   }
-  return { width: meta.width, height: meta.height, isAnimated: false, variants, optimizedSize, storedPublicIds };
+
+  return {
+    webp: encoded.data,
+    width: encoded.info.width,
+    height: encoded.info.height,
+    isAnimated: false,
+    variants,
+    storedPublicIds,
+    format: 'webp',
+  };
 }
 
-function buildSrcset(variants: Record<string, { url: string }>): string {
-  const parts: string[] = [];
-  const order = ['thumb', 'medium', 'large', 'avif'];
-  const widths: Record<string, number> = { thumb: 320, medium: 900, large: 1600, avif: 900 };
-  for (const key of order) {
-    if (variants[key]) parts.push(`${variants[key].url} ${widths[key]}w`);
+/** Rasterized WebP preview for SVG originals (best-effort — SVG itself is always preserved). */
+async function svgPreview(buffer: Buffer, stem: string): Promise<StoredVariant | null> {
+  try {
+    const out = await sharp(buffer, { density: 72 })
+      .resize({ width: THUMB_WIDTH, withoutEnlargement: true })
+      .webp({ quality: 80, effort: 4 })
+      .toBuffer({ resolveWithObject: true });
+    const stored = await storeBuffer(out.data, '.webp', 'thumb', `${stem}-thumb`);
+    return { url: stored.url, width: out.info.width, height: out.info.height, size: out.data.length, format: 'webp', publicId: stored.publicId };
+  } catch {
+    return null;
   }
-  return parts.join(', ');
 }
 
 // ---------------------------------------------------------------------------
@@ -321,22 +464,28 @@ export class MediaService {
   async upload(file: MulterFile, userId: string, options: any = {}) {
     if (!file?.buffer) throw new BadRequestError('A file is required');
     if (file.size > MAX_UPLOAD_BYTES) throw new BadRequestError('File exceeds the 25 MB upload limit');
-    const ext = ALLOWED_MIMES[file.mimetype];
-    if (!ext) {
-      throw new BadRequestError('Unsupported file type. Allowed: jpg, jpeg, png, webp, svg, gif, avif');
+    if (file.size === 0) throw new BadRequestError('File is empty');
+
+    const declaredMime = file.mimetype || '';
+    if (!ALLOWED_MIMES[declaredMime]) {
+      throw new BadRequestError('Unsupported file type. Allowed: jpg, jpeg, png, webp, svg, gif, avif, bmp, tiff, heic/heif');
     }
-    const isVideo = file.mimetype.startsWith('video/');
+
+    // Real content check — the declared MIME header is client-controlled.
+    const sniffed = sniffMime(file.buffer);
+    if (!sniffed) throw new BadRequestError('File content does not match a supported image/video format');
+    if (!ALLOWED_MIMES[sniffed]) throw new BadRequestError('Unsupported file content');
+    const isVideo = sniffed.startsWith('video/');
     if (isVideo) {
       const videoReason = videoMagicReason(file.buffer);
       if (videoReason) throw new BadRequestError(`Invalid video file (${videoReason})`);
     }
-
-    const checksum = crypto.createHash('md5').update(file.buffer).digest('hex');
-
-    if (file.mimetype === 'image/svg+xml') {
+    if (sniffed === 'image/svg+xml') {
       const reason = unsafeSvgReason(file.buffer);
       if (reason) throw new BadRequestError(`Unsafe SVG file rejected (contains ${reason})`);
     }
+
+    const checksum = crypto.createHash('md5').update(file.buffer).digest('hex');
 
     // Duplicate detection: if the exact same bytes are already in the library,
     // return the existing file so admins can reuse it without duplicates.
@@ -348,68 +497,120 @@ export class MediaService {
       }
     }
 
-    const stored: any = { original: null };
+    const stem = safeStem(file.originalname);
+    const storedPublicIds: string[] = [];
+
+    let stored: { url: string; publicId: string };
+    let mimeType = sniffed;
+    let format = sniffed.split('/')[1] || '';
     let width = 0;
     let height = 0;
     let thumbnailUrl = '';
     let variants: Record<string, any> = {};
     let optimization: any = {};
-    const storedPublicIds: string[] = [];
 
-    if (!isVideo) {
-      const processed = await processImage(file.buffer, file.mimetype);
-      width = processed.width;
-      height = processed.height;
-      variants = processed.variants;
-      storedPublicIds.push(...processed.storedPublicIds);
-      const totalVariantBytes = processed.optimizedSize;
-      optimization =
-        totalVariantBytes > 0 && file.size > 0
-          ? { originalSize: file.size, optimizedSize: totalVariantBytes, savingsPercent: Math.min(99, Math.round(((file.size - totalVariantBytes) / file.size) * 100)) }
-          : {};
+    try {
+      if (sniffed === 'image/svg+xml') {
+        // Vector assets stay SVG — never rasterized into the record.
+        stored = await storeBuffer(file.buffer, '.svg', 'original', stem);
+        const preview = await svgPreview(file.buffer, stem);
+        if (preview) {
+          variants.thumb = preview;
+          storedPublicIds.push(preview.publicId);
+        }
+        try {
+          const meta = await sharp(file.buffer).metadata();
+          width = meta.width ?? 0;
+          height = meta.height ?? 0;
+        } catch {
+          // SVG dimensions are informational — not required.
+        }
+        thumbnailUrl = variants.thumb?.url ?? stored.url;
+      } else if (isVideo) {
+        stored = await storeBuffer(file.buffer, ALLOWED_MIMES[sniffed], 'original', stem);
+        thumbnailUrl = stored.url;
+        format = sniffed.split('/')[1] || '';
+      } else {
+        // Raster pipeline: convert to WebP, store WebP as the original.
+        const processed = await convertToWebp(file.buffer, sniffed, stem);
+        width = processed.width;
+        height = processed.height;
+        variants = processed.variants;
+        storedPublicIds.push(...processed.storedPublicIds);
+        if (processed.isAnimated) {
+          stored = await storeBuffer(file.buffer, '.gif', 'original', stem);
+          mimeType = 'image/gif';
+          format = 'gif';
+          thumbnailUrl = stored.url;
+        } else {
+          stored = await storeBuffer(processed.webp!, '.webp', 'original', stem);
+          mimeType = 'image/webp';
+          format = 'webp';
+          thumbnailUrl = variants.thumb?.url ?? stored.url;
+          if (file.size > 0) {
+            optimization = {
+              originalSize: file.size,
+              optimizedSize: processed.webp!.length,
+              savingsPercent: Math.min(99, Math.round(((file.size - processed.webp!.length) / file.size) * 100)),
+            };
+          }
+        }
+      }
+
+      storedPublicIds.push(stored.publicId);
+
+      // Storage verification: never persist a record pointing at a missing file.
+      await assertStored(stored);
+
+      const tags = Array.isArray(options.tags)
+        ? options.tags
+        : typeof options.tags === 'string' && options.tags.trim()
+          ? options.tags.split(',').map((t: string) => t.trim()).filter(Boolean)
+          : [];
+
+      const doc = await this.mediaRepo.create({
+        filename: stored.publicId,
+        originalName: file.originalname,
+        mimeType,
+        format,
+        size: file.size,
+        url: stored.url,
+        thumbnailUrl,
+        width,
+        height,
+        ratio: detectRatio(width, height),
+        duration: isVideo ? 0 : undefined,
+        folder: options.folder || '/',
+        altText: options.altText,
+        title: options.title,
+        caption: options.caption,
+        tags,
+        isPublic: options.isPublic !== false,
+        uploadedBy: userId,
+        checksum,
+        variants: {
+          thumb: variants.thumb,
+          medium: variants.medium,
+          large: variants.large,
+          srcset: buildSrcset(variants),
+        },
+        optimization,
+        metadata: {
+          publicId: stored.publicId,
+          resourceType: isVideo ? 'video' : 'image',
+          storedPublicIds,
+          sourceMimeType: sniffed,
+          sourceFormat: sniffed.split('/')[1] || '',
+          processing: format === 'webp' ? { converted: sniffed !== 'image/webp', quality: WEBP_QUALITY, width, height } : undefined,
+        },
+      } as any);
+
+      return doc;
+    } catch (error: any) {
+      // Roll back anything stored on a failed upload so no orphan/broken file remains.
+      deleteStored(storedPublicIds);
+      throw error;
     }
-
-    stored.original = await storeBuffer(file.buffer, ext, 'original');
-    storedPublicIds.push(stored.original.publicId);
-    thumbnailUrl = variants.thumb?.url ?? stored.original.url;
-
-    const tags = Array.isArray(options.tags)
-      ? options.tags
-      : typeof options.tags === 'string' && options.tags.trim()
-        ? options.tags.split(',').map((t: string) => t.trim()).filter(Boolean)
-        : [];
-
-    const doc = await this.mediaRepo.create({
-      filename: stored.original.publicId,
-      originalName: file.originalname,
-      mimeType: file.mimetype,
-      size: file.size,
-      url: stored.original.url,
-      thumbnailUrl,
-      width,
-      height,
-      ratio: detectRatio(width, height),
-      duration: isVideo ? 0 : undefined,
-      folder: options.folder || '/',
-      altText: options.altText,
-      title: options.title,
-      caption: options.caption,
-      tags,
-      isPublic: options.isPublic !== false,
-      uploadedBy: userId,
-      checksum,
-      variants: {
-        thumb: variants.thumb,
-        medium: variants.medium,
-        large: variants.large,
-        avif: variants.avif,
-        srcset: buildSrcset(variants),
-      },
-      optimization,
-      metadata: { publicId: stored.original.publicId, resourceType: isVideo ? 'video' : 'image', storedPublicIds },
-    } as any);
-
-    return doc;
   }
 
   async uploadMany(files: MulterFile[], userId: string, options: any = {}) {
@@ -540,9 +741,9 @@ export class MediaService {
 
   private assertProcessable(media: any) {
     if (!media.mimeType || !RASTER_IMAGE_MIMES.includes(media.mimeType)) {
-      throw new BadRequestError('Only raster images (jpg, png, webp, gif, avif) can be fitted or cropped');
+      throw new BadRequestError('Only raster images (jpg, png, webp, gif, avif, bmp, tiff, heic) can be fitted or cropped');
     }
-    if (media.mimeType === 'image/gif' && (media.variants && Object.keys(media.variants).length === 0)) {
+    if (media.mimeType === 'image/gif' && media.format === 'gif') {
       // animated gif — no derivations
       throw new BadRequestError('Animated GIFs cannot be cropped server-side');
     }
@@ -561,10 +762,10 @@ export class MediaService {
     const out = await sharp(buffer)
       .rotate()
       .resize({ width: targetWidth, height: targetHeight, fit: 'cover', position: 'attention', withoutEnlargement: true })
-      .webp({ quality: 85, effort: 4 })
+      .webp({ quality: WEBP_QUALITY, effort: 4 })
       .toBuffer({ resolveWithObject: true });
 
-    const stored = await storeBuffer(out.data, '.webp', 'fit');
+    const stored = await storeBuffer(out.data, '.webp', 'fit', `${safeStem(media.originalName)}-fit`);
     const derived = (media.derived ?? []) as any[];
     derived.push({ url: stored.url, width: out.info.width, height: out.info.height, ratio: `${rw}:${rh}`, source: 'auto', createdAt: new Date() });
     await this.mediaRepo.updateById(id, { derived } as any);
@@ -592,7 +793,7 @@ export class MediaService {
       .webp({ quality: 88, effort: 4 })
       .toBuffer({ resolveWithObject: true });
 
-    const stored = await storeBuffer(out.data, '.webp', 'crop');
+    const stored = await storeBuffer(out.data, '.webp', 'crop', `${safeStem(media.originalName)}-crop`);
     const derived = (media.derived ?? []) as any[];
     derived.push({ url: stored.url, width: out.info.width, height: out.info.height, ratio: options.ratio || `${width}:${height}`, source: 'manual', createdAt: new Date() });
     await this.mediaRepo.updateById(id, { derived } as any);
@@ -605,11 +806,19 @@ export class MediaService {
     const media: any = await this.get(id, userId);
     if (!file?.buffer) throw new BadRequestError('A replacement file is required');
     if (file.size > MAX_UPLOAD_BYTES) throw new BadRequestError('File exceeds the 25 MB upload limit');
-    const ext = ALLOWED_MIMES[file.mimetype];
-    if (!ext) throw new BadRequestError('Unsupported file type');
-    if (file.mimetype.startsWith('video/')) {
+
+    const declaredMime = file.mimetype || '';
+    if (!ALLOWED_MIMES[declaredMime]) throw new BadRequestError('Unsupported file type');
+    const sniffed = sniffMime(file.buffer);
+    if (!sniffed || !ALLOWED_MIMES[sniffed]) throw new BadRequestError('File content does not match a supported image/video format');
+    const isVideo = sniffed.startsWith('video/');
+    if (isVideo) {
       const videoReason = videoMagicReason(file.buffer);
       if (videoReason) throw new BadRequestError(`Invalid video file (${videoReason})`);
+    }
+    if (sniffed === 'image/svg+xml') {
+      const reason = unsafeSvgReason(file.buffer);
+      if (reason) throw new BadRequestError(`Unsafe SVG file rejected (contains ${reason})`);
     }
 
     // Push the current state into version history before swapping.
@@ -625,54 +834,97 @@ export class MediaService {
       createdAt: new Date(),
     });
 
-    if (file.mimetype === 'image/svg+xml') {
-      const reason = unsafeSvgReason(file.buffer);
-      if (reason) throw new BadRequestError(`Unsafe SVG file rejected (contains ${reason})`);
-    }
-
+    const stem = safeStem(file.originalname);
+    const storedPublicIds = (media.metadata?.storedPublicIds ?? []) as string[];
+    let stored: { url: string; publicId: string };
+    let mimeType = sniffed;
+    let format = sniffed.split('/')[1] || '';
     let width = 0;
     let height = 0;
     let thumbnailUrl = '';
     let variants: Record<string, any> = {};
     let optimization: any = {};
-    const storedPublicIds = (media.metadata?.storedPublicIds ?? []) as string[];
 
-    if (!file.mimetype.startsWith('video/')) {
-      try {
-        const processed = await processImage(file.buffer, file.mimetype);
+    try {
+      if (sniffed === 'image/svg+xml') {
+        stored = await storeBuffer(file.buffer, '.svg', 'original', stem);
+        const preview = await svgPreview(file.buffer, stem);
+        if (preview) {
+          variants.thumb = preview;
+          storedPublicIds.push(preview.publicId);
+        }
+        try {
+          const meta = await sharp(file.buffer).metadata();
+          width = meta.width ?? 0;
+          height = meta.height ?? 0;
+        } catch {
+          /* informational */
+        }
+        thumbnailUrl = variants.thumb?.url ?? stored.url;
+      } else if (isVideo) {
+        stored = await storeBuffer(file.buffer, ALLOWED_MIMES[sniffed], 'original', stem);
+        thumbnailUrl = stored.url;
+        format = sniffed.split('/')[1] || '';
+      } else {
+        const processed = await convertToWebp(file.buffer, sniffed, stem);
         width = processed.width;
         height = processed.height;
         variants = processed.variants;
         storedPublicIds.push(...processed.storedPublicIds);
-        optimization = processed.optimizedSize > 0 ? { originalSize: file.size, optimizedSize: processed.optimizedSize, savingsPercent: Math.min(99, Math.round(((file.size - processed.optimizedSize) / file.size) * 100)) } : {};
-      } catch (error: any) {
-        if (error instanceof BadRequestError) throw error;
-        // best effort: keep original only
+        if (processed.isAnimated) {
+          stored = await storeBuffer(file.buffer, '.gif', 'original', stem);
+          mimeType = 'image/gif';
+          format = 'gif';
+          thumbnailUrl = stored.url;
+        } else {
+          stored = await storeBuffer(processed.webp!, '.webp', 'original', stem);
+          mimeType = 'image/webp';
+          format = 'webp';
+          thumbnailUrl = variants.thumb?.url ?? stored.url;
+          if (file.size > 0) {
+            optimization = {
+              originalSize: file.size,
+              optimizedSize: processed.webp!.length,
+              savingsPercent: Math.min(99, Math.round(((file.size - processed.webp!.length) / file.size) * 100)),
+            };
+          }
+        }
       }
+
+      storedPublicIds.push(stored.publicId);
+      await assertStored(stored);
+
+      const patch: any = {
+        filename: stored.publicId,
+        originalName: file.originalname,
+        mimeType,
+        format,
+        size: file.size,
+        url: stored.url,
+        thumbnailUrl,
+        width,
+        height,
+        ratio: detectRatio(width, height),
+        checksum: crypto.createHash('md5').update(file.buffer).digest('hex'),
+        variants: { thumb: variants.thumb, medium: variants.medium, large: variants.large, srcset: buildSrcset(variants) },
+        optimization,
+        derived: [], // derived crops belonged to the old bytes
+        versions,
+        metadata: {
+          ...(media.metadata ?? {}),
+          publicId: stored.publicId,
+          resourceType: isVideo ? 'video' : 'image',
+          storedPublicIds,
+          sourceMimeType: sniffed,
+          sourceFormat: sniffed.split('/')[1] || '',
+          processing: format === 'webp' ? { converted: sniffed !== 'image/webp', quality: WEBP_QUALITY, width, height } : undefined,
+        },
+      };
+      return this.mediaRepo.updateById(id, patch as any);
+    } catch (error: any) {
+      deleteStored(storedPublicIds.filter((pid) => !(media.metadata?.storedPublicIds ?? []).includes(pid)));
+      throw error;
     }
-
-    const stored = await storeBuffer(file.buffer, ext, 'original');
-    storedPublicIds.push(stored.publicId);
-    thumbnailUrl = variants.thumb?.url ?? stored.url;
-
-    const patch: any = {
-      filename: stored.publicId,
-      originalName: file.originalname,
-      mimeType: file.mimetype,
-      size: file.size,
-      url: stored.url,
-      thumbnailUrl,
-      width,
-      height,
-      ratio: detectRatio(width, height),
-      checksum: crypto.createHash('md5').update(file.buffer).digest('hex'),
-      variants: { thumb: variants.thumb, medium: variants.medium, large: variants.large, avif: variants.avif, srcset: variants.thumb || variants.medium || variants.large ? [variants.thumb?.url && `${variants.thumb.url} 320w`, variants.medium?.url && `${variants.medium.url} 900w`, variants.large?.url && `${variants.large.url} 1600w`].filter(Boolean).join(', ') : '' },
-      optimization,
-      derived: [], // derived crops belonged to the old bytes
-      versions,
-      metadata: { ...(media.metadata ?? {}), publicId: stored.publicId, storedPublicIds },
-    };
-    return this.mediaRepo.updateById(id, patch as any);
   }
 
   async restoreVersion(id: string, versionId: string, userId: string) {
@@ -690,6 +942,7 @@ export class MediaService {
       ratio: detectRatio(version.width ?? media.width, version.height ?? media.height),
       size: version.size ?? media.size,
       mimeType: version.mimeType ?? media.mimeType,
+      format: version.mimeType?.split('/')[1] ?? media.format,
       versions,
     };
     return this.mediaRepo.updateById(id, patch as any);
@@ -697,17 +950,15 @@ export class MediaService {
 
   // -- Replace everywhere (safe-delete helper) ------------------------------
 
-  /** Replaces every reference to this media's URLs with `newUrl` across all content models. */
-  async replaceEverywhere(id: string, newUrl: string, userId: string) {
-    const media: any = await this.get(id, userId);
-    if (!newUrl || !/^https?:\/\//i.test(newUrl)) {
-      throw new BadRequestError('newUrl must be an absolute http(s) URL');
-    }
-    const urls = this.urlsOf(media);
-    const replacements = new Map(urls.map((u) => [u, newUrl]));
+  /**
+   * Applies a url->newUrl replacement map across every content model and the
+   * settings document. Returns the number of documents modified.
+   */
+  private async replaceUrlMap(replacements: Map<string, string>): Promise<number> {
+    if (replacements.size === 0) return 0;
     let replaced = 0;
 
-    const setValue = (cur: any, pathParts: string[], oldUrl: string): boolean => {
+    const setValue = (cur: any, pathParts: string[], oldUrl: string, newUrl: string): boolean => {
       const [head, ...rest] = pathParts;
       const target = cur?.[head];
       if (target === undefined) return false;
@@ -732,72 +983,247 @@ export class MediaService {
         let changed = false;
         for (const item of target) {
           if (item && typeof item === 'object') {
-            if (setValue(item, rest, oldUrl)) changed = true;
+            if (setValue(item, rest, oldUrl, newUrl)) changed = true;
           }
         }
         return changed;
       }
       if (target && typeof target === 'object') {
-        return setValue(target, rest, oldUrl);
+        return setValue(target, rest, oldUrl, newUrl);
       }
       return false;
     };
 
-    for (const scope of USAGE_SCOPES) {
-      const $or = scope.fields.map((f) => ({ [f]: { $in: urls } }));
-      const docs = await scope.model.find({ $or }).exec();
-      for (const doc of docs as any[]) {
-        let changed = false;
-        for (const field of scope.fields) {
-          const parts = field.split('.');
-          for (const url of urls) {
-            if (setValue(doc, parts, url)) changed = true;
+    for (const [oldUrl, newUrl] of replacements) {
+      for (const scope of USAGE_SCOPES) {
+        const $or = scope.fields.map((f) => ({ [f]: oldUrl }));
+        const docs = await scope.model.find({ $or }).exec();
+        for (const doc of docs as any[]) {
+          let changed = false;
+          for (const field of scope.fields) {
+            if (setValue(doc, field.split('.'), oldUrl, newUrl)) changed = true;
           }
-        }
-        if (changed) {
-          await doc.save();
-          replaced += 1;
+          if (changed) {
+            await doc.save();
+            replaced += 1;
+          }
         }
       }
     }
 
-    // Settings deep-replace
+    // Settings deep-replace. The walk runs over a plain toObject() clone —
+    // mongoose documents carry circular internals ($__, _doc) that would
+    // recurse forever — then each changed path is applied via document.set()
+    // so mongoose dirty-tracking picks it up for save().
     const settings = await SettingsModel.findOne({}).exec();
     if (settings) {
-      const walk = (node: any): boolean => {
-        if (typeof node === 'string') return false;
-        if (!node || typeof node !== 'object') return false;
-        let changed = false;
+      const plain: any = settings.toObject();
+      const changes = new Map<string, unknown>();
+      const visited = new WeakSet<object>();
+      const walk = (node: any, path: string): void => {
+        if (typeof node === 'string') {
+          const replacement = replacements.get(node);
+          if (replacement !== undefined) changes.set(path, replacement);
+          return;
+        }
+        if (!node || typeof node !== 'object') return;
+        if (visited.has(node)) return;
+        visited.add(node);
         if (Array.isArray(node)) {
           for (let i = 0; i < node.length; i++) {
             const item = node[i];
             if (typeof item === 'string' && replacements.has(item)) {
-              node[i] = newUrl;
-              changed = true;
-            } else if (item && typeof item === 'object' && walk(item)) {
-              changed = true;
+              changes.set(`${path}.${i}`, replacements.get(item)!);
+            } else if (item && typeof item === 'object') {
+              walk(item, `${path}.${i}`);
             }
           }
-        } else {
-          for (const key of Object.keys(node)) {
-            const value = node[key];
-            if (typeof value === 'string' && replacements.has(value)) {
-              node[key] = newUrl;
-              changed = true;
-            } else if (value && typeof value === 'object' && walk(value)) {
-              changed = true;
-            }
+          return;
+        }
+        for (const key of Object.keys(node)) {
+          const value = node[key];
+          if (typeof value === 'string' && replacements.has(value)) {
+            changes.set(path ? `${path}.${key}` : key, replacements.get(value)!);
+          } else if (value && typeof value === 'object') {
+            walk(value, path ? `${path}.${key}` : key);
           }
         }
-        return changed;
       };
-      if (walk(settings)) {
+      walk(plain, '');
+      for (const [changePath, value] of changes) {
+        settings.set(changePath, value);
+      }
+      if (changes.size > 0) {
         await settings.save();
         replaced += 1;
       }
     }
 
+    return replaced;
+  }
+
+  /** Replaces every reference to this media's URLs with `newUrl` across all content models. */
+  async replaceEverywhere(id: string, newUrl: string, userId: string) {
+    const media: any = await this.get(id, userId);
+    if (!newUrl || !/^https?:\/\//i.test(newUrl)) {
+      throw new BadRequestError('newUrl must be an absolute http(s) URL');
+    }
+    const urls = this.urlsOf(media);
+    const replacements = new Map(urls.map((u) => [u, newUrl]));
+    const replaced = await this.replaceUrlMap(replacements);
     return { replaced };
+  }
+
+  // -- Reprocess / repair ---------------------------------------------------
+
+  /**
+   * Reprocesses an existing raster media record: reloads the stored bytes,
+   * converts to WebP (quality 85), stores the new file, verifies it, updates
+   * the media record and rewrites every storefront reference from the old
+   * URLs to the new ones. Old files are only removed when deleteOriginal is
+   * explicitly set — the new file must be verified first.
+   */
+  async reprocess(id: string, userId: string, options: { deleteOriginal?: boolean } = {}) {
+    const media: any = await this.get(id, userId);
+    const mimeType = media.mimeType || '';
+    const isVideo = mimeType.startsWith('video/');
+    if (isVideo) throw new BadRequestError('Video files cannot be reprocessed');
+    if (mimeType === 'image/svg+xml') {
+      // SVG stays SVG; only (re)generate the raster preview thumbnail.
+      const buffer = await this.loadOriginal(media);
+      const preview = await svgPreview(buffer, safeStem(media.originalName || media.filename));
+      if (!preview) throw new BadRequestError('Unable to generate a preview for this SVG');
+      const patch: any = {
+        thumbnailUrl: preview.url,
+        variants: { ...(media.variants ?? {}), thumb: preview, srcset: buildSrcset({ thumb: preview }) },
+        metadata: { ...(media.metadata ?? {}), storedPublicIds: [...new Set([...(media.metadata?.storedPublicIds ?? []), preview.publicId])], reprocessedAt: new Date().toISOString() },
+      };
+      await this.mediaRepo.updateById(id, patch as any);
+      return { media: await this.get(id, userId), replaced: 0, note: 'SVG preserved — preview thumbnail regenerated' };
+    }
+    if (!RASTER_IMAGE_MIMES.includes(mimeType)) {
+      throw new BadRequestError('Only raster images can be reprocessed to WebP');
+    }
+
+    const buffer = await this.loadOriginal(media);
+    const sniffed = sniffMime(buffer) || mimeType;
+    if (!RASTER_IMAGE_MIMES.includes(sniffed)) {
+      throw new BadRequestError('Stored file does not appear to be a supported raster image');
+    }
+
+    const stem = safeStem(media.originalName || media.filename || 'image');
+    const processed = await convertToWebp(buffer, sniffed, stem);
+    if (processed.isAnimated) {
+      throw new BadRequestError('Animated GIFs are stored as-is and cannot be reprocessed');
+    }
+
+    const stored = await storeBuffer(processed.webp!, '.webp', 'original', stem);
+    await assertStored(stored);
+
+    const oldPublicIds = [...new Set([...(media.metadata?.storedPublicIds ?? []), media.metadata?.publicId].filter(Boolean))];
+
+    // Map every old URL to its new equivalent (main url, thumbnail, variants).
+    const variants = processed.variants;
+    const replacements = new Map<string, string>();
+    if (media.url && media.url !== stored.url) replacements.set(media.url, stored.url);
+    const newThumb = variants.thumb?.url ?? stored.url;
+    if (media.thumbnailUrl && media.thumbnailUrl !== newThumb) replacements.set(media.thumbnailUrl, newThumb);
+    const variantNames: Array<keyof typeof variants> = ['thumb', 'medium', 'large'];
+    for (const name of variantNames) {
+      const oldV = (media.variants ?? {})[name];
+      const newV = variants[name];
+      if (oldV?.url && newV?.url && oldV.url !== newV.url) replacements.set(oldV.url, newV.url);
+    }
+
+    const replaced = await this.replaceUrlMap(replacements);
+
+    const patch: any = {
+      filename: stored.publicId,
+      mimeType: 'image/webp',
+      format: 'webp',
+      size: processed.webp!.length,
+      url: stored.url,
+      thumbnailUrl: newThumb,
+      width: processed.width,
+      height: processed.height,
+      ratio: detectRatio(processed.width, processed.height),
+      variants: {
+        thumb: variants.thumb ?? null,
+        medium: variants.medium ?? null,
+        large: variants.large ?? null,
+        srcset: buildSrcset(variants),
+      },
+      optimization: {
+        originalSize: media.size || 0,
+        optimizedSize: processed.webp!.length,
+        savingsPercent: media.size ? Math.min(99, Math.round(((media.size - processed.webp!.length) / media.size) * 100)) : 0,
+      },
+      metadata: {
+        ...(media.metadata ?? {}),
+        publicId: stored.publicId,
+        resourceType: 'image',
+        storedPublicIds: (() => {
+          const ids = [...oldPublicIds, stored.publicId];
+          if (variants.thumb?.publicId) ids.push(variants.thumb.publicId);
+          if (variants.medium?.publicId) ids.push(variants.medium.publicId);
+          if (variants.large?.publicId) ids.push(variants.large.publicId);
+          return [...new Set(ids)];
+        })(),
+        sourceMimeType: sniffed,
+        sourceFormat: sniffed.split('/')[1] || '',
+        processing: { converted: sniffed !== 'image/webp', quality: WEBP_QUALITY, width: processed.width, height: processed.height },
+        reprocessedAt: new Date().toISOString(),
+      },
+    };
+    await this.mediaRepo.updateById(id, patch as any);
+
+    // Only after the new file is stored, verified and the record updated:
+    // optionally remove the old original (variants/derived are left intact for
+    // version history and existing derived crops that may still be referenced).
+    if (options.deleteOriginal && media.metadata?.publicId && media.metadata.publicId !== stored.publicId) {
+      deleteStored([media.metadata.publicId]);
+    }
+
+    return { media: await this.get(id, userId), replaced, note: `Converted ${sniffed} to WebP` };
+  }
+
+  // -- Verify batch ---------------------------------------------------------
+
+  /** Verifies each media URL; returns per-file results (ok / status / error). */
+  async verifyBatch(ids: string[]): Promise<Array<{ id: string; ok: boolean; status?: number; error?: string; url?: string }>> {
+    const unique = [...new Set(ids.filter(Boolean))].slice(0, 200);
+    const results: Array<{ id: string; ok: boolean; status?: number; error?: string; url?: string }> = [];
+    for (const id of unique) {
+      const media: any = await this.mediaRepo.findById(id);
+      if (!media) {
+        results.push({ id, ok: false, error: 'Media record not found' });
+        continue;
+      }
+      const url = media.url || '';
+      if (!url || !/^https?:\/\//i.test(url)) {
+        results.push({ id, ok: false, error: 'Missing or invalid URL', url });
+        continue;
+      }
+      // Locally stored files are checked on disk; everything else via HEAD.
+      const publicId = media.metadata?.publicId;
+      if (!isCloudinary() && publicId) {
+        const filePath = path.join(UPLOADS_DIR, path.basename(publicId));
+        if (fs.existsSync(filePath) && fs.statSync(filePath).size > 0) {
+          results.push({ id, ok: true, url });
+          continue;
+        }
+      }
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 8000);
+        const res = await fetch(url, { method: 'HEAD', redirect: 'follow', signal: controller.signal });
+        clearTimeout(timer);
+        results.push({ id, ok: res.ok, status: res.status, url });
+      } catch {
+        results.push({ id, ok: false, status: 0, error: 'Unreachable', url });
+      }
+    }
+    return results;
   }
 
   // -- Delete & bulk --------------------------------------------------------

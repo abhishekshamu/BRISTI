@@ -16,6 +16,9 @@ function resolveApiBaseUrl(): string {
 
 export const API_BASE_URL = resolveApiBaseUrl();
 
+/** Origin that serves uploaded files (/uploads/*) — the backend API origin. */
+export { API_ORIGIN };
+
 export const api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,

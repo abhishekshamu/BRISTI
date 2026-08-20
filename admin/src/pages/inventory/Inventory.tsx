@@ -8,6 +8,7 @@ import StatCard from '../../components/ui/StatCard';
 import Modal from '../../components/ui/Modal';
 import EmptyState from '../../components/ui/EmptyState';
 import api, { getApiError } from '../../lib/api';
+import { resolveMediaUrl } from '../../lib/mediaUrl';
 import toast from 'react-hot-toast';
 
 interface InventoryHistoryEntry {
@@ -255,7 +256,7 @@ export default function Inventory() {
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-md flex items-center justify-center shrink-0 overflow-hidden">
             {productImageOf(item) ? (
-              <img src={productImageOf(item)} alt="" className="w-10 h-10 object-cover rounded-md" />
+              <img src={resolveMediaUrl(productImageOf(item)) ?? ''} alt="" className="w-10 h-10 object-cover rounded-md" />
             ) : (
               <Package className="w-5 h-5 text-slate-400" />
             )}

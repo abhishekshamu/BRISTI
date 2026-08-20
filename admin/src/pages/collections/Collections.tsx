@@ -10,6 +10,7 @@ import Badge from '../../components/ui/Badge';
 import EmptyState from '../../components/ui/EmptyState';
 import PageSpinner from '../../components/ui/PageSpinner';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import { resolveMediaUrl } from '../../lib/mediaUrl';
 
 interface Collection {
   _id: string;
@@ -108,7 +109,7 @@ export default function Collections() {
             <div key={collection._id} className="admin-card overflow-hidden group">
               {collection.bannerImage || collection.image ? (
                 <img
-                  src={collection.bannerImage || collection.image}
+                  src={resolveMediaUrl(collection.bannerImage || collection.image) ?? ''}
                   alt={collection.name}
                   className="w-full h-48 object-cover"
                 />

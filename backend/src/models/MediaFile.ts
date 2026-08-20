@@ -19,6 +19,9 @@ const MediaFileSchema: Schema = new Schema({
     type: String,
     required: true,
   },
+  format: {
+    type: String,
+  }, // Canonical format of the stored file (e.g. 'webp' for converted raster, 'svg', 'gif' for animated)
   size: {
     type: Number,
     required: true,

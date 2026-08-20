@@ -34,6 +34,7 @@ import {
 } from '../../services/media.service';
 import MediaLibraryDialog from './MediaLibraryDialog';
 import CropDialog from './CropDialog';
+import { resolveMediaUrl } from '../../lib/mediaUrl';
 
 export interface MediaPickerMeta {
   alt?: string;
@@ -107,7 +108,7 @@ export default function MediaPicker({
   }, []);
   const allowsVideo = Boolean(accept && /video/i.test(accept));
   const acceptedTypes = allowsVideo ? `${ACCEPTED_IMAGE_ACCEPT},video/mp4,video/webm,.mp4,.webm` : ACCEPTED_IMAGE_ACCEPT;
-  const validExtRe = useMemo(() => allowsVideo ? /^(jpg|jpeg|png|webp|svg|gif|avif|mp4|webm)$/i : /^(jpg|jpeg|png|webp|svg|gif|avif)$/i, [allowsVideo]);
+  const validExtRe = useMemo(() => allowsVideo ? /^(jpg|jpeg|png|webp|svg|gif|avif|bmp|tiff|heic|heif|mp4|webm)$/i : /^(jpg|jpeg|png|webp|svg|gif|avif|bmp|tiff|heic|heif)$/i, [allowsVideo]);
 
   // --- preview image state -------------------------------------------------
   useEffect(() => {
@@ -134,7 +135,7 @@ export default function MediaPicker({
       if (cancelled) return;
       setImgState('broken');
     };
-    img.src = value;
+    img.src = resolveMediaUrl(value) ?? '';
     return () => {
       cancelled = true;
     };
@@ -172,7 +173,7 @@ export default function MediaPicker({
       const valid = list.filter((f) => {
         const ext = fileExtension(f.name);
         if (!validExtRe.test(ext)) {
-          toast.error(`"${f.name}" — unsupported file type (jpg, jpeg, png, webp, svg, gif, avif${allowsVideo ? ', mp4, webm' : ''} only)`);
+          toast.error(`"${f.name}" — unsupported file type (jpg, jpeg, png, webp, svg, gif, avif, bmp, tiff, heic, heif${allowsVideo ? ', mp4, webm' : ''} only)`);
           return false;
         }
         if (f.size > 25 * 1024 * 1024) {
@@ -365,10 +366,10 @@ export default function MediaPicker({
                 </div>
               )}
               {imgState === 'ready' && value && !isVideoValue(value) && (
-                <img src={value} alt={altValue || 'Preview'} className="w-full h-full object-contain" draggable={false} />
+                <img src={resolveMediaUrl(value) ?? ''} alt={altValue || 'Preview'} className="w-full h-full object-contain" draggable={false} />
               )}
               {imgState === 'ready' && value && isVideoValue(value) && (
-                <video src={value} className="w-full h-full object-contain" muted playsInline />
+                <video src={resolveMediaUrl(value) ?? ''} className="w-full h-full object-contain" muted playsInline />
               )}
               {imgState === 'ready' && value && !isVideoValue(value) && !busy && (
                 <button
@@ -544,10 +545,10 @@ export default function MediaPicker({
                 <button type="button" onClick={copyUrl} className="admin-btn-ghost px-2.5 py-1.5 text-[11px] flex items-center gap-1 text-slate-600 dark:text-slate-300" title="Copy image URL">
                   <Copy className="w-3 h-3" /> Copy URL
                 </button>
-                <a href={value} download target="_blank" rel="noopener noreferrer" className="admin-btn-ghost px-2.5 py-1.5 text-[11px] flex items-center gap-1 text-slate-600 dark:text-slate-300" title="Download image">
+                <a href={resolveMediaUrl(value) ?? value} download target="_blank" rel="noopener noreferrer" className="admin-btn-ghost px-2.5 py-1.5 text-[11px] flex items-center gap-1 text-slate-600 dark:text-slate-300" title="Download image">
                   <Download className="w-3 h-3" /> Download
                 </a>
-                <a href={value} target="_blank" rel="noopener noreferrer" className="admin-btn-ghost px-2.5 py-1.5 text-[11px] flex items-center gap-1 text-slate-600 dark:text-slate-300" title="Open image in new tab">
+                <a href={resolveMediaUrl(value) ?? value} target="_blank" rel="noopener noreferrer" className="admin-btn-ghost px-2.5 py-1.5 text-[11px] flex items-center gap-1 text-slate-600 dark:text-slate-300" title="Open image in new tab">
                   <ExternalLink className="w-3 h-3" /> Open
                 </a>
                 {value && allowCrop && !isVideoValue(value) && !(ratioInfo && ratioInfo.w > 0) && (
@@ -618,7 +619,7 @@ export default function MediaPicker({
       )}
       {cropOpen && value && (
         <CropDialog
-          src={media?.url || value}
+          src={resolveMediaUrl(media?.url || value) ?? value}
           mediaId={media ? String(media._id) : undefined}
           folder={folder}
           initialRatio={ratioInfo && ratioInfo.w > 0 ? { w: ratioInfo.w, h: ratioInfo.h } : undefined}
@@ -643,7 +644,7 @@ export default function MediaPicker({
         >
           <div className="relative" onClick={(e) => e.stopPropagation()}>
             <img
-              src={value}
+              src={resolveMediaUrl(value) ?? ''}
               alt={altValue || 'Preview'}
               className="max-h-[85vh] max-w-[90vw] object-contain rounded-lg shadow-2xl"
             />

@@ -30,6 +30,12 @@ export default defineConfig(({ mode }) => {
           target: apiTarget,
           changeOrigin: true,
         },
+        // Locally stored media (/uploads/*) is served by the backend; forward
+        // it too so <img> URLs resolve instead of 404ing on the admin origin.
+        '/uploads': {
+          target: apiTarget,
+          changeOrigin: true,
+        },
       },
     },
     build: {
